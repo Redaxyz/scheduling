@@ -92,12 +92,12 @@ export default function UserPicker() {
             style={{ clipPath: cellClipPath(cell.row, cell.col, curves), background: cell.staff.color }}
           >
             <span
-              className="absolute font-extrabold text-white"
+              className="absolute font-extrabold tracking-tight text-slate-700"
               style={{
                 left: `${((cell.col + 0.5) / COLS) * 100}%`,
                 top: `${((cell.row + 0.5) / ROWS) * 100}%`,
                 transform: "translate(-50%, -50%)",
-                fontSize: "clamp(1.1rem, 3vw, 2rem)",
+                fontSize: "clamp(1rem, 2.4vw, 1.5rem)",
                 whiteSpace: "nowrap",
               }}
             >
@@ -115,7 +115,7 @@ export default function UserPicker() {
             opacity,
           }}
         >
-          <span className="text-5xl font-extrabold text-white sm:text-6xl">{picked.name}</span>
+          <span className="text-3xl font-extrabold tracking-tight text-slate-700 sm:text-4xl">{picked.name}</span>
         </div>
       )}
     </div>

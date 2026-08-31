@@ -4,9 +4,40 @@
 
 :root {
   color-scheme: light;
+  /* Neutral default until a staff member is picked; then set per-person. */
+  --theme-accent: #94a3b8;
 }
 
 body {
-  background: #f5f6f8;
-  color: #1a1d23;
+  background: #fafafa;
+  color: #334155;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Small set of accent utilities driven by --theme-accent (the active
+   person's color), mirroring the borrowed-not-copied opacity-tint look:
+   soft borders/backgrounds instead of solid cards and drop shadows.
+   Borders mix toward a mid slate (not white) so they stay visible even
+   when the active person's pastel is very pale; backgrounds mix toward
+   white since those are meant to stay barely-there. */
+.accent-border {
+  border-color: color-mix(in srgb, var(--theme-accent) 65%, #94a3b8);
+}
+.accent-border-soft {
+  border-color: color-mix(in srgb, var(--theme-accent) 40%, #cbd5e1);
+}
+.accent-bg-soft {
+  background-color: color-mix(in srgb, var(--theme-accent) 16%, white);
+}
+.accent-bg-softer {
+  background-color: color-mix(in srgb, var(--theme-accent) 9%, white);
+}
+.accent-text {
+  color: color-mix(in srgb, var(--theme-accent) 65%, #334155);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--theme-accent);
 }

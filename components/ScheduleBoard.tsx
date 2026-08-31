@@ -41,14 +41,14 @@ export default function ScheduleBoard({ date, day, freeStaff }: Props) {
         {OFFICES.map((office) => (
           <div
             key={office}
-            className={`rounded border bg-white p-4 ${
-              day.needsMoreStaffing === office ? "border-amber-400 ring-1 ring-amber-300" : "border-slate-200"
+            className={`rounded-2xl border-2 p-4 ${
+              day.needsMoreStaffing === office ? "border-amber-300 accent-bg-softer" : "accent-border-soft"
             }`}
           >
-            <div className="text-sm text-slate-500">{OFFICE_LABELS[office]} — patients today</div>
-            <div className="text-2xl font-semibold text-slate-800">{day.officeTotals[office]}</div>
+            <div className="text-sm font-bold opacity-60">{OFFICE_LABELS[office]} — patients today</div>
+            <div className="text-2xl font-extrabold tracking-tight">{day.officeTotals[office]}</div>
             {day.needsMoreStaffing === office && (
-              <div className="mt-1 text-xs font-medium text-amber-700">
+              <div className="mt-1 text-xs font-bold text-amber-700">
                 Needs more staffing (+{totalGap} vs. {OFFICE_LABELS[office === "BETHESDA" ? "GERMANTOWN" : "BETHESDA"]})
               </div>
             )}
@@ -58,7 +58,7 @@ export default function ScheduleBoard({ date, day, freeStaff }: Props) {
 
       {HALVES.map((half) => (
         <div key={half}>
-          <h2 className="mb-2 text-lg font-semibold text-slate-700">{HALF_LABELS[half]}</h2>
+          <h2 className="mb-2 text-lg font-extrabold tracking-tight opacity-80">{HALF_LABELS[half]}</h2>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {OFFICES.map((office) => (
               <OfficeHalfCell
@@ -103,20 +103,20 @@ function OfficeHalfCell({
   const xrayEligible = free.filter((s) => s.kind === "XRAY");
 
   return (
-    <div className="rounded border border-slate-200 bg-white p-4">
-      <h3 className="mb-3 font-medium text-slate-800">{OFFICE_LABELS[slot.office]}</h3>
+    <div className="accent-border-soft rounded-2xl border-2 p-4">
+      <h3 className="mb-3 font-extrabold tracking-tight">{OFFICE_LABELS[slot.office]}</h3>
 
-      {error && <p className="mb-2 rounded bg-red-50 px-2 py-1 text-xs text-red-700">{error}</p>}
+      {error && <p className="mb-2 rounded-xl bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700">{error}</p>}
 
       {slot.providers.length === 0 && (
-        <p className="mb-3 text-sm italic text-slate-400">No provider scheduled here.</p>
+        <p className="mb-3 text-sm font-bold italic opacity-40">No provider scheduled here.</p>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-1">
         {slot.providers.map((p) => (
-          <div key={p.provider.id} className="rounded border border-slate-100 bg-slate-50 p-3">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-slate-800">{p.provider.name}</span>
+          <div key={p.provider.id} className="accent-border-soft border-b-2 py-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-extrabold tracking-tight">{p.provider.name}</span>
               <PatientCountInput
                 date={date}
                 half={slot.half}
@@ -127,12 +127,12 @@ function OfficeHalfCell({
             </div>
             <div className="mt-1 text-sm">
               {p.scribe ? (
-                <span className={p.scribe.substitute ? "text-amber-700" : "text-slate-600"}>
+                <span className={`font-bold ${p.scribe.substitute ? "text-amber-700" : "opacity-70"}`}>
                   Scribe: {p.scribe.name} {p.scribe.substitute && "(sub)"}
                 </span>
               ) : (
-                <div className="flex items-center gap-2">
-                  <span className="text-red-600">Scribe: OPEN — needs a sub-scribe</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-bold text-red-600">Scribe: OPEN — needs a sub-scribe</span>
                   <AssignPicker
                     label="Fill in"
                     options={scribeEligible}
@@ -237,17 +237,17 @@ function RoleGroup({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mt-3 border-t border-slate-100 pt-3">
-      <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-400">{title}</div>
-      {cells.length === 0 && <p className="text-sm text-slate-400">None yet</p>}
+    <div className="accent-border-soft mt-3 border-t-2 pt-3">
+      <div className="mb-1 text-xs font-bold uppercase tracking-wide opacity-40">{title}</div>
+      {cells.length === 0 && <p className="text-sm font-bold opacity-40">None yet</p>}
       <ul className="mb-2 space-y-1">
         {cells.map((c) => (
-          <li key={c.id} className="flex items-center justify-between text-sm">
+          <li key={c.id} className="flex items-center justify-between text-sm font-bold">
             <span>
               {c.name}
               {c.providerName ? ` — supporting ${c.providerName}` : ""}
             </span>
-            <button onClick={() => onRemove(c.id)} className="text-xs text-red-500 hover:underline">
+            <button onClick={() => onRemove(c.id)} className="text-xs font-bold text-red-500 opacity-70 hover:opacity-100">
               remove
             </button>
           </li>
@@ -272,13 +272,13 @@ function AssignPicker({
   const [selected, setSelected] = useState(defaultOption);
 
   if (options.length === 0) {
-    return <p className="text-xs text-slate-400">No one free for this role right now</p>;
+    return <p className="text-xs font-bold opacity-40">No one free for this role right now</p>;
   }
 
   return (
     <div className="flex items-center gap-2">
       <select
-        className="rounded border border-slate-300 px-2 py-1 text-sm"
+        className="accent-border-soft border-b-2 bg-transparent py-1 text-sm font-bold outline-none"
         value={selected || options[0].id}
         onChange={(e) => setSelected(e.target.value)}
       >
@@ -291,7 +291,7 @@ function AssignPicker({
       </select>
       <button
         onClick={() => onAssign(selected || options[0].id)}
-        className="rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"
+        className="accent-border rounded-full border-2 px-4 py-1 text-xs font-bold transition active:scale-95"
       >
         {label}
       </button>
@@ -327,12 +327,12 @@ function PatientCountInput({
   }
 
   return (
-    <div className="flex items-center gap-1 text-xs text-slate-500">
+    <div className="flex items-center gap-1.5 text-xs font-bold opacity-60">
       patients
       <input
         type="number"
         min={0}
-        className="w-14 rounded border border-slate-300 px-1 py-0.5 text-right text-sm text-slate-800"
+        className="accent-border-soft w-12 border-b-2 bg-transparent text-right text-sm font-extrabold text-slate-700 opacity-100 outline-none"
         value={local}
         onChange={(e) => setLocal(e.target.value)}
         onBlur={save}

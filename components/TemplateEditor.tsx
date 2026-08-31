@@ -31,27 +31,27 @@ export default function TemplateEditor({ providers }: { providers: Provider[] })
   return (
     <div className="space-y-6">
       {providers.map((p) => (
-        <div key={p.id} className="rounded border border-slate-200 bg-white p-4">
-          <h2 className="mb-2 font-semibold text-slate-800">{p.name}</h2>
+        <div key={p.id} className="accent-border-soft rounded-2xl border-2 p-4">
+          <h2 className="mb-2 font-extrabold tracking-tight">{p.name}</h2>
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-slate-500">
-                <th className="py-1 pr-2">Day</th>
-                <th className="py-1 pr-2">Morning</th>
-                <th className="py-1 pr-2">Afternoon</th>
+              <tr className="text-left font-bold opacity-50">
+                <th className="py-1 pr-2 font-bold">Day</th>
+                <th className="py-1 pr-2 font-bold">Morning</th>
+                <th className="py-1 pr-2 font-bold">Afternoon</th>
               </tr>
             </thead>
             <tbody>
               {WEEKDAY_LABELS.map((label, weekday) => (
-                <tr key={weekday} className="border-t border-slate-100">
-                  <td className="py-1.5 pr-2 text-slate-600">{label}</td>
+                <tr key={weekday} className="accent-border-soft border-t-2">
+                  <td className="py-1.5 pr-2 font-bold opacity-70">{label}</td>
                   {(["AM", "PM"] as const).map((half) => {
                     const slot = p.slots.find((s) => s.weekday === weekday && s.half === half);
                     const value = slot?.office ?? "OFF";
                     return (
                       <td key={half} className="py-1.5 pr-2">
                         <select
-                          className="rounded border border-slate-300 px-2 py-1"
+                          className="accent-border-soft border-b-2 bg-transparent py-1 font-extrabold text-slate-700 outline-none"
                           defaultValue={value}
                           onChange={(e) => update(p.id, weekday, half, e.target.value)}
                         >

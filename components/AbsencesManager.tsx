@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { todayStr } from "@/lib/date";
 import { useWhoAmI } from "@/lib/whoami";
@@ -82,6 +82,13 @@ function AbsenceSection({
 }) {
   const { currentId } = useWhoAmI();
   const [personId, setPersonId] = useState(defaultToSelf && currentId ? currentId : people[0]?.id ?? "");
+  const appliedSelfDefault = useRef(false);
+  useEffect(() => {
+    if (defaultToSelf && currentId && !appliedSelfDefault.current) {
+      appliedSelfDefault.current = true;
+      setPersonId(currentId);
+    }
+  }, [defaultToSelf, currentId]);
   const today = todayStr();
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
@@ -104,15 +111,15 @@ function AbsenceSection({
   }
 
   return (
-    <div className="rounded border border-slate-200 bg-white p-4">
-      <h2 className="mb-1 text-lg font-semibold text-slate-700">{title}</h2>
-      <p className="mb-3 text-xs text-slate-500">{peoplePickerHint}</p>
+    <div className="accent-border-soft rounded-2xl border-2 p-4">
+      <h2 className="mb-1 text-lg font-extrabold tracking-tight">{title}</h2>
+      <p className="mb-3 text-xs font-bold opacity-50">{peoplePickerHint}</p>
 
-      <div className="grid grid-cols-2 gap-2 text-sm">
-        <label className="col-span-2">
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <label className="col-span-2 font-bold opacity-60">
           Who
           <select
-            className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1"
+            className="accent-border-soft mt-0.5 block w-full border-b-2 bg-transparent py-1 font-extrabold text-slate-700 outline-none"
             value={personId}
             onChange={(e) => setPersonId(e.target.value)}
           >
@@ -123,28 +130,28 @@ function AbsenceSection({
             ))}
           </select>
         </label>
-        <label>
+        <label className="font-bold opacity-60">
           From
           <input
             type="date"
-            className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1"
+            className="accent-border-soft mt-0.5 block w-full border-b-2 bg-transparent py-1 font-extrabold text-slate-700 outline-none"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
           />
         </label>
-        <label>
+        <label className="font-bold opacity-60">
           To
           <input
             type="date"
-            className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1"
+            className="accent-border-soft mt-0.5 block w-full border-b-2 bg-transparent py-1 font-extrabold text-slate-700 outline-none"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
           />
         </label>
-        <label>
+        <label className="font-bold opacity-60">
           Which half
           <select
-            className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1"
+            className="accent-border-soft mt-0.5 block w-full border-b-2 bg-transparent py-1 font-extrabold text-slate-700 outline-none"
             value={half}
             onChange={(e) => setHalf(e.target.value)}
           >
@@ -153,38 +160,38 @@ function AbsenceSection({
             <option value="PM">Afternoon only</option>
           </select>
         </label>
-        <label>
+        <label className="font-bold opacity-60">
           Reason (optional)
           <input
             type="text"
-            className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1"
+            className="accent-border-soft mt-0.5 block w-full border-b-2 bg-transparent py-1 font-extrabold text-slate-700 outline-none"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
         </label>
       </div>
 
-      {error && <p className="mt-2 rounded bg-red-50 px-2 py-1 text-xs text-red-700">{error}</p>}
+      {error && <p className="mt-2 rounded-xl bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700">{error}</p>}
 
       <button
         onClick={submit}
         disabled={busy || !personId}
-        className="mt-3 rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className="accent-border mt-3 rounded-full border-2 px-4 py-1.5 text-sm font-bold transition active:scale-95 disabled:opacity-40"
       >
         Mark absent
       </button>
 
-      <div className="mt-4 border-t border-slate-100 pt-3">
-        <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-400">Upcoming</div>
-        {rows.length === 0 && <p className="text-sm text-slate-400">None scheduled</p>}
-        <ul className="space-y-1 text-sm">
+      <div className="accent-border-soft mt-4 border-t-2 pt-3">
+        <div className="mb-1 text-xs font-bold uppercase tracking-wide opacity-40">Upcoming</div>
+        {rows.length === 0 && <p className="text-sm font-bold opacity-40">None scheduled</p>}
+        <ul className="space-y-1 text-sm font-bold">
           {rows.map((r) => (
             <li key={r.id} className="flex items-center justify-between">
               <span>
                 {r.name} — {r.date} ({r.half === "ALL" ? "all day" : r.half}
                 {r.reason ? `, ${r.reason}` : ""})
               </span>
-              <button onClick={() => onRemove(r.id)} className="text-xs text-red-500 hover:underline">
+              <button onClick={() => onRemove(r.id)} className="text-xs font-bold text-red-500 opacity-70 hover:opacity-100">
                 cancel
               </button>
             </li>

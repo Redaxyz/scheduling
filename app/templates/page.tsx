@@ -11,8 +11,8 @@ export default async function TemplatesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-800">Doctor weekly templates</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-xl font-extrabold tracking-tight">Doctor weekly templates</h1>
+        <p className="text-sm font-bold opacity-50">
           The recurring weekly schedule each doctor normally follows. Use Absences to mark one-off days off.
         </p>
       </div>

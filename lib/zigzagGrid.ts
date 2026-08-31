@@ -11,10 +11,10 @@
 
 export const ROWS = 6;
 export const COLS = 2;
-const TEETH_PER_ROW = 3; // segments per row along the vertical divider
-const TEETH_PER_COL = 4; // segments per column along each horizontal divider
-const AMP_V = 9; // px, x-wobble of the vertical divider
-const AMP_H = 7; // px, y-wobble of each horizontal divider
+const TEETH_PER_ROW = 9; // segments per row along the vertical divider
+const TEETH_PER_COL = 7; // segments per column along each horizontal divider
+const AMP_V = 4; // px, x-wobble of the vertical divider
+const AMP_H = 3.5; // px, y-wobble of each horizontal divider
 
 type Pt = [string, string]; // [xExpr, yExpr] as CSS length strings
 

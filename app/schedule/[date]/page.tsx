@@ -18,33 +18,27 @@ export default async function SchedulePage({ params }: { params: Promise<{ date:
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-slate-800">
+          <h1 className="text-xl font-extrabold tracking-tight">
             {day.weekday !== null ? WEEKDAY_LABELS[day.weekday] : "Weekend"} — {formatLong(date)}
           </h1>
           {!isToday && (
-            <Link href={`/schedule/${todayStr()}`} className="text-sm text-blue-700 hover:underline">
+            <Link href={`/schedule/${todayStr()}`} className="accent-text text-sm font-bold hover:underline">
               Jump to today
             </Link>
           )}
         </div>
-        <div className="flex gap-2 text-sm">
-          <Link
-            href={`/schedule/${addDays(date, -1)}`}
-            className="rounded border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50"
-          >
+        <div className="flex gap-2 text-sm font-bold">
+          <Link href={`/schedule/${addDays(date, -1)}`} className="accent-border rounded-full border-2 px-4 py-1.5">
             ← Previous day
           </Link>
-          <Link
-            href={`/schedule/${addDays(date, 1)}`}
-            className="rounded border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50"
-          >
+          <Link href={`/schedule/${addDays(date, 1)}`} className="accent-border rounded-full border-2 px-4 py-1.5">
             Next day →
           </Link>
         </div>
       </div>
 
       {day.weekday === null ? (
-        <p className="rounded border border-slate-200 bg-white p-4 text-slate-500">
+        <p className="accent-border-soft rounded-2xl border-2 p-4 font-bold opacity-50">
           No clinic scheduled on weekends.
         </p>
       ) : (
