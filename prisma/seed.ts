@@ -99,21 +99,25 @@ const STAFF: {
   name: string;
   kind: "SCRIBE" | "GENERAL" | "XRAY";
   canScribe: boolean;
+  color: string;
   homeOffice: "BETHESDA" | "GERMANTOWN" | null;
   dedicatedProviderInitials: string | null;
 }[] = [
-  { name: "Reda", kind: "SCRIBE", canScribe: true, homeOffice: null, dedicatedProviderInitials: "C" },
-  { name: "Emily", kind: "SCRIBE", canScribe: true, homeOffice: null, dedicatedProviderInitials: "R" },
-  { name: "Hope", kind: "SCRIBE", canScribe: true, homeOffice: null, dedicatedProviderInitials: "Fe" },
-  { name: "Anna", kind: "SCRIBE", canScribe: true, homeOffice: null, dedicatedProviderInitials: "M" },
-  { name: "Emma", kind: "SCRIBE", canScribe: true, homeOffice: null, dedicatedProviderInitials: "Fi" },
-  { name: "Jen", kind: "SCRIBE", canScribe: true, homeOffice: null, dedicatedProviderInitials: "G" },
-  { name: "JB", kind: "GENERAL", canScribe: false, homeOffice: "BETHESDA", dedicatedProviderInitials: null },
-  { name: "Mark", kind: "GENERAL", canScribe: false, homeOffice: "BETHESDA", dedicatedProviderInitials: null },
-  { name: "Charlie", kind: "GENERAL", canScribe: false, homeOffice: "GERMANTOWN", dedicatedProviderInitials: null },
-  { name: "Jenish", kind: "GENERAL", canScribe: false, homeOffice: "GERMANTOWN", dedicatedProviderInitials: null },
-  { name: "Cindy", kind: "XRAY", canScribe: false, homeOffice: "BETHESDA", dedicatedProviderInitials: null },
-  { name: "Shelby", kind: "XRAY", canScribe: false, homeOffice: "GERMANTOWN", dedicatedProviderInitials: null },
+  // Scribes: cool blue/green family
+  { name: "Reda", kind: "SCRIBE", canScribe: true, color: "#1E40AF", homeOffice: null, dedicatedProviderInitials: "C" },
+  { name: "Emily", kind: "SCRIBE", canScribe: true, color: "#0369A1", homeOffice: null, dedicatedProviderInitials: "R" },
+  { name: "Hope", kind: "SCRIBE", canScribe: true, color: "#0E7490", homeOffice: null, dedicatedProviderInitials: "Fe" },
+  { name: "Anna", kind: "SCRIBE", canScribe: true, color: "#0F766E", homeOffice: null, dedicatedProviderInitials: "M" },
+  { name: "Emma", kind: "SCRIBE", canScribe: true, color: "#047857", homeOffice: null, dedicatedProviderInitials: "Fi" },
+  { name: "Jen", kind: "SCRIBE", canScribe: true, color: "#4338CA", homeOffice: null, dedicatedProviderInitials: "G" },
+  // General/rooming: warm orange/red family
+  { name: "JB", kind: "GENERAL", canScribe: false, color: "#C2410C", homeOffice: "BETHESDA", dedicatedProviderInitials: null },
+  { name: "Mark", kind: "GENERAL", canScribe: false, color: "#B91C1C", homeOffice: "BETHESDA", dedicatedProviderInitials: null },
+  { name: "Charlie", kind: "GENERAL", canScribe: false, color: "#B45309", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null },
+  { name: "Jenish", kind: "GENERAL", canScribe: false, color: "#BE123C", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null },
+  // X-ray: purple family
+  { name: "Cindy", kind: "XRAY", canScribe: false, color: "#6D28D9", homeOffice: "BETHESDA", dedicatedProviderInitials: null },
+  { name: "Shelby", kind: "XRAY", canScribe: false, color: "#A21CAF", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null },
 ];
 
 async function main() {
@@ -146,6 +150,7 @@ async function main() {
         name: s.name,
         kind: s.kind,
         canScribe: s.canScribe,
+        color: s.color,
         homeOffice: s.homeOffice,
         dedicatedProviderId: s.dedicatedProviderInitials
           ? providerByInitials.get(s.dedicatedProviderInitials)!

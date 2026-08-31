@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { WhoAmIProvider } from "@/lib/whoami";
 import NavBar from "@/components/NavBar";
+import AppGate from "@/components/AppGate";
 
 export const metadata: Metadata = {
   title: "CFA Ortho Schedule",
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <WhoAmIProvider>
+          <AppGate />
           <NavBar />
           <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
         </WhoAmIProvider>

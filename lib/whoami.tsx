@@ -7,6 +7,7 @@ export type StaffOption = {
   name: string;
   kind: string;
   canScribe: boolean;
+  color: string;
   homeOffice: string | null;
   dedicatedProviderId: string | null;
 };
@@ -16,6 +17,7 @@ type WhoAmICtx = {
   currentId: string | null;
   setCurrentId: (id: string | null) => void;
   current: StaffOption | null;
+  ready: boolean;
 };
 
 const Ctx = createContext<WhoAmICtx | null>(null);
@@ -25,6 +27,7 @@ const STORAGE_KEY = "cfa-schedule-whoami";
 export function WhoAmIProvider({ children }: { children: ReactNode }) {
   const [staffList, setStaffList] = useState<StaffOption[]>([]);
   const [currentId, setCurrentIdState] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     fetch("/api/staff")
@@ -32,6 +35,7 @@ export function WhoAmIProvider({ children }: { children: ReactNode }) {
       .then((data: StaffOption[]) => setStaffList(data));
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored) setCurrentIdState(stored);
+    setReady(true);
   }, []);
 
   const setCurrentId = (id: string | null) => {
@@ -42,7 +46,7 @@ export function WhoAmIProvider({ children }: { children: ReactNode }) {
 
   const current = staffList.find((s) => s.id === currentId) ?? null;
 
-  return <Ctx.Provider value={{ staffList, currentId, setCurrentId, current }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ staffList, currentId, setCurrentId, current, ready }}>{children}</Ctx.Provider>;
 }
 
 export function useWhoAmI() {

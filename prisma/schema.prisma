@@ -63,6 +63,7 @@ model Staff {
   name               String
   kind               String
   canScribe          Boolean  @default(false)
+  color              String   @default("#64748b")
   homeOffice         String?
   dedicatedProviderId String?
   active             Boolean  @default(true)

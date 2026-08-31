@@ -12,7 +12,7 @@ const links = [
 
 export default function NavBar() {
   const pathname = usePathname();
-  const { staffList, currentId, setCurrentId } = useWhoAmI();
+  const { current, setCurrentId } = useWhoAmI();
 
   return (
     <header className="border-b bg-white">
@@ -35,21 +35,23 @@ export default function NavBar() {
             ))}
           </nav>
         </div>
-        <label className="flex items-center gap-2 text-sm text-slate-600">
-          I am:
-          <select
-            className="rounded border border-slate-300 px-2 py-1"
-            value={currentId ?? ""}
-            onChange={(e) => setCurrentId(e.target.value || null)}
-          >
-            <option value="">Select your name…</option>
-            {staffList.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {current && (
+          <div className="flex items-center gap-2 text-sm">
+            <span
+              className="flex items-center gap-1.5 rounded-full py-1 pl-1.5 pr-3 font-medium text-white"
+              style={{ background: current.color }}
+            >
+              <span className="h-2 w-2 rounded-full bg-white/70" />
+              {current.name}
+            </span>
+            <button
+              onClick={() => setCurrentId(null)}
+              className="text-slate-400 hover:text-slate-700 hover:underline"
+            >
+              Not you?
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );
