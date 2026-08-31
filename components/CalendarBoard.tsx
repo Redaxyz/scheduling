@@ -33,7 +33,7 @@ const QUADRANTS: { office: Office; half: Half; label: string }[][] = [
   ],
 ];
 
-export default function CalendarBoard({ days }: { days: DayQuadrants[] }) {
+export default function CalendarBoard({ days, compact }: { days: DayQuadrants[]; compact?: boolean }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const refresh = () => startTransition(() => router.refresh());
@@ -60,16 +60,21 @@ export default function CalendarBoard({ days }: { days: DayQuadrants[] }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className={compact ? "space-y-2" : "space-y-4"}>
       {error && <p className="rounded-xl bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700">{error}</p>}
       {days.map((day) => (
-        <div key={day.date} className="accent-border-soft rounded-2xl border-2 p-3 sm:p-4">
-          <h3 className="mb-2 font-extrabold tracking-tight">
+        <div
+          key={day.date}
+          className={`accent-border-soft rounded-2xl border-2 ${compact ? "p-2 sm:p-3" : "p-3 sm:p-4"} ${
+            compact && day.weekdayLabel === "Monday" ? "mt-3" : ""
+          }`}
+        >
+          <h3 className={`font-extrabold tracking-tight ${compact ? "mb-1.5 text-sm" : "mb-2"}`}>
             {day.weekdayLabel} <span className="opacity-40">· {formatShort(day.date)}</span>
           </h3>
-          <div className="grid grid-cols-2 gap-2">
+          <div className={compact ? "grid grid-cols-2 gap-1.5" : "grid grid-cols-2 gap-2"}>
             {QUADRANTS.flat().map(({ office, half, label }) => (
-              <div key={`${office}-${half}`} className="accent-border-soft rounded-xl border-2 p-2">
+              <div key={`${office}-${half}`} className={`accent-border-soft rounded-xl border-2 ${compact ? "p-1.5" : "p-2"}`}>
                 <div className="mb-1 text-[10px] font-bold uppercase tracking-wide opacity-40">
                   {label} · {HALF_LABELS[half]}
                 </div>
@@ -84,8 +89,8 @@ export default function CalendarBoard({ days }: { days: DayQuadrants[] }) {
                         title={entry.present ? `Mark ${entry.name} absent` : `Mark ${entry.name} present`}
                         className={
                           entry.present
-                            ? "text-base font-extrabold text-[#579669] sm:text-lg"
-                            : "text-base font-normal text-slate-400 sm:text-lg"
+                            ? `font-extrabold text-[#579669] ${compact ? "text-sm sm:text-base" : "text-base sm:text-lg"}`
+                            : `font-normal text-slate-400 ${compact ? "text-sm sm:text-base" : "text-base sm:text-lg"}`
                         }
                       >
                         {entry.initials}

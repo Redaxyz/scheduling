@@ -18,7 +18,7 @@ export default function BottomNav() {
   const tabs: Tab[] = [
     { key: "absences", href: "/absences", match: "/absences", label: "Absences", Icon: UserOffIcon },
     { key: "schedule", href: `/schedule/${todayStr()}`, match: "/schedule", label: "Schedule", Icon: CalendarIcon, primary: true },
-    { key: "calendar", href: `/calendar/${mondayOf(todayStr())}`, match: "/calendar", label: "Calendar", Icon: QuadrantGridIcon },
+    { key: "calendar", href: `/calendar/week/${mondayOf(todayStr())}`, match: "/calendar", label: "Calendar", Icon: QuadrantGridIcon },
   ];
 
   return (

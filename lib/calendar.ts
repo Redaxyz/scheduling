@@ -1,5 +1,5 @@
 import { prisma } from "./prisma";
-import { weekDates } from "./date";
+import { monthWeekdays, weekDates, weekdayIndex } from "./date";
 import { HALVES, WEEKDAY_LABELS, type Half, type Office } from "./types";
 
 export type QuadrantEntry = {
@@ -17,9 +17,7 @@ export type DayQuadrants = {
   cells: Record<Office, Record<Half, QuadrantEntry[]>>;
 };
 
-export async function getWeekCalendar(mondayStr: string): Promise<DayQuadrants[]> {
-  const dates = weekDates(mondayStr);
-
+async function getCalendarForDates(dates: string[]): Promise<DayQuadrants[]> {
   const [scheduleSlots, absences] = await Promise.all([
     prisma.providerScheduleSlot.findMany({
       where: { office: { not: null } },
@@ -28,7 +26,8 @@ export async function getWeekCalendar(mondayStr: string): Promise<DayQuadrants[]
     prisma.providerAbsence.findMany({ where: { date: { in: dates } } }),
   ]);
 
-  return dates.map((date, weekday) => {
+  return dates.map((date) => {
+    const weekday = weekdayIndex(date)!;
     const cells = {} as DayQuadrants["cells"];
     for (const office of ["BETHESDA", "GERMANTOWN"] as Office[]) {
       cells[office] = {} as Record<Half, QuadrantEntry[]>;
@@ -50,4 +49,12 @@ export async function getWeekCalendar(mondayStr: string): Promise<DayQuadrants[]
     }
     return { date, weekdayLabel: WEEKDAY_LABELS[weekday], cells };
   });
+}
+
+export function getWeekCalendar(mondayStr: string): Promise<DayQuadrants[]> {
+  return getCalendarForDates(weekDates(mondayStr));
+}
+
+export function getMonthCalendar(firstOfMonthStr: string): Promise<DayQuadrants[]> {
+  return getCalendarForDates(monthWeekdays(firstOfMonthStr));
 }

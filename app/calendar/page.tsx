@@ -2,5 +2,5 @@ import { redirect } from "next/navigation";
 import { mondayOf, todayStr } from "@/lib/date";
 
 export default function CalendarIndex() {
-  redirect(`/calendar/${mondayOf(todayStr())}`);
+  redirect(`/calendar/week/${mondayOf(todayStr())}`);
 }

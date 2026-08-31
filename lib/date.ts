@@ -57,3 +57,32 @@ export function formatShort(dateStr: string): string {
   const dt = new Date(Date.UTC(y, m - 1, d));
   return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
+
+export function firstOfMonth(dateStr: string): string {
+  const [y, m] = dateStr.split("-").map(Number);
+  return `${y}-${String(m).padStart(2, "0")}-01`;
+}
+
+export function addMonths(firstOfMonthStr: string, delta: number): string {
+  const [y, m] = firstOfMonthStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1 + delta, 1));
+  return dt.toISOString().slice(0, 10);
+}
+
+// All weekday (Mon-Fri) dates in the month starting at firstOfMonthStr.
+export function monthWeekdays(firstOfMonthStr: string): string[] {
+  const [y, m] = firstOfMonthStr.split("-").map(Number);
+  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const dates: string[] = [];
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    if (isWeekday(dateStr)) dates.push(dateStr);
+  }
+  return dates;
+}
+
+export function formatMonthLabel(firstOfMonthStr: string): string {
+  const [y, m] = firstOfMonthStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, 1));
+  return dt.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+}
