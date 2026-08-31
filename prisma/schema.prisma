@@ -1,0 +1,123 @@
+// Clinic staffing schedule app
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// A physician. Physicians do not log into the app themselves; staff and the
+// schedule owner set their recurring schedule and absences on their behalf.
+model Provider {
+  id            String   @id @default(cuid())
+  name          String
+  initials      String   @unique
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  scheduleSlots ProviderScheduleSlot[]
+  absences      ProviderAbsence[]
+  patientCounts PatientCount[]
+  dedicatedScribes Staff[] @relation("DedicatedScribeFor")
+  assignments   Assignment[]
+}
+
+// Recurring weekly template: what office (if any) a provider is normally in
+// for a given weekday + half-day. weekday: 0=Mon .. 4=Fri. half: "AM" | "PM".
+// office: "BETHESDA" | "GERMANTOWN" | null (not in clinic that half).
+model ProviderScheduleSlot {
+  id         String   @id @default(cuid())
+  providerId String
+  weekday    Int
+  half       String
+  office     String?
+
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, weekday, half])
+}
+
+// A one-off override marking a provider OUT for a specific date/half,
+// regardless of their recurring template. half: "AM" | "PM" | "ALL".
+model ProviderAbsence {
+  id         String   @id @default(cuid())
+  providerId String
+  date       String
+  half       String
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, date, half])
+}
+
+// A staff member (non-physician): scribe, general/rooming support, or x-ray tech.
+// kind: "SCRIBE" | "GENERAL" | "XRAY"
+// homeOffice: "BETHESDA" | "GERMANTOWN" | null (floats between offices)
+model Staff {
+  id                 String   @id @default(cuid())
+  name               String
+  kind               String
+  canScribe          Boolean  @default(false)
+  homeOffice         String?
+  dedicatedProviderId String?
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+
+  dedicatedProvider  Provider? @relation("DedicatedScribeFor", fields: [dedicatedProviderId], references: [id])
+  absences           StaffAbsence[]
+  assignments        Assignment[]
+}
+
+// half: "AM" | "PM" | "ALL"
+model StaffAbsence {
+  id        String   @id @default(cuid())
+  staffId   String
+  date      String
+  half      String
+  reason    String?
+  createdAt DateTime @default(now())
+
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, date, half])
+}
+
+// Patient count entered the night before clinic for a given provider/date/half.
+model PatientCount {
+  id         String   @id @default(cuid())
+  providerId String
+  date       String
+  half       String
+  count      Int
+  updatedAt  DateTime @updatedAt
+
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, date, half])
+}
+
+// A staff self-placement for a given date/half.
+// role: "SCRIBE" (substitute, when the dedicated scribe is out) | "SUB_SCRIBE" | "ROOMING" | "XRAY"
+// office: "BETHESDA" | "GERMANTOWN"
+// providerId is set for SCRIBE (which doctor they're subbing for) and optionally SUB_SCRIBE;
+// null for general ROOMING / XRAY placements.
+model Assignment {
+  id         String   @id @default(cuid())
+  date       String
+  half       String
+  office     String
+  role       String
+  staffId    String
+  providerId String?
+  createdAt  DateTime @default(now())
+
+  staff      Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  provider   Provider? @relation(fields: [providerId], references: [id])
+
+  @@unique([staffId, date, half])
+}
