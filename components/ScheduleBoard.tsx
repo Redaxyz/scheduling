@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { DaySchedule, FreeStaffMember, HalfSlot } from "@/lib/schedule";
-import { HALVES, HALF_LABELS, OFFICES, OFFICE_LABELS, type Half, type Office } from "@/lib/types";
+import type { AssignmentCell, DaySchedule, FreeStaffMember, HalfSlot, ProviderCell } from "@/lib/schedule";
+import { HALVES, HALF_LABELS, OFFICES, OFFICE_LABELS, type Half } from "@/lib/types";
 import { useWhoAmI } from "@/lib/whoami";
 
 type Props = {
@@ -101,82 +101,34 @@ function OfficeHalfCell({
 
   const scribeEligible = free.filter((s) => s.canScribe);
   const xrayEligible = free.filter((s) => s.kind === "XRAY");
+  const columnCount = Math.max(slot.providers.length, 1);
 
   return (
-    <div className="accent-border-soft rounded-2xl border-2 p-4">
+    <div className="accent-border-soft rounded-2xl border-2 p-3 sm:p-4">
       <h3 className="mb-3 font-extrabold tracking-tight">{OFFICE_LABELS[slot.office]}</h3>
 
       {error && <p className="mb-2 rounded-xl bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700">{error}</p>}
 
-      {slot.providers.length === 0 && (
+      {slot.providers.length === 0 ? (
         <p className="mb-3 text-sm font-bold italic opacity-40">No provider scheduled here.</p>
+      ) : (
+        <div className="grid gap-x-3 gap-y-2" style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}>
+          {slot.providers.map((cell) => (
+            <ProviderColumn
+              key={cell.provider.id}
+              date={date}
+              half={slot.half}
+              cell={cell}
+              scribeEligible={scribeEligible}
+              aidCells={slot.subScribes.filter((s) => s.providerId === cell.provider.id)}
+              onRemoveAid={(id) => run(() => postJSON(`/api/assignments/${id}`, "DELETE"))}
+              onChanged={onChanged}
+              run={run}
+              office={slot.office}
+            />
+          ))}
+        </div>
       )}
-
-      <div className="space-y-1">
-        {slot.providers.map((p) => (
-          <div key={p.provider.id} className="accent-border-soft border-b-2 py-2.5">
-            <div className="flex items-center justify-between gap-3">
-              <span className="font-extrabold tracking-tight">{p.provider.name}</span>
-              <PatientCountInput
-                date={date}
-                half={slot.half}
-                providerId={p.provider.id}
-                value={p.patientCount}
-                onSaved={onChanged}
-              />
-            </div>
-            <div className="mt-1 text-sm">
-              {p.scribe ? (
-                <span className={`font-bold ${p.scribe.substitute ? "text-amber-700" : "opacity-70"}`}>
-                  Scribe: {p.scribe.name} {p.scribe.substitute && "(sub)"}
-                </span>
-              ) : (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-bold text-red-600">Scribe: OPEN — needs a sub-scribe</span>
-                  <AssignPicker
-                    label="Fill in"
-                    options={scribeEligible}
-                    onAssign={(staffId) =>
-                      run(() =>
-                        postJSON("/api/assignments", "POST", {
-                          date,
-                          half: slot.half,
-                          office: slot.office,
-                          role: "SCRIBE",
-                          staffId,
-                          providerId: p.provider.id,
-                        })
-                      )
-                    }
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <RoleGroup
-        title="Sub-scribes"
-        cells={slot.subScribes}
-        onRemove={(id) => run(() => postJSON(`/api/assignments/${id}`, "DELETE"))}
-      >
-        <AssignPicker
-          label="Add sub-scribe"
-          options={scribeEligible}
-          onAssign={(staffId) =>
-            run(() =>
-              postJSON("/api/assignments", "POST", {
-                date,
-                half: slot.half,
-                office: slot.office,
-                role: "SUB_SCRIBE",
-                staffId,
-              })
-            )
-          }
-        />
-      </RoleGroup>
 
       <RoleGroup
         title="Support / rooming"
@@ -225,6 +177,103 @@ function OfficeHalfCell({
   );
 }
 
+function ProviderColumn({
+  date,
+  half,
+  office,
+  cell,
+  scribeEligible,
+  aidCells,
+  onRemoveAid,
+  onChanged,
+  run,
+}: {
+  date: string;
+  half: Half;
+  office: HalfSlot["office"];
+  cell: ProviderCell;
+  scribeEligible: FreeStaffMember[];
+  aidCells: AssignmentCell[];
+  onRemoveAid: (id: string) => void;
+  onChanged: () => void;
+  run: (action: () => Promise<unknown>) => Promise<void>;
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="accent-border-soft border-b-2 pb-2">
+        <div className="truncate text-sm font-extrabold tracking-tight sm:text-base">{cell.provider.name}</div>
+        <PatientCountInput date={date} half={half} providerId={cell.provider.id} value={cell.patientCount} onSaved={onChanged} />
+      </div>
+
+      <div className="accent-border-soft border-b-2 py-2">
+        <div className="text-[10px] font-bold uppercase tracking-wide opacity-40">Scribe</div>
+        {cell.scribe ? (
+          <div className={`truncate text-xs font-bold sm:text-sm ${cell.scribe.substitute ? "text-amber-700" : ""}`}>
+            {cell.scribe.name}
+            {cell.scribe.substitute ? " (sub)" : ""}
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <div className="text-xs font-bold text-red-600 sm:text-sm">OPEN</div>
+            <AssignPicker
+              compact
+              label="Fill in"
+              options={scribeEligible}
+              onAssign={(staffId) =>
+                run(() =>
+                  postJSON("/api/assignments", "POST", {
+                    date,
+                    half,
+                    office,
+                    role: "SCRIBE",
+                    staffId,
+                    providerId: cell.provider.id,
+                  })
+                )
+              }
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="py-2">
+        <div className="text-[10px] font-bold uppercase tracking-wide opacity-40">Aid</div>
+        {aidCells.length === 0 ? (
+          <p className="text-xs font-bold opacity-40">None yet</p>
+        ) : (
+          <ul className="mb-1 space-y-1">
+            {aidCells.map((c) => (
+              <li key={c.id} className="flex items-center justify-between gap-1 text-xs font-bold sm:text-sm">
+                <span className="truncate">{c.name}</span>
+                <button onClick={() => onRemoveAid(c.id)} className="shrink-0 text-[10px] text-red-500 opacity-70 hover:opacity-100">
+                  remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <AssignPicker
+          compact
+          label="Add aid"
+          options={scribeEligible}
+          onAssign={(staffId) =>
+            run(() =>
+              postJSON("/api/assignments", "POST", {
+                date,
+                half,
+                office,
+                role: "SUB_SCRIBE",
+                staffId,
+                providerId: cell.provider.id,
+              })
+            )
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
 function RoleGroup({
   title,
   cells,
@@ -262,23 +311,27 @@ function AssignPicker({
   label,
   options,
   onAssign,
+  compact,
 }: {
   label: string;
   options: FreeStaffMember[];
   onAssign: (staffId: string) => void;
+  compact?: boolean;
 }) {
   const { currentId } = useWhoAmI();
   const defaultOption = options.find((o) => o.id === currentId) ? currentId! : options[0]?.id ?? "";
   const [selected, setSelected] = useState(defaultOption);
 
   if (options.length === 0) {
-    return <p className="text-xs font-bold opacity-40">No one free for this role right now</p>;
+    return <p className="text-xs font-bold opacity-40">No one free right now</p>;
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className={compact ? "flex flex-col gap-1" : "flex items-center gap-2"}>
       <select
-        className="accent-border-soft border-b-2 bg-transparent py-1 text-sm font-bold outline-none"
+        className={`accent-border-soft border-b-2 bg-transparent font-bold outline-none ${
+          compact ? "w-full py-0.5 text-xs" : "py-1 text-sm"
+        }`}
         value={selected || options[0].id}
         onChange={(e) => setSelected(e.target.value)}
       >
@@ -291,7 +344,9 @@ function AssignPicker({
       </select>
       <button
         onClick={() => onAssign(selected || options[0].id)}
-        className="accent-border rounded-full border-2 px-4 py-1 text-xs font-bold transition active:scale-95"
+        className={`accent-border rounded-full border-2 font-bold transition active:scale-95 ${
+          compact ? "w-full px-2 py-1 text-[11px]" : "px-4 py-1 text-xs"
+        }`}
       >
         {label}
       </button>

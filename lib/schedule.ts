@@ -13,6 +13,7 @@ export type AssignmentCell = {
   role: string;
   staffId: string;
   name: string;
+  providerId: string | null;
   providerName: string | null;
 };
 
@@ -110,6 +111,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
         role: a.role,
         staffId: a.staffId,
         name: a.staff.name,
+        providerId: a.providerId ?? null,
         providerName: a.provider?.name ?? null,
       });
 
