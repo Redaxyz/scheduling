@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useWhoAmI } from "@/lib/whoami";
 import { todayStr } from "@/lib/date";
-import { CalendarIcon, ClipboardIcon, SwitchProfileIcon, UserOffIcon } from "@/components/icons";
+import { CalendarIcon, QuadrantGridIcon, SwitchProfileIcon, UserOffIcon } from "@/components/icons";
+import { mondayOf } from "@/lib/date";
 
 type IconType = ComponentType<{ className?: string }>;
 type Tab = { key: string; href: string; match: string; label: string; Icon: IconType; primary?: boolean };
@@ -17,7 +18,7 @@ export default function BottomNav() {
   const tabs: Tab[] = [
     { key: "absences", href: "/absences", match: "/absences", label: "Absences", Icon: UserOffIcon },
     { key: "schedule", href: `/schedule/${todayStr()}`, match: "/schedule", label: "Schedule", Icon: CalendarIcon, primary: true },
-    { key: "templates", href: "/templates", match: "/templates", label: "Templates", Icon: ClipboardIcon },
+    { key: "calendar", href: `/calendar/${mondayOf(todayStr())}`, match: "/calendar", label: "Calendar", Icon: QuadrantGridIcon },
   ];
 
   return (

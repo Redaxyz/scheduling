@@ -38,3 +38,22 @@ export function formatLong(dateStr: string): string {
 export function isWeekday(dateStr: string): boolean {
   return weekdayIndex(dateStr) !== null;
 }
+
+// The Monday on/before dateStr's week (works for any day, weekend included).
+export function mondayOf(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const jsDay = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); // 0=Sun..6=Sat
+  const deltaToMonday = jsDay === 0 ? -6 : 1 - jsDay;
+  return addDays(dateStr, deltaToMonday);
+}
+
+// The 5 weekday dates (Mon..Fri) of the week starting at mondayStr.
+export function weekDates(mondayStr: string): string[] {
+  return [0, 1, 2, 3, 4].map((n) => addDays(mondayStr, n));
+}
+
+export function formatShort(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+}

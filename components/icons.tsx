@@ -38,6 +38,15 @@ export function ClipboardIcon({ className }: IconProps) {
   );
 }
 
+export function QuadrantGridIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="2" />
+      <path d="M12 3.5v17M3.5 12h17" />
+    </svg>
+  );
+}
+
 export function SwitchProfileIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 28 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className}>

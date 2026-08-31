@@ -17,6 +17,11 @@ export type AssignmentCell = {
   providerName: string | null;
 };
 
+// "GOOD" = fewer patients than the other office this half but more staff
+// covering it (comparatively over-staffed); "NEEDS_HELP" = the mirror case
+// (more patients, fewer staff); "NEUTRAL" = no such mismatch.
+export type OfficeBalance = "GOOD" | "NEEDS_HELP" | "NEUTRAL";
+
 export type HalfSlot = {
   office: Office;
   half: Half;
@@ -25,6 +30,8 @@ export type HalfSlot = {
   rooming: AssignmentCell[];
   xray: AssignmentCell[];
   patientTotal: number;
+  staffCount: number;
+  balance: OfficeBalance;
 };
 
 export type DaySchedule = {
@@ -118,15 +125,36 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
       const patientTotal = providers.reduce((sum, p) => sum + (p.patientCount ?? 0), 0);
       officeTotals[office] += patientTotal;
 
+      const subScribes = officeAssignments.filter((a) => a.role === "SUB_SCRIBE").map(toCell);
+      const rooming = officeAssignments.filter((a) => a.role === "ROOMING").map(toCell);
+      const xray = officeAssignments.filter((a) => a.role === "XRAY").map(toCell);
+      const staffCount =
+        providers.filter((p) => p.scribe).length + subScribes.length + rooming.length + xray.length;
+
       halves[half][office] = {
         office,
         half,
         providers,
-        subScribes: officeAssignments.filter((a) => a.role === "SUB_SCRIBE").map(toCell),
-        rooming: officeAssignments.filter((a) => a.role === "ROOMING").map(toCell),
-        xray: officeAssignments.filter((a) => a.role === "XRAY").map(toCell),
+        subScribes,
+        rooming,
+        xray,
         patientTotal,
+        staffCount,
+        balance: "NEUTRAL",
       };
+    }
+
+    // Compare Bethesda vs Germantown for this half: whichever has fewer
+    // patients but more staff covering it is comparatively over-staffed
+    // ("GOOD"); the other is comparatively under-staffed ("NEEDS_HELP").
+    const bt = halves[half].BETHESDA;
+    const gt = halves[half].GERMANTOWN;
+    if (bt.patientTotal < gt.patientTotal && bt.staffCount > gt.staffCount) {
+      bt.balance = "GOOD";
+      gt.balance = "NEEDS_HELP";
+    } else if (gt.patientTotal < bt.patientTotal && gt.staffCount > bt.staffCount) {
+      gt.balance = "GOOD";
+      bt.balance = "NEEDS_HELP";
     }
   }
 

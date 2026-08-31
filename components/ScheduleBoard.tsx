@@ -103,8 +103,15 @@ function OfficeHalfCell({
   const xrayEligible = free.filter((s) => s.kind === "XRAY");
   const columnCount = Math.max(slot.providers.length, 1);
 
+  const balanceClass =
+    slot.balance === "GOOD"
+      ? "border-emerald-200 bg-emerald-50"
+      : slot.balance === "NEEDS_HELP"
+        ? "border-red-200 bg-red-50"
+        : "accent-border-soft";
+
   return (
-    <div className="accent-border-soft rounded-2xl border-2 p-3 sm:p-4">
+    <div className={`rounded-2xl border-2 p-3 transition-colors sm:p-4 ${balanceClass}`}>
       <h3 className="mb-3 font-extrabold tracking-tight">{OFFICE_LABELS[slot.office]}</h3>
 
       {error && <p className="mb-2 rounded-xl bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700">{error}</p>}
