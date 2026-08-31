@@ -2,7 +2,6 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// weekday: 0=Mon .. 4=Fri. office: null means not in clinic that half.
 const PROVIDERS = [
   { initials: "C", name: "Dr. Christoforetti" },
   { initials: "R", name: "Dr. Raffo" },
@@ -12,19 +11,89 @@ const PROVIDERS = [
   { initials: "G", name: "Dr. Gardiner" },
 ];
 
-// Only Dr. Christoforetti's recurring schedule is known so far.
-const C_SCHEDULE: { weekday: number; half: "AM" | "PM"; office: "BETHESDA" | "GERMANTOWN" | null }[] = [
-  { weekday: 0, half: "AM", office: "BETHESDA" }, // Mon AM
-  { weekday: 0, half: "PM", office: "GERMANTOWN" }, // Mon PM
-  { weekday: 1, half: "AM", office: null }, // Tue AM - off
-  { weekday: 1, half: "PM", office: "BETHESDA" }, // Tue PM
-  { weekday: 2, half: "AM", office: "GERMANTOWN" }, // Wed AM
-  { weekday: 2, half: "PM", office: "GERMANTOWN" }, // Wed PM
-  { weekday: 3, half: "AM", office: null }, // Thu AM - off
-  { weekday: 3, half: "PM", office: null }, // Thu PM - off
-  { weekday: 4, half: "AM", office: "GERMANTOWN" }, // Fri AM
-  { weekday: 4, half: "PM", office: null }, // Fri PM - off
-];
+type ScheduleRow = { weekday: number; half: "AM" | "PM"; office: "BETHESDA" | "GERMANTOWN" | null };
+
+// weekday: 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri. A half not mentioned by the
+// schedule owner is treated as off (half-day-then-surgery is the norm here).
+const SCHEDULES: Record<string, ScheduleRow[]> = {
+  C: [
+    { weekday: 0, half: "AM", office: "BETHESDA" },
+    { weekday: 0, half: "PM", office: "GERMANTOWN" },
+    { weekday: 1, half: "AM", office: null },
+    { weekday: 1, half: "PM", office: "BETHESDA" },
+    { weekday: 2, half: "AM", office: "GERMANTOWN" },
+    { weekday: 2, half: "PM", office: "GERMANTOWN" },
+    { weekday: 3, half: "AM", office: null },
+    { weekday: 3, half: "PM", office: null },
+    { weekday: 4, half: "AM", office: "GERMANTOWN" },
+    { weekday: 4, half: "PM", office: null },
+  ],
+  // Raffo: MM Germantown; no Tuesday; WM/WA Bethesda; RM/RA Germantown; FM Bethesda.
+  R: [
+    { weekday: 0, half: "AM", office: "GERMANTOWN" },
+    { weekday: 0, half: "PM", office: null },
+    { weekday: 1, half: "AM", office: null },
+    { weekday: 1, half: "PM", office: null },
+    { weekday: 2, half: "AM", office: "BETHESDA" },
+    { weekday: 2, half: "PM", office: "BETHESDA" },
+    { weekday: 3, half: "AM", office: "GERMANTOWN" },
+    { weekday: 3, half: "PM", office: "GERMANTOWN" },
+    { weekday: 4, half: "AM", office: "BETHESDA" },
+    { weekday: 4, half: "PM", office: null },
+  ],
+  // Fitzgibbons: MM Bethesda; TM/TA Germantown; WM/WA Bethesda; no Thursday; FM Germantown.
+  Fi: [
+    { weekday: 0, half: "AM", office: "BETHESDA" },
+    { weekday: 0, half: "PM", office: null },
+    { weekday: 1, half: "AM", office: "GERMANTOWN" },
+    { weekday: 1, half: "PM", office: "GERMANTOWN" },
+    { weekday: 2, half: "AM", office: "BETHESDA" },
+    { weekday: 2, half: "PM", office: "BETHESDA" },
+    { weekday: 3, half: "AM", office: null },
+    { weekday: 3, half: "PM", office: null },
+    { weekday: 4, half: "AM", office: "GERMANTOWN" },
+    { weekday: 4, half: "PM", office: null },
+  ],
+  // Feldman: MA Germantown; TM/TA Bethesda; WM/WA Germantown; RM Bethesda; no Thu PM or Friday.
+  Fe: [
+    { weekday: 0, half: "AM", office: null },
+    { weekday: 0, half: "PM", office: "GERMANTOWN" },
+    { weekday: 1, half: "AM", office: "BETHESDA" },
+    { weekday: 1, half: "PM", office: "BETHESDA" },
+    { weekday: 2, half: "AM", office: "GERMANTOWN" },
+    { weekday: 2, half: "PM", office: "GERMANTOWN" },
+    { weekday: 3, half: "AM", office: "BETHESDA" },
+    { weekday: 3, half: "PM", office: null },
+    { weekday: 4, half: "AM", office: null },
+    { weekday: 4, half: "PM", office: null },
+  ],
+  // McCormick: MA Bethesda; TM Bethesda; no Wed; RM Germantown, RA Bethesda; Friday all day Germantown.
+  M: [
+    { weekday: 0, half: "AM", office: null },
+    { weekday: 0, half: "PM", office: "BETHESDA" },
+    { weekday: 1, half: "AM", office: "BETHESDA" },
+    { weekday: 1, half: "PM", office: null },
+    { weekday: 2, half: "AM", office: null },
+    { weekday: 2, half: "PM", office: null },
+    { weekday: 3, half: "AM", office: "GERMANTOWN" },
+    { weekday: 3, half: "PM", office: "BETHESDA" },
+    { weekday: 4, half: "AM", office: "GERMANTOWN" },
+    { weekday: 4, half: "PM", office: "GERMANTOWN" },
+  ],
+  // Gardiner: MM Germantown, MA Bethesda; Tuesday all day Germantown; no Wed; Thursday all day Bethesda; no Fri.
+  G: [
+    { weekday: 0, half: "AM", office: "GERMANTOWN" },
+    { weekday: 0, half: "PM", office: "BETHESDA" },
+    { weekday: 1, half: "AM", office: "GERMANTOWN" },
+    { weekday: 1, half: "PM", office: "GERMANTOWN" },
+    { weekday: 2, half: "AM", office: null },
+    { weekday: 2, half: "PM", office: null },
+    { weekday: 3, half: "AM", office: "BETHESDA" },
+    { weekday: 3, half: "PM", office: "BETHESDA" },
+    { weekday: 4, half: "AM", office: null },
+    { weekday: 4, half: "PM", office: null },
+  ],
+};
 
 const STAFF: {
   name: string;
@@ -64,10 +133,12 @@ async function main() {
     providerByInitials.set(p.initials, created.id);
   }
 
-  const cId = providerByInitials.get("C")!;
-  await prisma.providerScheduleSlot.createMany({
-    data: C_SCHEDULE.map((s) => ({ ...s, providerId: cId })),
-  });
+  for (const [initials, rows] of Object.entries(SCHEDULES)) {
+    const providerId = providerByInitials.get(initials)!;
+    await prisma.providerScheduleSlot.createMany({
+      data: rows.map((s) => ({ ...s, providerId })),
+    });
+  }
 
   for (const s of STAFF) {
     await prisma.staff.create({
