@@ -86,3 +86,28 @@ export function formatMonthLabel(firstOfMonthStr: string): string {
   const dt = new Date(Date.UTC(y, m - 1, 1));
   return dt.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
 }
+
+// The month's weekdays grouped into Mon-Fri rows, like a real calendar grid:
+// each row has exactly 5 slots, padded with null before the 1st and after
+// the last day so every date lines up under its correct weekday column.
+export function monthGridWeeks(firstOfMonthStr: string): (string | null)[][] {
+  const dates = monthWeekdays(firstOfMonthStr);
+  const weeks: (string | null)[][] = [];
+  let row: (string | null)[] = [];
+  for (const date of dates) {
+    if (row.length === 0) {
+      const wd = weekdayIndex(date)!;
+      for (let i = 0; i < wd; i++) row.push(null);
+    }
+    row.push(date);
+    if (row.length === 5) {
+      weeks.push(row);
+      row = [];
+    }
+  }
+  if (row.length > 0) {
+    while (row.length < 5) row.push(null);
+    weeks.push(row);
+  }
+  return weeks;
+}

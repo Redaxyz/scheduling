@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getMonthCalendar } from "@/lib/calendar";
 import { addMonths, firstOfMonth, formatMonthLabel, todayStr } from "@/lib/date";
-import CalendarBoard from "@/components/CalendarBoard";
+import MonthCalendarGrid from "@/components/MonthCalendarGrid";
 import CalendarViewToggle from "@/components/CalendarViewToggle";
 
 export default async function CalendarMonthPage({ params }: { params: Promise<{ month: string }> }) {
@@ -49,7 +49,7 @@ export default async function CalendarMonthPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      <CalendarBoard days={days} compact />
+      <MonthCalendarGrid month={month} days={days} todayDate={todayStr()} />
     </div>
   );
 }

@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { DayQuadrants, QuadrantEntry } from "@/lib/calendar";
-import { HALF_LABELS, type Half, type Office } from "@/lib/types";
-import { formatShort } from "@/lib/date";
+import type { Half } from "@/lib/types";
+import DayQuadrantCard from "@/components/DayQuadrantCard";
 
 async function postJSON(url: string, method: string, body?: unknown) {
   const res = await fetch(url, {
@@ -19,21 +19,7 @@ async function postJSON(url: string, method: string, body?: unknown) {
   return res.json().catch(() => ({}));
 }
 
-// Quadrant layout: RUQ = Bethesda AM, LUQ = Germantown AM, RLQ = Bethesda PM,
-// LLQ = Germantown PM. Rendered as [GT | BT] columns x [AM | PM] rows so BT
-// stays on the right and GT on the left in both rows, matching the naming.
-const QUADRANTS: { office: Office; half: Half; label: string }[][] = [
-  [
-    { office: "GERMANTOWN", half: "AM", label: "GT" },
-    { office: "BETHESDA", half: "AM", label: "BT" },
-  ],
-  [
-    { office: "GERMANTOWN", half: "PM", label: "GT" },
-    { office: "BETHESDA", half: "PM", label: "BT" },
-  ],
-];
-
-export default function CalendarBoard({ days, compact }: { days: DayQuadrants[]; compact?: boolean }) {
+export default function CalendarBoard({ days }: { days: DayQuadrants[] }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const refresh = () => startTransition(() => router.refresh());
@@ -60,48 +46,10 @@ export default function CalendarBoard({ days, compact }: { days: DayQuadrants[];
   }
 
   return (
-    <div className={compact ? "space-y-2" : "space-y-4"}>
+    <div className="space-y-4">
       {error && <p className="rounded-xl bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700">{error}</p>}
       {days.map((day) => (
-        <div
-          key={day.date}
-          className={`accent-border-soft rounded-2xl border-2 ${compact ? "p-2 sm:p-3" : "p-3 sm:p-4"} ${
-            compact && day.weekdayLabel === "Monday" ? "mt-3" : ""
-          }`}
-        >
-          <h3 className={`font-extrabold tracking-tight ${compact ? "mb-1.5 text-sm" : "mb-2"}`}>
-            {day.weekdayLabel} <span className="opacity-40">· {formatShort(day.date)}</span>
-          </h3>
-          <div className={compact ? "grid grid-cols-2 gap-1.5" : "grid grid-cols-2 gap-2"}>
-            {QUADRANTS.flat().map(({ office, half, label }) => (
-              <div key={`${office}-${half}`} className={`accent-border-soft rounded-xl border-2 ${compact ? "p-1.5" : "p-2"}`}>
-                <div className="mb-1 text-[10px] font-bold uppercase tracking-wide opacity-40">
-                  {label} · {HALF_LABELS[half]}
-                </div>
-                {day.cells[office][half].length === 0 ? (
-                  <div className="text-sm font-bold opacity-25">—</div>
-                ) : (
-                  <div className="flex flex-wrap gap-x-2 gap-y-1">
-                    {day.cells[office][half].map((entry) => (
-                      <button
-                        key={entry.providerId}
-                        onClick={() => toggle(entry.providerId, day.date, half, entry)}
-                        title={entry.present ? `Mark ${entry.name} absent` : `Mark ${entry.name} present`}
-                        className={
-                          entry.present
-                            ? `font-extrabold text-[#579669] ${compact ? "text-sm sm:text-base" : "text-base sm:text-lg"}`
-                            : `font-normal text-slate-400 ${compact ? "text-sm sm:text-base" : "text-base sm:text-lg"}`
-                        }
-                      >
-                        {entry.initials}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+        <DayQuadrantCard key={day.date} day={day} onToggle={toggle} />
       ))}
     </div>
   );
