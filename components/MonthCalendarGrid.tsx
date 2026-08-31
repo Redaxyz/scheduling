@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { DayQuadrants, QuadrantEntry } from "@/lib/calendar";
+import { QUADRANT_LAYOUT, type DayQuadrants, type QuadrantEntry } from "@/lib/calendar";
 import type { Half } from "@/lib/types";
 import { monthGridWeeks } from "@/lib/date";
 import DayQuadrantCard from "@/components/DayQuadrantCard";
@@ -21,20 +21,6 @@ async function postJSON(url: string, method: string, body?: unknown) {
 }
 
 const WEEKDAY_HEADS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
-
-function daySummary(day: DayQuadrants) {
-  const byProvider = new Map<string, { initials: string; present: boolean }>();
-  for (const office of ["BETHESDA", "GERMANTOWN"] as const) {
-    for (const half of ["AM", "PM"] as const) {
-      for (const entry of day.cells[office][half]) {
-        const existing = byProvider.get(entry.providerId);
-        if (!existing) byProvider.set(entry.providerId, { initials: entry.initials, present: entry.present });
-        else if (entry.present) existing.present = true;
-      }
-    }
-  }
-  return [...byProvider.values()];
-}
 
 export default function MonthCalendarGrid({
   month,
@@ -80,6 +66,8 @@ export default function MonthCalendarGrid({
     <div className="space-y-4">
       {error && <p className="rounded-xl bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700">{error}</p>}
 
+      <p className="text-xs font-bold opacity-40">Within each day: GT left · BT right, AM top · PM bottom.</p>
+
       <div className="accent-border-soft overflow-hidden rounded-2xl border-2">
         <div className="accent-border-soft grid grid-cols-5 border-b-2">
           {WEEKDAY_HEADS.map((w) => (
@@ -98,30 +86,37 @@ export default function MonthCalendarGrid({
               const dayNum = Number(date.slice(-2));
               const isToday = date === todayDate;
               const isSelected = date === selected;
-              const summary = day ? daySummary(day) : [];
               return (
                 <button
                   key={date}
                   onClick={() => setSelected(date)}
-                  className={`accent-border-soft flex min-h-[60px] flex-col items-start gap-0.5 border-b border-r p-1 text-left sm:min-h-[84px] sm:p-1.5 ${
+                  className={`accent-border-soft flex min-h-[76px] flex-col border-b border-r p-1 text-left sm:min-h-[104px] sm:p-1.5 ${
                     isSelected ? "accent-bg-soft" : ""
                   }`}
                 >
-                  <span className={`text-[11px] font-bold sm:text-sm ${isToday ? "accent-text" : "opacity-60"}`}>{dayNum}</span>
-                  <div className="flex flex-wrap gap-x-1 leading-tight">
-                    {summary.map((s) => (
-                      <span
-                        key={s.initials}
-                        className={
-                          s.present
-                            ? "text-[10px] font-extrabold text-[#579669] sm:text-xs"
-                            : "text-[10px] font-normal text-slate-400 sm:text-xs"
-                        }
-                      >
-                        {s.initials}
-                      </span>
-                    ))}
-                  </div>
+                  <span className={`mb-0.5 text-[11px] font-bold sm:text-sm ${isToday ? "accent-text" : "opacity-60"}`}>
+                    {dayNum}
+                  </span>
+                  {day && (
+                    <div className="grid flex-1 grid-cols-2 grid-rows-2 gap-px overflow-hidden rounded bg-black/5">
+                      {QUADRANT_LAYOUT.flat().map(({ office, half }) => (
+                        <div key={`${office}-${half}`} className="flex flex-wrap content-start gap-x-0.5 bg-white/70 p-0.5 leading-none">
+                          {day.cells[office][half].map((entry) => (
+                            <span
+                              key={entry.providerId}
+                              className={
+                                entry.present
+                                  ? "text-[9px] font-extrabold text-[#579669] sm:text-[11px]"
+                                  : "text-[9px] font-normal text-slate-400 sm:text-[11px]"
+                              }
+                            >
+                              {entry.initials}
+                            </span>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </button>
               );
             })

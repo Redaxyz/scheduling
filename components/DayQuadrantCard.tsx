@@ -1,20 +1,6 @@
-import type { DayQuadrants, QuadrantEntry } from "@/lib/calendar";
-import { HALF_LABELS, type Half, type Office } from "@/lib/types";
+import { QUADRANT_LAYOUT, type DayQuadrants, type QuadrantEntry } from "@/lib/calendar";
+import { HALF_LABELS, type Half } from "@/lib/types";
 import { formatShort } from "@/lib/date";
-
-// Quadrant layout: RUQ = Bethesda AM, LUQ = Germantown AM, RLQ = Bethesda PM,
-// LLQ = Germantown PM. Rendered as [GT | BT] columns x [AM | PM] rows so BT
-// stays on the right and GT on the left in both rows, matching the naming.
-const QUADRANTS: { office: Office; half: Half; label: string }[][] = [
-  [
-    { office: "GERMANTOWN", half: "AM", label: "GT" },
-    { office: "BETHESDA", half: "AM", label: "BT" },
-  ],
-  [
-    { office: "GERMANTOWN", half: "PM", label: "GT" },
-    { office: "BETHESDA", half: "PM", label: "BT" },
-  ],
-];
 
 export default function DayQuadrantCard({
   day,
@@ -29,7 +15,7 @@ export default function DayQuadrantCard({
         {day.weekdayLabel} <span className="opacity-40">· {formatShort(day.date)}</span>
       </h3>
       <div className="grid grid-cols-2 gap-2">
-        {QUADRANTS.flat().map(({ office, half, label }) => (
+        {QUADRANT_LAYOUT.flat().map(({ office, half, label }) => (
           <div key={`${office}-${half}`} className="accent-border-soft rounded-xl border-2 p-2">
             <div className="mb-1 text-[10px] font-bold uppercase tracking-wide opacity-40">
               {label} · {HALF_LABELS[half]}

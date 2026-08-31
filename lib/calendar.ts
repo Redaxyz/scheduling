@@ -17,6 +17,20 @@ export type DayQuadrants = {
   cells: Record<Office, Record<Half, QuadrantEntry[]>>;
 };
 
+// Quadrant layout: RUQ = Bethesda AM, LUQ = Germantown AM, RLQ = Bethesda PM,
+// LLQ = Germantown PM. Rendered as [GT | BT] columns x [AM | PM] rows so BT
+// stays on the right and GT on the left in both rows, matching the naming.
+export const QUADRANT_LAYOUT: { office: Office; half: Half; label: string }[][] = [
+  [
+    { office: "GERMANTOWN", half: "AM", label: "GT" },
+    { office: "BETHESDA", half: "AM", label: "BT" },
+  ],
+  [
+    { office: "GERMANTOWN", half: "PM", label: "GT" },
+    { office: "BETHESDA", half: "PM", label: "BT" },
+  ],
+];
+
 async function getCalendarForDates(dates: string[]): Promise<DayQuadrants[]> {
   const [scheduleSlots, absences] = await Promise.all([
     prisma.providerScheduleSlot.findMany({
