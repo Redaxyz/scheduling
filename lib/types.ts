@@ -13,6 +13,10 @@ export type Role = (typeof ROLES)[number];
 export const STAFF_KINDS = ["SCRIBE", "GENERAL", "XRAY"] as const;
 export type StaffKind = (typeof STAFF_KINDS)[number];
 
+// Priority order for filling an open scribe slot (dedicated scribe absent) —
+// most experienced first. Names, matched against Staff.name.
+export const SCRIBE_PRIORITY = ["Emily", "Reda", "Hope", "Emma", "Anna"];
+
 export const WEEKDAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 export const OFFICE_LABELS: Record<Office, string> = {

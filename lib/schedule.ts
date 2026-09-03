@@ -1,6 +1,6 @@
 import { prisma } from "./prisma";
 import { weekdayIndex } from "./date";
-import { HALVES, OFFICES, type Half, type Office } from "./types";
+import { HALVES, OFFICES, SCRIBE_PRIORITY, type Half, type Office } from "./types";
 
 export type ProviderCell = {
   provider: { id: string; name: string; initials: string };
@@ -15,6 +15,9 @@ export type AssignmentCell = {
   name: string;
   providerId: string | null;
   providerName: string | null;
+  // true for a computed default placement (scribe fallback / dedicated aid)
+  // rather than a manually-created Assignment row — not removable via the UI.
+  auto: boolean;
 };
 
 // "GOOD" = fewer patients than the other office this half but more staff
@@ -56,10 +59,67 @@ function absenceMatches(half: Half, absenceHalf: string) {
   return absenceHalf === "ALL" || absenceHalf === half;
 }
 
+function scribeRank(name: string) {
+  const i = SCRIBE_PRIORITY.indexOf(name);
+  return i === -1 ? SCRIBE_PRIORITY.length : i;
+}
+
+type ScheduleSlotRow = { providerId: string; half: string; office: string | null };
+type ProviderAbsenceRow = { providerId: string; half: string };
+type ScribeFallbackRow = {
+  staffId: string;
+  weekday: number;
+  half: string;
+  office: string;
+  conditionalProviderId: string | null;
+  conditionalRequireActive: boolean | null;
+  targetProviderId: string | null;
+};
+
+// Shared "who's actually working, and where" logic for a day's recurring
+// template + one-off absences — used by both exports below.
+function buildActivity(scheduleSlots: ScheduleSlotRow[], providerAbsences: ProviderAbsenceRow[]) {
+  const isAbsent = (providerId: string, half: Half) =>
+    providerAbsences.some((a) => a.providerId === providerId && absenceMatches(half, a.half));
+
+  const isActive = (providerId: string, half: Half) =>
+    scheduleSlots.some((s) => s.providerId === providerId && s.half === half && s.office !== null) &&
+    !isAbsent(providerId, half);
+
+  const activeOffice = (providerId: string, half: Half): Office | null => {
+    const slot = scheduleSlots.find((s) => s.providerId === providerId && s.half === half && s.office !== null);
+    if (!slot || isAbsent(providerId, half)) return null;
+    return slot.office as Office;
+  };
+
+  return { isAbsent, isActive, activeOffice };
+}
+
+// Resolve a scribe's fallback row for a weekday+half, evaluating any
+// cross-provider condition (and, for a provider-targeted row, that the
+// target provider is actually active this half) against real activity.
+// Returns null if nothing applies.
+function resolveFallback(
+  fallbacks: ScribeFallbackRow[],
+  staffId: string,
+  weekday: number,
+  half: Half,
+  isActive: (providerId: string, half: Half) => boolean
+): ScribeFallbackRow | null {
+  const rows = fallbacks.filter((f) => f.staffId === staffId && f.weekday === weekday && f.half === half);
+  return (
+    rows.find((r) => {
+      if (r.conditionalProviderId && isActive(r.conditionalProviderId, half) !== r.conditionalRequireActive) return false;
+      if (r.targetProviderId && !isActive(r.targetProviderId, half)) return false;
+      return true;
+    }) ?? null
+  );
+}
+
 export async function getDaySchedule(date: string): Promise<DaySchedule> {
   const weekday = weekdayIndex(date);
 
-  const [scheduleSlots, providerAbsences, staff, staffAbsences, patientCounts, assignments] =
+  const [scheduleSlots, providerAbsences, staff, staffAbsences, patientCounts, assignments, scribeFallbacks] =
     await Promise.all([
       weekday === null
         ? Promise.resolve([])
@@ -68,14 +128,32 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
             include: { provider: true },
           }),
       prisma.providerAbsence.findMany({ where: { date } }),
-      prisma.staff.findMany({ where: { active: true }, include: { dedicatedProvider: true } }),
+      prisma.staff.findMany({ where: { active: true }, include: { dedicatedProvider: true, dedicatedAidFor: true } }),
       prisma.staffAbsence.findMany({ where: { date } }),
       prisma.patientCount.findMany({ where: { date } }),
       prisma.assignment.findMany({ where: { date }, include: { staff: true, provider: true } }),
+      weekday === null ? Promise.resolve([]) : prisma.scribeFallback.findMany({ where: { weekday } }),
     ]);
 
-  const isProviderAbsent = (providerId: string, half: Half) =>
-    providerAbsences.some((a) => a.providerId === providerId && absenceMatches(half, a.half));
+  const { isAbsent: isProviderAbsent, isActive: isProviderActive } = buildActivity(scheduleSlots, providerAbsences);
+
+  const isStaffAbsent = (staffId: string, half: Half) =>
+    staffAbsences.some((a) => a.staffId === staffId && absenceMatches(half, a.half));
+  const isStaffAssigned = (staffId: string, half: Half) => assignments.some((a) => a.staffId === staffId && a.half === half);
+
+  // A scribe whose own doctor doesn't need them this half, but who has a
+  // fallback row naming `providerId` as their target — e.g. Reda defaults to
+  // Brian on Friday PM whenever Christo doesn't need her.
+  const resolveTargetScribe = (providerId: string, half: Half) => {
+    if (weekday === null) return null;
+    for (const s of staff) {
+      if (!s.dedicatedProviderId || isProviderActive(s.dedicatedProviderId, half)) continue;
+      if (isStaffAbsent(s.id, half) || isStaffAssigned(s.id, half)) continue;
+      const row = resolveFallback(scribeFallbacks, s.id, weekday, half, isProviderActive);
+      if (row?.targetProviderId === providerId) return { staffId: s.id, name: s.name };
+    }
+    return null;
+  };
 
   const halves = {} as Record<Half, Record<Office, HalfSlot>>;
   const officeTotals: Record<Office, number> = { BETHESDA: 0, GERMANTOWN: 0 };
@@ -92,15 +170,16 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
         const explicitSub = assignments.find(
           (a) => a.role === "SCRIBE" && a.providerId === s.providerId && a.half === half
         );
-        const dedicatedAbsent = dedicated
-          ? staffAbsences.some((a) => a.staffId === dedicated.id && absenceMatches(half, a.half))
-          : true;
+        const dedicatedAbsent = dedicated ? isStaffAbsent(dedicated.id, half) : true;
 
         let scribe: ProviderCell["scribe"] = null;
         if (explicitSub) {
           scribe = { staffId: explicitSub.staffId, name: explicitSub.staff.name, substitute: true };
         } else if (dedicated && !dedicatedAbsent) {
           scribe = { staffId: dedicated.id, name: dedicated.name, substitute: false };
+        } else {
+          const target = resolveTargetScribe(s.providerId, half);
+          if (target) scribe = { staffId: target.staffId, name: target.name, substitute: false };
         }
 
         const pc = patientCounts.find((p) => p.providerId === s.providerId && p.half === half);
@@ -120,13 +199,57 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
         name: a.staff.name,
         providerId: a.providerId ?? null,
         providerName: a.provider?.name ?? null,
+        auto: false,
       });
+
+      // Computed default rooming presence: a dedicated scribe falling back to
+      // this office (own doctor not active this half), or a dedicated aid
+      // (e.g. Mark for Christo) whose paired doctor is active in this office.
+      const activeProviderIdsHere = new Set(activeSlots.map((s) => s.providerId));
+      const autoEntries: AssignmentCell[] = [];
+      if (weekday !== null) {
+        for (const s of staff) {
+          if (isStaffAbsent(s.id, half) || isStaffAssigned(s.id, half)) continue;
+
+          if (s.dedicatedProviderId && !isProviderActive(s.dedicatedProviderId, half)) {
+            const fallbackRow = resolveFallback(scribeFallbacks, s.id, weekday, half, isProviderActive);
+            // Provider-targeted rows (e.g. Reda -> Brian) render as that
+            // provider's scribe above, not a generic office-support entry.
+            if (fallbackRow && !fallbackRow.targetProviderId && fallbackRow.office === office) {
+              autoEntries.push({
+                id: `auto:${s.id}`,
+                role: "ROOMING",
+                staffId: s.id,
+                name: s.name,
+                providerId: null,
+                providerName: null,
+                auto: true,
+              });
+              continue;
+            }
+          }
+
+          if (s.dedicatedAidForProviderId && (!s.homeOffice || s.homeOffice === office)) {
+            if (activeProviderIdsHere.has(s.dedicatedAidForProviderId)) {
+              autoEntries.push({
+                id: `auto:${s.id}`,
+                role: "ROOMING",
+                staffId: s.id,
+                name: s.name,
+                providerId: s.dedicatedAidForProviderId,
+                providerName: s.dedicatedAidFor?.name ?? null,
+                auto: true,
+              });
+            }
+          }
+        }
+      }
 
       const patientTotal = providers.reduce((sum, p) => sum + (p.patientCount ?? 0), 0);
       officeTotals[office] += patientTotal;
 
       const subScribes = officeAssignments.filter((a) => a.role === "SUB_SCRIBE").map(toCell);
-      const rooming = officeAssignments.filter((a) => a.role === "ROOMING").map(toCell);
+      const rooming = [...officeAssignments.filter((a) => a.role === "ROOMING").map(toCell), ...autoEntries];
       const xray = officeAssignments.filter((a) => a.role === "XRAY").map(toCell);
       const staffCount =
         providers.filter((p) => p.scribe).length + subScribes.length + rooming.length + xray.length;
@@ -166,27 +289,24 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
   return { date, weekday, halves, officeTotals, needsMoreStaffing };
 }
 
-// Which staff are free to self-place, per half, and why.
+// Which staff are free to self-place, per half, and why. Scribe-eligible
+// entries are ordered by experience (SCRIBE_PRIORITY) so substitute pickers
+// suggest the most experienced available scribe first.
 export async function getFreeStaff(date: string): Promise<Record<Half, FreeStaffMember[]>> {
   const weekday = weekdayIndex(date);
 
-  const [scheduleSlots, providerAbsences, staff, staffAbsences, assignments] = await Promise.all([
+  const [scheduleSlots, providerAbsences, staff, staffAbsences, assignments, scribeFallbacks] = await Promise.all([
     weekday === null
       ? Promise.resolve([])
       : prisma.providerScheduleSlot.findMany({ where: { weekday } }),
     prisma.providerAbsence.findMany({ where: { date } }),
-    prisma.staff.findMany({ where: { active: true }, include: { dedicatedProvider: true } }),
+    prisma.staff.findMany({ where: { active: true }, include: { dedicatedProvider: true, dedicatedAidFor: true } }),
     prisma.staffAbsence.findMany({ where: { date } }),
     prisma.assignment.findMany({ where: { date } }),
+    weekday === null ? Promise.resolve([]) : prisma.scribeFallback.findMany({ where: { weekday } }),
   ]);
 
-  const isProviderAbsent = (providerId: string, half: Half) =>
-    providerAbsences.some((a) => a.providerId === providerId && absenceMatches(half, a.half));
-
-  const isProviderActive = (providerId: string, half: Half) =>
-    scheduleSlots.some(
-      (s) => s.providerId === providerId && s.half === half && s.office !== null && !isProviderAbsent(providerId, half)
-    );
+  const { isActive: isProviderActive, activeOffice: providerActiveOffice } = buildActivity(scheduleSlots, providerAbsences);
 
   const result: Record<Half, FreeStaffMember[]> = { AM: [], PM: [] };
 
@@ -202,7 +322,18 @@ export async function getFreeStaff(date: string): Promise<Record<Half, FreeStaff
       if (s.dedicatedProviderId) {
         const doctorActive = isProviderActive(s.dedicatedProviderId, half);
         if (doctorActive) continue; // committed to their doctor, not free
+
+        const fallbackRow =
+          weekday === null ? null : resolveFallback(scribeFallbacks, s.id, weekday, half, isProviderActive);
+        if (fallbackRow) continue; // committed to their fallback (office support, or a specific provider), not free
+
         reason = `${s.dedicatedProvider?.name ?? "Their doctor"} is out this half`;
+      }
+
+      if (s.dedicatedAidForProviderId) {
+        const activeOffice = providerActiveOffice(s.dedicatedAidForProviderId, half);
+        const officeMatches = activeOffice !== null && (!s.homeOffice || activeOffice === s.homeOffice);
+        if (officeMatches) continue; // committed as dedicated aid, not free
       }
 
       result[half].push({
@@ -215,6 +346,8 @@ export async function getFreeStaff(date: string): Promise<Record<Half, FreeStaff
         reason,
       });
     }
+
+    result[half].sort((a, b) => scribeRank(a.name) - scribeRank(b.name));
   }
 
   return result;

@@ -142,8 +142,7 @@ function OfficeHalfCell({
         cells={slot.rooming}
         onRemove={(id) => run(() => postJSON(`/api/assignments/${id}`, "DELETE"))}
       >
-        <AssignPicker
-          label="Add support"
+        <TakeRoleButton
           options={free}
           onAssign={(staffId) =>
             run(() =>
@@ -164,8 +163,7 @@ function OfficeHalfCell({
         cells={slot.xray}
         onRemove={(id) => run(() => postJSON(`/api/assignments/${id}`, "DELETE"))}
       >
-        <AssignPicker
-          label="Add x-ray"
+        <TakeRoleButton
           options={xrayEligible}
           onAssign={(staffId) =>
             run(() =>
@@ -222,9 +220,8 @@ function ProviderColumn({
         ) : (
           <div className="space-y-1">
             <div className="text-xs font-bold text-red-600 sm:text-sm">OPEN</div>
-            <AssignPicker
+            <TakeRoleButton
               compact
-              label="Fill in"
               options={scribeEligible}
               onAssign={(staffId) =>
                 run(() =>
@@ -259,9 +256,8 @@ function ProviderColumn({
             ))}
           </ul>
         )}
-        <AssignPicker
+        <TakeRoleButton
           compact
-          label="Add aid"
           options={scribeEligible}
           onAssign={(staffId) =>
             run(() =>
@@ -288,7 +284,7 @@ function RoleGroup({
   children,
 }: {
   title: string;
-  cells: { id: string; name: string; providerName: string | null }[];
+  cells: { id: string; name: string; providerName: string | null; auto?: boolean }[];
   onRemove: (id: string) => void;
   children: React.ReactNode;
 }) {
@@ -299,13 +295,20 @@ function RoleGroup({
       <ul className="mb-2 space-y-1">
         {cells.map((c) => (
           <li key={c.id} className="flex items-center justify-between text-sm font-bold">
-            <span>
+            <span className={c.auto ? "opacity-70" : ""}>
               {c.name}
               {c.providerName ? ` — supporting ${c.providerName}` : ""}
+              {c.auto ? " (default)" : ""}
             </span>
-            <button onClick={() => onRemove(c.id)} className="text-xs font-bold text-red-500 opacity-70 hover:opacity-100">
-              remove
-            </button>
+            {c.auto ? (
+              <span className="text-xs font-bold opacity-40" title="Mark them absent to open this up for a substitute">
+                auto
+              </span>
+            ) : (
+              <button onClick={() => onRemove(c.id)} className="text-xs font-bold text-red-500 opacity-70 hover:opacity-100">
+                remove
+              </button>
+            )}
           </li>
         ))}
       </ul>
@@ -314,50 +317,31 @@ function RoleGroup({
   );
 }
 
-function AssignPicker({
-  label,
+// Self-service only: shows a single "Add yourself" button when the current
+// person is one of the eligible/free options for this slot, nothing
+// otherwise. Replaces a name-picker dropdown — nobody assigns anyone but
+// themselves, so there's nothing to pick.
+function TakeRoleButton({
   options,
   onAssign,
   compact,
 }: {
-  label: string;
   options: FreeStaffMember[];
   onAssign: (staffId: string) => void;
   compact?: boolean;
 }) {
-  const { currentId } = useWhoAmI();
-  const defaultOption = options.find((o) => o.id === currentId) ? currentId! : options[0]?.id ?? "";
-  const [selected, setSelected] = useState(defaultOption);
-
-  if (options.length === 0) {
-    return <p className="text-xs font-bold opacity-40">No one free right now</p>;
-  }
+  const { current } = useWhoAmI();
+  if (!current || !options.some((o) => o.id === current.id)) return null;
 
   return (
-    <div className={compact ? "flex flex-col gap-1" : "flex items-center gap-2"}>
-      <select
-        className={`accent-border-soft border-b-2 bg-transparent font-bold outline-none ${
-          compact ? "w-full py-0.5 text-xs" : "py-1 text-sm"
-        }`}
-        value={selected || options[0].id}
-        onChange={(e) => setSelected(e.target.value)}
-      >
-        {options.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.name}
-            {o.id === currentId ? " (me)" : ""}
-          </option>
-        ))}
-      </select>
-      <button
-        onClick={() => onAssign(selected || options[0].id)}
-        className={`accent-border rounded-full border-2 font-bold transition active:scale-95 ${
-          compact ? "w-full px-2 py-1 text-[11px]" : "px-4 py-1 text-xs"
-        }`}
-      >
-        {label}
-      </button>
-    </div>
+    <button
+      onClick={() => onAssign(current.id)}
+      className={`accent-border rounded-full border-2 font-bold transition active:scale-95 ${
+        compact ? "w-full px-2 py-1 text-[11px]" : "px-4 py-1 text-xs"
+      }`}
+    >
+      Add yourself
+    </button>
   );
 }
 

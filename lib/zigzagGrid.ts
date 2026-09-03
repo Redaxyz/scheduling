@@ -9,7 +9,7 @@
 // edge) are pinned back to their ideal fraction — otherwise two independently
 // wobbling curves would miss each other where they cross.
 
-export const ROWS = 6;
+export const ROWS = 7;
 export const COLS = 2;
 const TEETH_PER_ROW = 9; // segments per row along the vertical divider
 const TEETH_PER_COL = 7; // segments per column along each horizontal divider

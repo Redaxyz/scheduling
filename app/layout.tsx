@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { WhoAmIProvider } from "@/lib/whoami";
@@ -15,6 +15,15 @@ const geistSans = Geist({
 export const metadata: Metadata = {
   title: "CFA Ortho Schedule",
   description: "Daily staffing schedule for Bethesda and Germantown offices",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Schedule",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#94a3b8",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

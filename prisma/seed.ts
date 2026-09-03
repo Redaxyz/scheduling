@@ -9,6 +9,8 @@ const PROVIDERS = [
   { initials: "Fe", name: "Dr. Feldman" },
   { initials: "M", name: "Dr. McCormick" },
   { initials: "G", name: "Dr. Gardiner" },
+  { initials: "B", name: "Brian, PA-C" },
+  { initials: "J", name: "Jessica, PA-C" },
 ];
 
 type ScheduleRow = { weekday: number; half: "AM" | "PM"; office: "BETHESDA" | "GERMANTOWN" | null };
@@ -25,7 +27,7 @@ const SCHEDULES: Record<string, ScheduleRow[]> = {
     { weekday: 2, half: "PM", office: "GERMANTOWN" },
     { weekday: 3, half: "AM", office: null },
     { weekday: 3, half: "PM", office: null },
-    { weekday: 4, half: "AM", office: "GERMANTOWN" },
+    { weekday: 4, half: "AM", office: "BETHESDA" },
     { weekday: 4, half: "PM", office: null },
   ],
   // Raffo: MM Germantown; no Tuesday; WM/WA Bethesda; RM/RA Germantown; FM Bethesda.
@@ -93,6 +95,32 @@ const SCHEDULES: Record<string, ScheduleRow[]> = {
     { weekday: 4, half: "AM", office: null },
     { weekday: 4, half: "PM", office: null },
   ],
+  // Brian, PA-C: MA Bethesda; TM Germantown; Wednesday all day Germantown; no Thursday; FM Germantown, FA Bethesda.
+  B: [
+    { weekday: 0, half: "AM", office: null },
+    { weekday: 0, half: "PM", office: "BETHESDA" },
+    { weekday: 1, half: "AM", office: "GERMANTOWN" },
+    { weekday: 1, half: "PM", office: null },
+    { weekday: 2, half: "AM", office: "GERMANTOWN" },
+    { weekday: 2, half: "PM", office: "GERMANTOWN" },
+    { weekday: 3, half: "AM", office: null },
+    { weekday: 3, half: "PM", office: null },
+    { weekday: 4, half: "AM", office: "GERMANTOWN" },
+    { weekday: 4, half: "PM", office: "BETHESDA" },
+  ],
+  // Jessica, PA-C: only Friday — FM Bethesda, FA Germantown.
+  J: [
+    { weekday: 0, half: "AM", office: null },
+    { weekday: 0, half: "PM", office: null },
+    { weekday: 1, half: "AM", office: null },
+    { weekday: 1, half: "PM", office: null },
+    { weekday: 2, half: "AM", office: null },
+    { weekday: 2, half: "PM", office: null },
+    { weekday: 3, half: "AM", office: null },
+    { weekday: 3, half: "PM", office: null },
+    { weekday: 4, half: "AM", office: "BETHESDA" },
+    { weekday: 4, half: "PM", office: "GERMANTOWN" },
+  ],
 };
 
 const STAFF: {
@@ -102,6 +130,7 @@ const STAFF: {
   color: string;
   homeOffice: "BETHESDA" | "GERMANTOWN" | null;
   dedicatedProviderInitials: string | null;
+  dedicatedAidForProviderInitials?: string | null;
 }[] = [
   // 12 pastels evenly spaced around the hue wheel so every person reads as
   // a clearly different color while staying soft/mellow.
@@ -112,12 +141,76 @@ const STAFF: {
   { name: "Emma", kind: "SCRIBE", canScribe: true, color: "hsl(120, 38%, 80%)", homeOffice: null, dedicatedProviderInitials: "Fi" },
   { name: "Jen", kind: "SCRIBE", canScribe: true, color: "hsl(155, 42%, 79%)", homeOffice: null, dedicatedProviderInitials: "G" },
   { name: "JB", kind: "GENERAL", canScribe: false, color: "hsl(185, 45%, 81%)", homeOffice: "BETHESDA", dedicatedProviderInitials: null },
-  { name: "Mark", kind: "GENERAL", canScribe: false, color: "hsl(212, 58%, 84%)", homeOffice: "BETHESDA", dedicatedProviderInitials: null },
+  // Mark is Dr. Christoforetti's default rooming aid, but only while Christo
+  // is in Bethesda (Mark's homeOffice) — see ScribeFallback-style gating in
+  // lib/schedule.ts, which keys off dedicatedAidForProviderId + homeOffice.
+  { name: "Mark", kind: "GENERAL", canScribe: false, color: "hsl(212, 58%, 84%)", homeOffice: "BETHESDA", dedicatedProviderInitials: null, dedicatedAidForProviderInitials: "C" },
   { name: "Charlie", kind: "GENERAL", canScribe: false, color: "hsl(238, 55%, 87%)", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null },
   { name: "Jenish", kind: "GENERAL", canScribe: false, color: "hsl(268, 48%, 87%)", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null },
   { name: "Cindy", kind: "XRAY", canScribe: false, color: "hsl(298, 45%, 86%)", homeOffice: "BETHESDA", dedicatedProviderInitials: null },
   { name: "Shelby", kind: "XRAY", canScribe: false, color: "hsl(332, 58%, 86%)", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null },
+  // Brian and Jessica are PA-Cs (see PROVIDERS/SCHEDULES above for their clinic
+  // schedule) but also get a Staff row so they can pick themselves in the app
+  // and self-log their own absences, same as the rest of the staff.
+  { name: "Brian, PA-C", kind: "GENERAL", canScribe: false, color: "hsl(15, 60%, 84%)", homeOffice: null, dedicatedProviderInitials: null },
+  { name: "Jessica, PA-C", kind: "GENERAL", canScribe: false, color: "hsl(345, 55%, 86%)", homeOffice: null, dedicatedProviderInitials: null },
 ];
+
+type FallbackRow = {
+  weekday: number;
+  half: "AM" | "PM";
+  office: "BETHESDA" | "GERMANTOWN";
+  conditionalProviderInitials?: string;
+  conditionalRequireActive?: boolean;
+  // When set, this isn't generic office support — the staff member becomes
+  // THAT provider's scribe for the half (like a dedicated scribe), instead
+  // of a rooming-list entry.
+  targetProviderInitials?: string;
+};
+
+// Where each scribe defaults to when their own doctor doesn't need them for
+// a given weekday+half (off per template, or unexpectedly absent that day).
+// Rows with a conditionalProviderInitials only fire when that OTHER
+// provider's active-this-half status matches conditionalRequireActive.
+const SCRIBE_FALLBACKS: Record<string, FallbackRow[]> = {
+  // Reda (Christo's scribe): Thu Christo is off entirely -> Bethesda both
+  // halves. Fri PM Christo is off -> Reda is Brian's (PA-C) primary scribe
+  // whenever she's free that half.
+  Reda: [
+    { weekday: 3, half: "AM", office: "BETHESDA" },
+    { weekday: 3, half: "PM", office: "BETHESDA" },
+    { weekday: 4, half: "PM", office: "BETHESDA", targetProviderInitials: "B" },
+  ],
+  // Emily (Raffo's scribe): Raffo never works Tuesdays. Only the PM half
+  // gets a fallback (Germantown); AM Tuesday she's simply free.
+  Emily: [{ weekday: 1, half: "PM", office: "GERMANTOWN" }],
+  // Hope (Feldman's scribe): Feldman is off Fridays entirely.
+  Hope: [
+    { weekday: 4, half: "AM", office: "BETHESDA" },
+    { weekday: 4, half: "PM", office: "BETHESDA" },
+  ],
+  // Anna (McCormick's scribe): McCormick is off Wednesdays entirely.
+  Anna: [
+    { weekday: 2, half: "AM", office: "BETHESDA" },
+    { weekday: 2, half: "PM", office: "BETHESDA" },
+  ],
+  // Emma (Fitzgibbons's scribe): Fitzgibbons is off Thursdays entirely.
+  Emma: [
+    { weekday: 3, half: "AM", office: "GERMANTOWN" },
+    { weekday: 3, half: "PM", office: "GERMANTOWN" },
+  ],
+  // Jen (Gardiner's scribe): Gardiner is off Wed/Fri entirely, and this same
+  // rule also covers a Thursday where Gardiner is unexpectedly absent, since
+  // "own doctor not active this half" already accounts for ad-hoc absences.
+  Jen: [
+    { weekday: 2, half: "AM", office: "GERMANTOWN" },
+    { weekday: 2, half: "PM", office: "GERMANTOWN" },
+    { weekday: 3, half: "AM", office: "GERMANTOWN" },
+    { weekday: 3, half: "PM", office: "GERMANTOWN" },
+    { weekday: 4, half: "AM", office: "GERMANTOWN" },
+    { weekday: 4, half: "PM", office: "GERMANTOWN" },
+  ],
+};
 
 async function main() {
   console.log("Seeding...");
@@ -126,6 +219,7 @@ async function main() {
   await prisma.patientCount.deleteMany();
   await prisma.staffAbsence.deleteMany();
   await prisma.providerAbsence.deleteMany();
+  await prisma.scribeFallback.deleteMany();
   await prisma.providerScheduleSlot.deleteMany();
   await prisma.staff.deleteMany();
   await prisma.provider.deleteMany();
@@ -143,8 +237,9 @@ async function main() {
     });
   }
 
+  const staffByName = new Map<string, string>();
   for (const s of STAFF) {
-    await prisma.staff.create({
+    const created = await prisma.staff.create({
       data: {
         name: s.name,
         kind: s.kind,
@@ -154,7 +249,28 @@ async function main() {
         dedicatedProviderId: s.dedicatedProviderInitials
           ? providerByInitials.get(s.dedicatedProviderInitials)!
           : null,
+        dedicatedAidForProviderId: s.dedicatedAidForProviderInitials
+          ? providerByInitials.get(s.dedicatedAidForProviderInitials)!
+          : null,
       },
+    });
+    staffByName.set(s.name, created.id);
+  }
+
+  for (const [name, rows] of Object.entries(SCRIBE_FALLBACKS)) {
+    const staffId = staffByName.get(name)!;
+    await prisma.scribeFallback.createMany({
+      data: rows.map((r) => ({
+        staffId,
+        weekday: r.weekday,
+        half: r.half,
+        office: r.office,
+        conditionalProviderId: r.conditionalProviderInitials
+          ? providerByInitials.get(r.conditionalProviderInitials)!
+          : null,
+        conditionalRequireActive: r.conditionalRequireActive ?? null,
+        targetProviderId: r.targetProviderInitials ? providerByInitials.get(r.targetProviderInitials)! : null,
+      })),
     });
   }
 
