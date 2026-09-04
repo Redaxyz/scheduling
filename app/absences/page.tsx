@@ -24,6 +24,7 @@ export default async function AbsencesPage() {
         date: a.date,
         half: a.half,
         reason: a.reason,
+        lateMinutes: a.lateMinutes,
         name: a.staff.name,
         ownerId: a.staffId,
       }))}
@@ -32,6 +33,7 @@ export default async function AbsencesPage() {
         date: a.date,
         half: a.half,
         reason: a.reason,
+        lateMinutes: a.lateMinutes,
         name: a.provider.name,
         ownerId: a.providerId,
       }))}

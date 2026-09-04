@@ -48,10 +48,26 @@ export default function UserPicker() {
   const curves = useMemo(() => buildGridCurves(), []);
 
   // Alphabetical, top-to-bottom then left-to-right: first ROWS names fill
-  // column 0, next ROWS fill column 1.
+  // column 0, next ROWS fill column 1, etc. — except anyone with a
+  // pinnedGridIndex, who's fixed at that exact slot; everyone else fills
+  // the remaining slots around them, still in alphabetical order.
   const cells: Cell[] = useMemo(() => {
     const sorted = [...staffList].sort((a, b) => a.name.localeCompare(b.name));
-    return sorted.map((staff, i) => ({ staff, row: i % ROWS, col: Math.floor(i / ROWS) }));
+    const pinned = sorted.filter((s) => s.pinnedGridIndex !== null);
+    const unpinned = sorted.filter((s) => s.pinnedGridIndex === null);
+
+    const slots: (StaffOption | undefined)[] = new Array(sorted.length);
+    for (const p of pinned) {
+      if (p.pinnedGridIndex! >= 0 && p.pinnedGridIndex! < slots.length) slots[p.pinnedGridIndex!] = p;
+    }
+    let next = 0;
+    for (let i = 0; i < slots.length; i++) {
+      if (!slots[i]) slots[i] = unpinned[next++];
+    }
+
+    return slots
+      .map((staff, i) => (staff ? { staff, row: i % ROWS, col: Math.floor(i / ROWS) } : null))
+      .filter((c): c is Cell => c !== null);
   }, [staffList]);
 
   if (cells.length === 0) {

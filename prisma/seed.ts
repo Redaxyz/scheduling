@@ -7,7 +7,7 @@ const PROVIDERS = [
   { initials: "R", name: "Dr. Raffo" },
   { initials: "Fi", name: "Dr. Fitzgibbons" },
   { initials: "Fe", name: "Dr. Feldman" },
-  { initials: "M", name: "Dr. McCormick" },
+  { initials: "Mc", name: "Dr. McCormick" },
   { initials: "G", name: "Dr. Gardiner" },
   { initials: "B", name: "Brian, PA-C" },
   { initials: "J", name: "Jessica, PA-C" },
@@ -70,7 +70,7 @@ const SCHEDULES: Record<string, ScheduleRow[]> = {
     { weekday: 4, half: "PM", office: null },
   ],
   // McCormick: MA Bethesda; TM Bethesda; no Wed; RM Germantown, RA Bethesda; Friday all day Germantown.
-  M: [
+  Mc: [
     { weekday: 0, half: "AM", office: null },
     { weekday: 0, half: "PM", office: "BETHESDA" },
     { weekday: 1, half: "AM", office: "BETHESDA" },
@@ -130,30 +130,86 @@ const STAFF: {
   color: string;
   homeOffice: "BETHESDA" | "GERMANTOWN" | null;
   dedicatedProviderInitials: string | null;
-  dedicatedAidForProviderInitials?: string | null;
+  defaultXrayOffice?: "BETHESDA" | "GERMANTOWN" | null;
+  // Names of OTHER staff this person backs up for X-ray when that person is
+  // absent (resolved to XrayBackup rows after everyone's created).
+  xrayBackupForNames?: string[];
+  addableByAnyone?: boolean;
+  usesApp?: boolean;
+  isManager?: boolean;
+  pinnedGridIndex?: number;
 }[] = [
   // 12 pastels evenly spaced around the hue wheel so every person reads as
   // a clearly different color while staying soft/mellow.
-  { name: "Reda", kind: "SCRIBE", canScribe: true, color: "hsl(0, 62%, 85%)", homeOffice: null, dedicatedProviderInitials: "C" },
-  { name: "Emily", kind: "SCRIBE", canScribe: true, color: "hsl(30, 62%, 83%)", homeOffice: null, dedicatedProviderInitials: "R" },
-  { name: "Hope", kind: "SCRIBE", canScribe: true, color: "hsl(50, 58%, 80%)", homeOffice: null, dedicatedProviderInitials: "Fe" },
-  { name: "Anna", kind: "SCRIBE", canScribe: true, color: "hsl(80, 45%, 79%)", homeOffice: null, dedicatedProviderInitials: "M" },
-  { name: "Emma", kind: "SCRIBE", canScribe: true, color: "hsl(120, 38%, 80%)", homeOffice: null, dedicatedProviderInitials: "Fi" },
-  { name: "Jen", kind: "SCRIBE", canScribe: true, color: "hsl(155, 42%, 79%)", homeOffice: null, dedicatedProviderInitials: "G" },
-  { name: "JB", kind: "GENERAL", canScribe: false, color: "hsl(185, 45%, 81%)", homeOffice: "BETHESDA", dedicatedProviderInitials: null },
-  // Mark is Dr. Christoforetti's default rooming aid, but only while Christo
-  // is in Bethesda (Mark's homeOffice) — see ScribeFallback-style gating in
-  // lib/schedule.ts, which keys off dedicatedAidForProviderId + homeOffice.
-  { name: "Mark", kind: "GENERAL", canScribe: false, color: "hsl(212, 58%, 84%)", homeOffice: "BETHESDA", dedicatedProviderInitials: null, dedicatedAidForProviderInitials: "C" },
-  { name: "Charlie", kind: "GENERAL", canScribe: false, color: "hsl(238, 55%, 87%)", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null },
-  { name: "Jenish", kind: "GENERAL", canScribe: false, color: "hsl(268, 48%, 87%)", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null },
-  { name: "Cindy", kind: "XRAY", canScribe: false, color: "hsl(298, 45%, 86%)", homeOffice: "BETHESDA", dedicatedProviderInitials: null },
-  { name: "Shelby", kind: "XRAY", canScribe: false, color: "hsl(332, 58%, 86%)", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null },
+  // pinnedGridIndex values below lay out the sign-in picker (5 rows x 3
+  // cols, column-major: index = col*ROWS + row) in this exact arrangement:
+  //   Row1: Anna, Emily, Emma       Row2: Hope, Jen, Reda
+  //   Row3: Brian PA-C, Joanna, Jessica PA-C
+  //   Row4: Cindy, Charlie, JB      Row5: Shelby, Mark, Jenish
+  { name: "Reda", kind: "SCRIBE", canScribe: true, color: "hsl(0, 62%, 85%)", homeOffice: null, dedicatedProviderInitials: "C", pinnedGridIndex: 11 },
+  { name: "Emily", kind: "SCRIBE", canScribe: true, color: "hsl(30, 62%, 83%)", homeOffice: null, dedicatedProviderInitials: "R", pinnedGridIndex: 5 },
+  { name: "Hope", kind: "SCRIBE", canScribe: true, color: "hsl(50, 58%, 80%)", homeOffice: null, dedicatedProviderInitials: "Fe", pinnedGridIndex: 1 },
+  { name: "Anna", kind: "SCRIBE", canScribe: true, color: "hsl(80, 45%, 79%)", homeOffice: null, dedicatedProviderInitials: "Mc", pinnedGridIndex: 0 },
+  { name: "Emma", kind: "SCRIBE", canScribe: true, color: "hsl(120, 38%, 80%)", homeOffice: null, dedicatedProviderInitials: "Fi", pinnedGridIndex: 10 },
+  { name: "Jen", kind: "SCRIBE", canScribe: true, color: "hsl(155, 42%, 79%)", homeOffice: null, dedicatedProviderInitials: "G", pinnedGridIndex: 6 },
+  { name: "JB", kind: "GENERAL", canScribe: false, color: "hsl(185, 45%, 81%)", homeOffice: "BETHESDA", dedicatedProviderInitials: null, pinnedGridIndex: 13 },
+  // Mark is a Bethesda-leaning rooming/support person (homeOffice is just a
+  // preference, not a lock) and Cindy's X-ray backup, only when she's out.
+  {
+    name: "Mark",
+    kind: "GENERAL",
+    canScribe: false,
+    color: "hsl(212, 58%, 84%)",
+    homeOffice: "BETHESDA",
+    dedicatedProviderInitials: null,
+    xrayBackupForNames: ["Cindy"],
+    pinnedGridIndex: 9,
+  },
+  {
+    name: "Charlie",
+    kind: "GENERAL",
+    canScribe: false,
+    color: "hsl(238, 55%, 87%)",
+    homeOffice: "GERMANTOWN",
+    dedicatedProviderInitials: null,
+    xrayBackupForNames: ["Shelby"],
+    pinnedGridIndex: 8,
+  },
+  { name: "Jenish", kind: "GENERAL", canScribe: false, color: "hsl(268, 48%, 87%)", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null, pinnedGridIndex: 14 },
+  { name: "Cindy", kind: "XRAY", canScribe: false, color: "hsl(298, 45%, 86%)", homeOffice: "BETHESDA", dedicatedProviderInitials: null, defaultXrayOffice: "BETHESDA", pinnedGridIndex: 3 },
+  { name: "Shelby", kind: "XRAY", canScribe: false, color: "hsl(332, 58%, 86%)", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null, defaultXrayOffice: "GERMANTOWN", pinnedGridIndex: 4 },
   // Brian and Jessica are PA-Cs (see PROVIDERS/SCHEDULES above for their clinic
   // schedule) but also get a Staff row so they can pick themselves in the app
   // and self-log their own absences, same as the rest of the staff.
-  { name: "Brian, PA-C", kind: "GENERAL", canScribe: false, color: "hsl(15, 60%, 84%)", homeOffice: null, dedicatedProviderInitials: null },
-  { name: "Jessica, PA-C", kind: "GENERAL", canScribe: false, color: "hsl(345, 55%, 86%)", homeOffice: null, dedicatedProviderInitials: null },
+  { name: "Brian, PA-C", kind: "GENERAL", canScribe: false, color: "hsl(15, 60%, 84%)", homeOffice: null, dedicatedProviderInitials: null, pinnedGridIndex: 2 },
+  { name: "Jessica, PA-C", kind: "GENERAL", canScribe: false, color: "hsl(345, 55%, 86%)", homeOffice: null, dedicatedProviderInitials: null, pinnedGridIndex: 12 },
+  // Lester floats between both offices, only accessible for X-ray when
+  // either Cindy or Shelby is out — not office-locked like Mark/Charlie.
+  {
+    name: "Lester",
+    kind: "XRAY",
+    canScribe: false,
+    color: "hsl(170, 40%, 82%)",
+    homeOffice: null,
+    dedicatedProviderInitials: null,
+    xrayBackupForNames: ["Cindy", "Shelby"],
+    addableByAnyone: true,
+    usesApp: false,
+  },
+  // Joanna is the manager: can add anyone eligible to any position while
+  // logged in as herself, not just self-add (see TakeRoleButton). Pinned to
+  // the exact center of the 5-row x 3-col sign-in grid (index 7 = row 2,
+  // col 1), rather than wherever alphabetical order would otherwise put her.
+  {
+    name: "Joanna",
+    kind: "GENERAL",
+    canScribe: false,
+    color: "hsl(100, 40%, 82%)",
+    homeOffice: null,
+    dedicatedProviderInitials: null,
+    isManager: true,
+    pinnedGridIndex: 7,
+  },
 ];
 
 type FallbackRow = {
@@ -220,6 +276,7 @@ async function main() {
   await prisma.staffAbsence.deleteMany();
   await prisma.providerAbsence.deleteMany();
   await prisma.scribeFallback.deleteMany();
+  await prisma.xrayBackup.deleteMany();
   await prisma.providerScheduleSlot.deleteMany();
   await prisma.staff.deleteMany();
   await prisma.provider.deleteMany();
@@ -249,12 +306,25 @@ async function main() {
         dedicatedProviderId: s.dedicatedProviderInitials
           ? providerByInitials.get(s.dedicatedProviderInitials)!
           : null,
-        dedicatedAidForProviderId: s.dedicatedAidForProviderInitials
-          ? providerByInitials.get(s.dedicatedAidForProviderInitials)!
-          : null,
+        defaultXrayOffice: s.defaultXrayOffice ?? null,
+        addableByAnyone: s.addableByAnyone ?? false,
+        usesApp: s.usesApp ?? true,
+        isManager: s.isManager ?? false,
+        pinnedGridIndex: s.pinnedGridIndex ?? null,
       },
     });
     staffByName.set(s.name, created.id);
+  }
+
+  for (const s of STAFF) {
+    if (!s.xrayBackupForNames?.length) continue;
+    const staffId = staffByName.get(s.name)!;
+    await prisma.xrayBackup.createMany({
+      data: s.xrayBackupForNames.map((primaryName) => ({
+        staffId,
+        primaryStaffId: staffByName.get(primaryName)!,
+      })),
+    });
   }
 
   for (const [name, rows] of Object.entries(SCRIBE_FALLBACKS)) {

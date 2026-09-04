@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { AssignmentCell, DaySchedule, FreeStaffMember, HalfSlot, ProviderCell } from "@/lib/schedule";
+import type { DaySchedule, FreeStaffMember, HalfSlot, ProviderCell } from "@/lib/schedule";
 import { HALVES, HALF_LABELS, OFFICES, OFFICE_LABELS, type Half } from "@/lib/types";
 import { useWhoAmI } from "@/lib/whoami";
 
@@ -11,6 +11,10 @@ type Props = {
   day: DaySchedule;
   freeStaff: Record<Half, FreeStaffMember[]>;
 };
+
+function lateTag(lateMinutes: number | null) {
+  return lateMinutes ? ` (${lateMinutes}m late)` : "";
+}
 
 async function postJSON(url: string, method: string, body?: unknown) {
   const res = await fetch(url, {
@@ -70,6 +74,11 @@ export default function ScheduleBoard({ date, day, freeStaff }: Props) {
               />
             ))}
           </div>
+          {day.unassigned[half].length > 0 && (
+            <p className="mt-3 text-xs font-bold opacity-50">
+              Not assigned to a location: {day.unassigned[half].map((s) => s.name).join(", ")}
+            </p>
+          )}
         </div>
       ))}
     </div>
@@ -100,7 +109,6 @@ function OfficeHalfCell({
   }
 
   const scribeEligible = free.filter((s) => s.canScribe);
-  const xrayEligible = free.filter((s) => s.kind === "XRAY");
   const columnCount = Math.max(slot.providers.length, 1);
 
   const balanceClass =
@@ -127,8 +135,6 @@ function OfficeHalfCell({
               half={slot.half}
               cell={cell}
               scribeEligible={scribeEligible}
-              aidCells={slot.subScribes.filter((s) => s.providerId === cell.provider.id)}
-              onRemoveAid={(id) => run(() => postJSON(`/api/assignments/${id}`, "DELETE"))}
               onChanged={onChanged}
               run={run}
               office={slot.office}
@@ -141,6 +147,7 @@ function OfficeHalfCell({
         title="Support / rooming"
         cells={slot.rooming}
         onRemove={(id) => run(() => postJSON(`/api/assignments/${id}`, "DELETE"))}
+        onChangeAuto={(staffId) => run(() => postJSON("/api/auto-override", "POST", { staffId, date, half: slot.half }))}
       >
         <TakeRoleButton
           options={free}
@@ -162,9 +169,10 @@ function OfficeHalfCell({
         title="X-ray"
         cells={slot.xray}
         onRemove={(id) => run(() => postJSON(`/api/assignments/${id}`, "DELETE"))}
+        onChangeAuto={(staffId) => run(() => postJSON("/api/auto-override", "POST", { staffId, date, half: slot.half }))}
       >
         <TakeRoleButton
-          options={xrayEligible}
+          options={slot.xrayEligible}
           onAssign={(staffId) =>
             run(() =>
               postJSON("/api/assignments", "POST", {
@@ -188,8 +196,6 @@ function ProviderColumn({
   office,
   cell,
   scribeEligible,
-  aidCells,
-  onRemoveAid,
   onChanged,
   run,
 }: {
@@ -198,24 +204,38 @@ function ProviderColumn({
   office: HalfSlot["office"];
   cell: ProviderCell;
   scribeEligible: FreeStaffMember[];
-  aidCells: AssignmentCell[];
-  onRemoveAid: (id: string) => void;
   onChanged: () => void;
   run: (action: () => Promise<unknown>) => Promise<void>;
 }) {
   return (
     <div className="min-w-0">
       <div className="accent-border-soft border-b-2 pb-2">
-        <div className="truncate text-sm font-extrabold tracking-tight sm:text-base">{cell.provider.name}</div>
+        <div className="truncate text-sm font-extrabold tracking-tight sm:text-base">
+          {cell.provider.name}
+          {cell.provider.lateMinutes && <span className="font-bold text-amber-700">{lateTag(cell.provider.lateMinutes)}</span>}
+        </div>
         <PatientCountInput date={date} half={half} providerId={cell.provider.id} value={cell.patientCount} onSaved={onChanged} />
       </div>
 
       <div className="accent-border-soft border-b-2 py-2">
         <div className="text-[10px] font-bold uppercase tracking-wide opacity-40">Scribe</div>
         {cell.scribe ? (
-          <div className={`truncate text-xs font-bold sm:text-sm ${cell.scribe.substitute ? "text-amber-700" : ""}`}>
-            {cell.scribe.name}
-            {cell.scribe.substitute ? " (sub)" : ""}
+          <div className="flex items-center justify-between gap-1">
+            <span className={`truncate text-xs font-bold sm:text-sm ${cell.scribe.substitute ? "text-amber-700" : ""}`}>
+              {cell.scribe.name}
+              {cell.scribe.substitute ? " (sub)" : ""}
+              {lateTag(cell.scribe.lateMinutes)}
+            </span>
+            <button
+              onClick={() =>
+                cell.scribe!.assignmentId
+                  ? run(() => postJSON(`/api/assignments/${cell.scribe!.assignmentId}`, "DELETE"))
+                  : run(() => postJSON("/api/auto-override", "POST", { staffId: cell.scribe!.staffId, date, half }))
+              }
+              className="shrink-0 text-[10px] font-bold text-red-500 opacity-70 hover:opacity-100"
+            >
+              remove
+            </button>
           </div>
         ) : (
           <div className="space-y-1">
@@ -239,40 +259,6 @@ function ProviderColumn({
           </div>
         )}
       </div>
-
-      <div className="py-2">
-        <div className="text-[10px] font-bold uppercase tracking-wide opacity-40">Aid</div>
-        {aidCells.length === 0 ? (
-          <p className="text-xs font-bold opacity-40">None yet</p>
-        ) : (
-          <ul className="mb-1 space-y-1">
-            {aidCells.map((c) => (
-              <li key={c.id} className="flex items-center justify-between gap-1 text-xs font-bold sm:text-sm">
-                <span className="truncate">{c.name}</span>
-                <button onClick={() => onRemoveAid(c.id)} className="shrink-0 text-[10px] text-red-500 opacity-70 hover:opacity-100">
-                  remove
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <TakeRoleButton
-          compact
-          options={scribeEligible}
-          onAssign={(staffId) =>
-            run(() =>
-              postJSON("/api/assignments", "POST", {
-                date,
-                half,
-                office,
-                role: "SUB_SCRIBE",
-                staffId,
-                providerId: cell.provider.id,
-              })
-            )
-          }
-        />
-      </div>
     </div>
   );
 }
@@ -281,11 +267,13 @@ function RoleGroup({
   title,
   cells,
   onRemove,
+  onChangeAuto,
   children,
 }: {
   title: string;
-  cells: { id: string; name: string; providerName: string | null; auto?: boolean }[];
+  cells: { id: string; name: string; staffId: string; providerName: string | null; auto?: boolean; lateMinutes?: number | null }[];
   onRemove: (id: string) => void;
+  onChangeAuto: (staffId: string) => void;
   children: React.ReactNode;
 }) {
   return (
@@ -299,16 +287,14 @@ function RoleGroup({
               {c.name}
               {c.providerName ? ` — supporting ${c.providerName}` : ""}
               {c.auto ? " (default)" : ""}
+              {lateTag(c.lateMinutes ?? null)}
             </span>
-            {c.auto ? (
-              <span className="text-xs font-bold opacity-40" title="Mark them absent to open this up for a substitute">
-                auto
-              </span>
-            ) : (
-              <button onClick={() => onRemove(c.id)} className="text-xs font-bold text-red-500 opacity-70 hover:opacity-100">
-                remove
-              </button>
-            )}
+            <button
+              onClick={() => (c.auto ? onChangeAuto(c.staffId) : onRemove(c.id))}
+              className="text-xs font-bold text-red-500 opacity-70 hover:opacity-100"
+            >
+              remove
+            </button>
           </li>
         ))}
       </ul>
@@ -317,10 +303,14 @@ function RoleGroup({
   );
 }
 
-// Self-service only: shows a single "Add yourself" button when the current
-// person is one of the eligible/free options for this slot, nothing
-// otherwise. Replaces a name-picker dropdown — nobody assigns anyone but
-// themselves, so there's nothing to pick.
+// Self-service by default: shows "Add yourself" when the current person is
+// one of the eligible/free options for this slot, nothing otherwise — no
+// picking someone else. Two exceptions: a person flagged addableByAnyone
+// (e.g. Lester, a floating backup without his own regular login habit) gets
+// their own always-visible "Add <name>" button; and a manager (Joanna),
+// logged in as herself, can add ANY eligible option here, not just herself —
+// still limited to `options` (the same role-eligibility list everyone else
+// sees), just not limited to self-service.
 function TakeRoleButton({
   options,
   onAssign,
@@ -331,17 +321,41 @@ function TakeRoleButton({
   compact?: boolean;
 }) {
   const { current } = useWhoAmI();
-  if (!current || !options.some((o) => o.id === current.id)) return null;
+  const btnClass = `accent-border rounded-full border-2 font-bold transition active:scale-95 ${
+    compact ? "w-full px-2 py-1 text-[11px]" : "px-4 py-1 text-xs"
+  }`;
+
+  if (current?.isManager) {
+    if (options.length === 0) return null;
+    return (
+      <div className={compact ? "flex flex-col gap-1" : "flex flex-wrap gap-2"}>
+        {options.map((o) => (
+          <button key={o.id} onClick={() => onAssign(o.id)} className={btnClass}>
+            Add {o.id === current.id ? "yourself" : o.name}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  const self = current && options.some((o) => o.id === current.id) ? current : null;
+  const anyoneOptions = options.filter((o) => o.addableByAnyone && o.id !== self?.id);
+
+  if (!self && anyoneOptions.length === 0) return null;
 
   return (
-    <button
-      onClick={() => onAssign(current.id)}
-      className={`accent-border rounded-full border-2 font-bold transition active:scale-95 ${
-        compact ? "w-full px-2 py-1 text-[11px]" : "px-4 py-1 text-xs"
-      }`}
-    >
-      Add yourself
-    </button>
+    <div className={compact ? "flex flex-col gap-1" : "flex flex-wrap gap-2"}>
+      {self && (
+        <button onClick={() => onAssign(self.id)} className={btnClass}>
+          Add yourself
+        </button>
+      )}
+      {anyoneOptions.map((o) => (
+        <button key={o.id} onClick={() => onAssign(o.id)} className={btnClass}>
+          Add {o.name}
+        </button>
+      ))}
+    </div>
   );
 }
 

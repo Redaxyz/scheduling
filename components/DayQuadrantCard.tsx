@@ -23,19 +23,19 @@ export default function DayQuadrantCard({
             {day.cells[office][half].length === 0 ? (
               <div className="text-sm font-bold opacity-25">—</div>
             ) : (
-              <div className="flex flex-wrap gap-x-2 gap-y-1">
+              <div className="flex flex-col gap-0.5">
                 {day.cells[office][half].map((entry) => (
                   <button
                     key={entry.providerId}
                     onClick={() => onToggle(entry.providerId, day.date, half, entry)}
                     title={entry.present ? `Mark ${entry.name} absent` : `Mark ${entry.name} present`}
-                    className={
+                    className={`text-left ${
                       entry.present
-                        ? "text-base font-extrabold text-[#579669] sm:text-lg"
-                        : "text-base font-normal text-slate-400 sm:text-lg"
-                    }
+                        ? "text-sm font-extrabold text-[#579669] sm:text-base"
+                        : "text-sm font-normal text-slate-400 sm:text-base"
+                    }`}
                   >
-                    {entry.initials}
+                    {entry.name}
                   </button>
                 ))}
               </div>

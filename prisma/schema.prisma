@@ -22,7 +22,6 @@ model Provider {
   absences           ProviderAbsence[]
   patientCounts      PatientCount[]
   dedicatedScribes   Staff[]                @relation("DedicatedScribeFor")
-  dedicatedAids      Staff[]                @relation("DedicatedAidFor")
   fallbackConditions ScribeFallback[]       @relation("ScribeFallbackConditional")
   fallbackTargets    ScribeFallback[]       @relation("ScribeFallbackTarget")
   assignments        Assignment[]
@@ -44,14 +43,17 @@ model ProviderScheduleSlot {
 }
 
 // A one-off override marking a provider OUT for a specific date/half,
-// regardless of their recurring template. half: "AM" | "PM" | "ALL".
+// regardless of their recurring template. half: "AM" | "PM" | "ALL" | "CUSTOM".
+// "CUSTOM" doesn't block scheduling at all (see absenceMatches) — it's just
+// a running-late note; lateMinutes holds how late, in 15-minute increments.
 model ProviderAbsence {
-  id         String   @id @default(cuid())
-  providerId String
-  date       String
-  half       String
-  reason     String?
-  createdAt  DateTime @default(now())
+  id          String   @id @default(cuid())
+  providerId  String
+  date        String
+  half        String
+  reason      String?
+  lateMinutes Int?
+  createdAt   DateTime @default(now())
 
   provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
@@ -62,25 +64,80 @@ model ProviderAbsence {
 // kind: "SCRIBE" | "GENERAL" | "XRAY"
 // homeOffice: "BETHESDA" | "GERMANTOWN" | null (floats between offices)
 model Staff {
-  id                        String   @id @default(cuid())
-  name                      String
-  kind                      String
-  canScribe                 Boolean  @default(false)
-  color                     String   @default("#64748b")
-  homeOffice                String?
-  dedicatedProviderId       String?
-  // A non-scribe "aid" (e.g. rooming support) permanently paired with one
-  // doctor, the same way dedicatedProviderId pairs a scribe with a doctor.
-  // Only applies to slots in this staff member's homeOffice, if set.
-  dedicatedAidForProviderId String?
-  active                    Boolean  @default(true)
-  createdAt                 DateTime @default(now())
+  id                  String   @id @default(cuid())
+  name                String
+  kind                String
+  canScribe           Boolean  @default(false)
+  color               String   @default("#64748b")
+  // "BETHESDA" | "GERMANTOWN" | null — a location preference only, shown for
+  // reference; nobody is restricted to this office for any role.
+  homeOffice          String?
+  dedicatedProviderId String?
+  // "BETHESDA" | "GERMANTOWN" | null — if set, this staff member is the
+  // standing default X-ray tech for that office every day, unless absent.
+  defaultXrayOffice   String?
+  // If true, ANYONE can add this person to an eligible slot (not just
+  // themselves) — e.g. Lester, a floating x-ray backup without his own
+  // regular login/self-service habit. Defaults false (self-service only).
+  addableByAnyone     Boolean  @default(false)
+  // If false, this person never logs into the app themselves — no picker
+  // tile, no self-service placement anywhere. They only ever surface
+  // through a purpose-built eligibility check (e.g. Lester only appears as
+  // an x-ray backup for Cindy/Shelby, never in generic rooming/self-add).
+  usesApp             Boolean  @default(true)
+  // If true, this person can add ANY eligible person to ANY position while
+  // logged in as themselves (a manager override of the normal self-service-
+  // only restriction) — still gated by the same role eligibility rules
+  // (canScribe, x-ray kind, etc.), just not limited to adding themselves.
+  isManager           Boolean  @default(false)
+  // Fixes this person's tile at a specific 0-based index in the sign-in
+  // picker's column-major grid (see lib/zigzagGrid.ts), instead of falling
+  // wherever alphabetical order would put them. Null = normal alphabetical
+  // placement among the unpinned staff filling the remaining cells.
+  pinnedGridIndex     Int?
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now())
 
   dedicatedProvider Provider?        @relation("DedicatedScribeFor", fields: [dedicatedProviderId], references: [id])
-  dedicatedAidFor   Provider?        @relation("DedicatedAidFor", fields: [dedicatedAidForProviderId], references: [id])
   fallbacks         ScribeFallback[]
   absences          StaffAbsence[]
   assignments       Assignment[]
+  // Rows where THIS staff member is a backup (e.g. Mark backs up Cindy).
+  xrayBackupAs      XrayBackup[]     @relation("XrayBackupStaff")
+  // Rows where THIS staff member is someone else's backup target
+  // (e.g. Cindy is backed up by Mark).
+  xrayBackedUpBy    XrayBackup[]     @relation("XrayBackupPrimary")
+  autoOverrides     AutoOverride[]
+}
+
+// Opts a staff member OUT of one of their own computed defaults (dedicated
+// scribe, scribe fallback, or default x-ray) for one date+half, so they show
+// as free to self-place elsewhere instead. Not office/role-specific — a
+// person only has one default per half anyway.
+model AutoOverride {
+  id      String @id @default(cuid())
+  staffId String
+  date    String
+  half    String
+
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, date, half])
+}
+
+// staffId is eligible to fill the X-ray role at EITHER office whenever
+// primaryStaffId is absent that half (nobody's office-locked). A backup can
+// have more than one primary (e.g. Lester backs up both Cindy and Shelby —
+// eligible if either is out).
+model XrayBackup {
+  id             String @id @default(cuid())
+  staffId        String
+  primaryStaffId String
+
+  staff   Staff @relation("XrayBackupStaff", fields: [staffId], references: [id], onDelete: Cascade)
+  primary Staff @relation("XrayBackupPrimary", fields: [primaryStaffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, primaryStaffId])
 }
 
 // A recurring rule for where a scribe defaults to when their own dedicated
@@ -107,14 +164,16 @@ model ScribeFallback {
   targetProvider      Provider? @relation("ScribeFallbackTarget", fields: [targetProviderId], references: [id])
 }
 
-// half: "AM" | "PM" | "ALL"
+// half: "AM" | "PM" | "ALL" | "CUSTOM" — see ProviderAbsence for what CUSTOM
+// means (a non-blocking running-late note, with lateMinutes set).
 model StaffAbsence {
-  id        String   @id @default(cuid())
-  staffId   String
-  date      String
-  half      String
-  reason    String?
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  staffId     String
+  date        String
+  half        String
+  reason      String?
+  lateMinutes Int?
+  createdAt   DateTime @default(now())
 
   staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
@@ -136,10 +195,10 @@ model PatientCount {
 }
 
 // A staff self-placement for a given date/half.
-// role: "SCRIBE" (substitute, when the dedicated scribe is out) | "SUB_SCRIBE" | "ROOMING" | "XRAY"
+// role: "SCRIBE" (substitute, when the dedicated scribe is out) | "ROOMING" | "XRAY"
 // office: "BETHESDA" | "GERMANTOWN"
-// providerId is set for SCRIBE (which doctor they're subbing for) and optionally SUB_SCRIBE;
-// null for general ROOMING / XRAY placements.
+// providerId is set for SCRIBE (which doctor they're subbing for); null for
+// general ROOMING / XRAY placements.
 model Assignment {
   id         String   @id @default(cuid())
   date       String

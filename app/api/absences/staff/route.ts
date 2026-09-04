@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { expandDateRange } from "@/lib/dateRange";
 
-const HALF_OPTIONS = ["AM", "PM", "ALL"];
+const HALF_OPTIONS = ["AM", "PM", "ALL", "CUSTOM"];
+
+function validateLateMinutes(half: string, lateMinutes: unknown): { value: number | null; error?: string } {
+  if (half !== "CUSTOM") return { value: null };
+  const n = Number(lateMinutes);
+  if (!Number.isInteger(n) || n <= 0 || n % 15 !== 0 || n > 480) {
+    return { value: null, error: "Custom lateness must be a positive multiple of 15 minutes (up to 8 hours)." };
+  }
+  return { value: n };
+}
 
 export async function GET() {
   const absences = await prisma.staffAbsence.findMany({
@@ -27,6 +36,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid half" }, { status: 400 });
   }
 
+  const late = validateLateMinutes(half, body.lateMinutes);
+  if (late.error) {
+    return NextResponse.json({ error: late.error }, { status: 400 });
+  }
+  const lateMinutes = late.value;
+
   const staff = await prisma.staff.findUnique({ where: { id: staffId } });
   if (!staff) return NextResponse.json({ error: "Unknown staff member" }, { status: 400 });
 
@@ -37,8 +52,8 @@ export async function POST(req: NextRequest) {
     dates.map((date) =>
       prisma.staffAbsence.upsert({
         where: { staffId_date_half: { staffId, date, half } },
-        update: { reason: reason || null },
-        create: { staffId, date, half, reason: reason || null },
+        update: { reason: reason || null, lateMinutes },
+        create: { staffId, date, half, reason: reason || null, lateMinutes },
       })
     )
   );

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getFreeStaff } from "@/lib/schedule";
+import { getFreeStaff, getXrayEligible } from "@/lib/schedule";
 import { weekdayIndex } from "@/lib/date";
-import { HALVES, OFFICES, ROLES, type Half } from "@/lib/types";
+import { HALVES, OFFICES, ROLES, type Half, type Office } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -29,21 +29,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unknown staff member" }, { status: 400 });
   }
 
-  const freeStaff = await getFreeStaff(date);
-  const isFree = freeStaff[half as Half].some((s) => s.id === staffId);
-  if (!isFree) {
-    return NextResponse.json(
-      { error: `${staff.name} isn't free that half (absent, already placed, or committed to their doctor).` },
-      { status: 409 }
-    );
-  }
+  // X-ray has its own eligibility system (default tech, or a satisfied
+  // backup) — validated independently of the generic free-staff pool, since
+  // x-ray techs are deliberately excluded from that pool entirely.
+  if (role === "XRAY") {
+    const xrayEligible = await getXrayEligible(date, office as Office, half as Half);
+    if (!xrayEligible.some((s) => s.id === staffId)) {
+      return NextResponse.json(
+        { error: `${staff.name} isn't eligible for x-ray here right now (not the default tech, or their backup condition isn't met).` },
+        { status: 400 }
+      );
+    }
+  } else {
+    const freeStaff = await getFreeStaff(date);
+    const isFree = freeStaff[half as Half].some((s) => s.id === staffId);
+    if (!isFree) {
+      return NextResponse.json(
+        { error: `${staff.name} isn't free that half (absent, already placed, or an x-ray tech).` },
+        { status: 409 }
+      );
+    }
 
-  if ((role === "SCRIBE" || role === "SUB_SCRIBE") && !staff.canScribe) {
-    return NextResponse.json({ error: `${staff.name} cannot scribe.` }, { status: 400 });
-  }
-
-  if (role === "XRAY" && staff.kind !== "XRAY") {
-    return NextResponse.json({ error: `${staff.name} isn't an x-ray tech.` }, { status: 400 });
+    if (role === "SCRIBE" && !staff.canScribe) {
+      return NextResponse.json({ error: `${staff.name} cannot scribe.` }, { status: 400 });
+    }
   }
 
   if (role === "SCRIBE") {

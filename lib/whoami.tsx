@@ -10,6 +10,8 @@ export type StaffOption = {
   color: string;
   homeOffice: string | null;
   dedicatedProviderId: string | null;
+  isManager: boolean;
+  pinnedGridIndex: number | null;
 };
 
 type WhoAmICtx = {

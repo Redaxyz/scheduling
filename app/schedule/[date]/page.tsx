@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { getDaySchedule, getFreeStaff } from "@/lib/schedule";
-import { addDays, formatLong, todayStr } from "@/lib/date";
+import { formatLong, todayStr } from "@/lib/date";
 import { WEEKDAY_LABELS } from "@/lib/types";
 import ScheduleBoard from "@/components/ScheduleBoard";
+import ScheduleDateNav from "@/components/ScheduleDateNav";
 
 export default async function SchedulePage({ params }: { params: Promise<{ date: string }> }) {
   const { date } = await params;
@@ -27,14 +28,7 @@ export default async function SchedulePage({ params }: { params: Promise<{ date:
             </Link>
           )}
         </div>
-        <div className="flex gap-2 text-sm font-bold">
-          <Link href={`/schedule/${addDays(date, -1)}`} className="accent-border rounded-full border-2 px-4 py-1.5">
-            ← Previous day
-          </Link>
-          <Link href={`/schedule/${addDays(date, 1)}`} className="accent-border rounded-full border-2 px-4 py-1.5">
-            Next day →
-          </Link>
-        </div>
+        <ScheduleDateNav date={date} />
       </div>
 
       {day.weekday === null ? (
