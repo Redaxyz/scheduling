@@ -64,39 +64,44 @@ model ProviderAbsence {
 // kind: "SCRIBE" | "GENERAL" | "XRAY"
 // homeOffice: "BETHESDA" | "GERMANTOWN" | null (floats between offices)
 model Staff {
-  id                  String   @id @default(cuid())
-  name                String
-  kind                String
-  canScribe           Boolean  @default(false)
-  color               String   @default("#64748b")
+  id                   String   @id @default(cuid())
+  name                 String
+  kind                 String
+  canScribe            Boolean  @default(false)
+  color                String   @default("#64748b")
   // "BETHESDA" | "GERMANTOWN" | null — a location preference only, shown for
   // reference; nobody is restricted to this office for any role.
-  homeOffice          String?
-  dedicatedProviderId String?
+  homeOffice           String?
+  dedicatedProviderId  String?
   // "BETHESDA" | "GERMANTOWN" | null — if set, this staff member is the
   // standing default X-ray tech for that office every day, unless absent.
-  defaultXrayOffice   String?
+  defaultXrayOffice    String?
+  // "BETHESDA" | "GERMANTOWN" | null — if set, this staff member is standing
+  // default Support/rooming for that office every day, unless absent. A
+  // "hard" commitment like defaultXrayOffice (blocks manager reassignment
+  // until removed), unlike generic/ad-hoc rooming placements.
+  defaultRoomingOffice String?
   // If true, ANYONE can add this person to an eligible slot (not just
   // themselves) — e.g. Lester, a floating x-ray backup without his own
   // regular login/self-service habit. Defaults false (self-service only).
-  addableByAnyone     Boolean  @default(false)
+  addableByAnyone      Boolean  @default(false)
   // If false, this person never logs into the app themselves — no picker
   // tile, no self-service placement anywhere. They only ever surface
   // through a purpose-built eligibility check (e.g. Lester only appears as
   // an x-ray backup for Cindy/Shelby, never in generic rooming/self-add).
-  usesApp             Boolean  @default(true)
+  usesApp              Boolean  @default(true)
   // If true, this person can add ANY eligible person to ANY position while
   // logged in as themselves (a manager override of the normal self-service-
   // only restriction) — still gated by the same role eligibility rules
   // (canScribe, x-ray kind, etc.), just not limited to adding themselves.
-  isManager           Boolean  @default(false)
+  isManager            Boolean  @default(false)
   // Fixes this person's tile at a specific 0-based index in the sign-in
   // picker's column-major grid (see lib/zigzagGrid.ts), instead of falling
   // wherever alphabetical order would put them. Null = normal alphabetical
   // placement among the unpinned staff filling the remaining cells.
-  pinnedGridIndex     Int?
-  active              Boolean  @default(true)
-  createdAt           DateTime @default(now())
+  pinnedGridIndex      Int?
+  active               Boolean  @default(true)
+  createdAt            DateTime @default(now())
 
   dedicatedProvider Provider?        @relation("DedicatedScribeFor", fields: [dedicatedProviderId], references: [id])
   fallbacks         ScribeFallback[]

@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getMonthCalendar } from "@/lib/calendar";
-import { addMonths, firstOfMonth, formatMonthLabel, todayStr } from "@/lib/date";
-import MonthCalendarGrid from "@/components/MonthCalendarGrid";
+import { getStaffMonthCalendar } from "@/lib/calendar";
+import { addMonths, firstOfMonth, formatMonthLabel, monthWeekdays, todayStr } from "@/lib/date";
+import StaffMonthGrid from "@/components/StaffMonthGrid";
 import CalendarWhoToggle from "@/components/CalendarWhoToggle";
 
-export default async function CalendarMonthPage({ params }: { params: Promise<{ month: string }> }) {
+export default async function CalendarStaffPage({ params }: { params: Promise<{ month: string }> }) {
   const { month: monthParam } = await params;
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(monthParam)) {
@@ -14,10 +14,10 @@ export default async function CalendarMonthPage({ params }: { params: Promise<{ 
 
   const month = firstOfMonth(monthParam);
   if (month !== monthParam) {
-    redirect(`/calendar/month/${month}`);
+    redirect(`/calendar/staff/${month}`);
   }
 
-  const days = await getMonthCalendar(month);
+  const [rows, dates] = [await getStaffMonthCalendar(month), monthWeekdays(month)];
   const isThisMonth = month === firstOfMonth(todayStr());
 
   return (
@@ -27,29 +27,26 @@ export default async function CalendarMonthPage({ params }: { params: Promise<{ 
           <h1 className="text-xl font-extrabold tracking-tight">{formatMonthLabel(month)}</h1>
           <div className="flex flex-wrap gap-x-3 text-sm font-bold">
             {!isThisMonth && (
-              <Link href={`/calendar/month/${firstOfMonth(todayStr())}`} className="accent-text hover:underline">
+              <Link href={`/calendar/staff/${firstOfMonth(todayStr())}`} className="accent-text hover:underline">
                 Jump to this month
               </Link>
             )}
-            <Link href="/templates" className="opacity-50 hover:opacity-100">
-              Edit weekly templates →
-            </Link>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <CalendarWhoToggle who="providers" anchorDate={month} />
+          <CalendarWhoToggle who="staff" anchorDate={month} />
           <div className="flex gap-2 text-sm font-bold">
-            <Link href={`/calendar/month/${addMonths(month, -1)}`} className="accent-border rounded-full border-2 px-4 py-1.5">
+            <Link href={`/calendar/staff/${addMonths(month, -1)}`} className="accent-border rounded-full border-2 px-4 py-1.5">
               ← Previous month
             </Link>
-            <Link href={`/calendar/month/${addMonths(month, 1)}`} className="accent-border rounded-full border-2 px-4 py-1.5">
+            <Link href={`/calendar/staff/${addMonths(month, 1)}`} className="accent-border rounded-full border-2 px-4 py-1.5">
               Next month →
             </Link>
           </div>
         </div>
       </div>
 
-      <MonthCalendarGrid month={month} days={days} todayDate={todayStr()} />
+      <StaffMonthGrid dates={dates} rows={rows} />
     </div>
   );
 }

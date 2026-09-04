@@ -70,6 +70,7 @@ export default function ScheduleBoard({ date, day, freeStaff }: Props) {
                 date={date}
                 slot={day.halves[half][office]}
                 free={freeStaff[half]}
+                reassignable={day.reassignable[half]}
                 onChanged={refresh}
               />
             ))}
@@ -89,11 +90,13 @@ function OfficeHalfCell({
   date,
   slot,
   free,
+  reassignable,
   onChanged,
 }: {
   date: string;
   slot: HalfSlot;
   free: FreeStaffMember[];
+  reassignable: { id: string; name: string }[];
   onChanged: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -135,6 +138,7 @@ function OfficeHalfCell({
               half={slot.half}
               cell={cell}
               scribeEligible={scribeEligible}
+              reassignable={reassignable}
               onChanged={onChanged}
               run={run}
               office={slot.office}
@@ -151,6 +155,7 @@ function OfficeHalfCell({
       >
         <TakeRoleButton
           options={free}
+          reassignable={reassignable}
           onAssign={(staffId) =>
             run(() =>
               postJSON("/api/assignments", "POST", {
@@ -173,6 +178,7 @@ function OfficeHalfCell({
       >
         <TakeRoleButton
           options={slot.xrayEligible}
+          reassignable={reassignable}
           onAssign={(staffId) =>
             run(() =>
               postJSON("/api/assignments", "POST", {
@@ -196,6 +202,7 @@ function ProviderColumn({
   office,
   cell,
   scribeEligible,
+  reassignable,
   onChanged,
   run,
 }: {
@@ -204,6 +211,7 @@ function ProviderColumn({
   office: HalfSlot["office"];
   cell: ProviderCell;
   scribeEligible: FreeStaffMember[];
+  reassignable: { id: string; name: string }[];
   onChanged: () => void;
   run: (action: () => Promise<unknown>) => Promise<void>;
 }) {
@@ -243,6 +251,7 @@ function ProviderColumn({
             <TakeRoleButton
               compact
               options={scribeEligible}
+              reassignable={reassignable}
               onAssign={(staffId) =>
                 run(() =>
                   postJSON("/api/assignments", "POST", {
@@ -309,14 +318,19 @@ function RoleGroup({
 // (e.g. Lester, a floating backup without his own regular login habit) gets
 // their own always-visible "Add <name>" button; and a manager (Joanna),
 // logged in as herself, can add ANY eligible option here, not just herself —
-// still limited to `options` (the same role-eligibility list everyone else
-// sees), just not limited to self-service.
+// but only options who are `reassignable` this half. Someone already
+// scribing a doctor or doing x-ray elsewhere doesn't show up for the
+// manager to add elsewhere — she has to remove them first, so she never
+// accidentally pulls someone away from a real commitment. Generic rooming
+// support doesn't count as a commitment, so it doesn't block reassignment.
 function TakeRoleButton({
   options,
+  reassignable,
   onAssign,
   compact,
 }: {
   options: FreeStaffMember[];
+  reassignable: { id: string; name: string }[];
   onAssign: (staffId: string) => void;
   compact?: boolean;
 }) {
@@ -326,10 +340,12 @@ function TakeRoleButton({
   }`;
 
   if (current?.isManager) {
-    if (options.length === 0) return null;
+    const reassignableIds = new Set(reassignable.map((u) => u.id));
+    const managerOptions = options.filter((o) => reassignableIds.has(o.id));
+    if (managerOptions.length === 0) return null;
     return (
       <div className={compact ? "flex flex-col gap-1" : "flex flex-wrap gap-2"}>
-        {options.map((o) => (
+        {managerOptions.map((o) => (
           <button key={o.id} onClick={() => onAssign(o.id)} className={btnClass}>
             Add {o.id === current.id ? "yourself" : o.name}
           </button>

@@ -22,6 +22,11 @@ export type AssignmentCell = {
   // true for a computed default placement (scribe fallback / dedicated aid)
   // rather than a manually-created Assignment row — not removable via the UI.
   auto: boolean;
+  // true if this placement is a specific commitment (scribing a doctor,
+  // doing x-ray, or a standing default-rooming duty) that should block
+  // manager reassignment until removed; false for generic/ad-hoc rooming,
+  // which stays freely reassignable (see `reassignable` on DaySchedule).
+  hardCommitment: boolean;
 };
 
 // "GOOD" = fewer patients than the other office this half but more staff
@@ -58,6 +63,12 @@ export type DaySchedule = {
   // shadow-records that share a name with a Provider — those are tracked
   // as providers, not via staff role placement.
   unassigned: Record<Half, { id: string; name: string }[]>;
+  // Like `unassigned`, but generic rooming/support doesn't count as a
+  // placement — only being someone's scribe or doing x-ray does. Used to
+  // gate the manager's "add anyone" picker: someone just doing rooming is
+  // still offerable elsewhere without an explicit remove-first step, since
+  // rooming isn't a specific commitment the way scribing or x-ray is.
+  reassignable: Record<Half, { id: string; name: string }[]>;
 };
 
 export type FreeStaffMember = {
@@ -253,6 +264,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
   const halves = {} as Record<Half, Record<Office, HalfSlot>>;
   const officeTotals: Record<Office, number> = { BETHESDA: 0, GERMANTOWN: 0 };
   const unassigned = {} as Record<Half, { id: string; name: string }[]>;
+  const reassignable = {} as Record<Half, { id: string; name: string }[]>;
 
   for (const half of HALVES) {
     halves[half] = {} as Record<Office, HalfSlot>;
@@ -322,6 +334,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
         providerName: a.provider?.name ?? null,
         lateMinutes: lateStaffMinutes(a.staffId),
         auto: false,
+        hardCommitment: a.role === "XRAY",
       });
 
       // Computed default presence: a dedicated scribe falling back to this
@@ -347,10 +360,36 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
               providerName: null,
               lateMinutes: lateStaffMinutes(s.id),
               auto: true,
+              hardCommitment: false,
             });
           }
         }
       }
+
+      // Default Support/rooming for this office (e.g. JB AND Mark in
+      // Bethesda, Charlie AND Jenish in Germantown — more than one person
+      // can share a default office), unless absent or opted out — a
+      // standing duty, so it's a hard commitment (unlike the soft scribe-
+      // fallback rooming above).
+      const autoDefaultRoomingEntries: AssignmentCell[] = staff
+        .filter(
+          (s) =>
+            s.defaultRoomingOffice === office &&
+            !isStaffAbsent(s.id, half) &&
+            !isStaffAssigned(s.id, half) &&
+            !isOverridden(s.id, half)
+        )
+        .map((s) => ({
+          id: `auto:${s.id}`,
+          role: "ROOMING",
+          staffId: s.id,
+          name: s.name,
+          providerId: null,
+          providerName: null,
+          lateMinutes: lateStaffMinutes(s.id),
+          auto: true,
+          hardCommitment: true,
+        }));
 
       // Default x-ray tech for this office (e.g. Cindy in Bethesda), unless
       // absent or opted out — same "auto" treatment as the scribe/aid defaults.
@@ -370,6 +409,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
                 providerName: null,
                 lateMinutes: lateStaffMinutes(defaultXrayStaff.id),
                 auto: true,
+                hardCommitment: true,
               },
             ]
           : [];
@@ -380,7 +420,11 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
       const patientTotal = providers.reduce((sum, p) => sum + (p.patientCount ?? 0), 0);
       officeTotals[office] += patientTotal;
 
-      const rooming = [...officeAssignments.filter((a) => a.role === "ROOMING").map(toCell), ...autoRoomingEntries];
+      const rooming = [
+        ...officeAssignments.filter((a) => a.role === "ROOMING").map(toCell),
+        ...autoRoomingEntries,
+        ...autoDefaultRoomingEntries,
+      ];
       const xray = [...officeAssignments.filter((a) => a.role === "XRAY").map(toCell), ...autoXrayEntries];
       const staffCount = providers.filter((p) => p.scribe).length + rooming.length + xray.length;
 
@@ -411,17 +455,32 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
     }
 
     // Who's present this half but placed nowhere — a scribe, rooming, or
-    // x-ray slot at either office.
+    // x-ray slot at either office. committedStaffIds is the narrower "hard
+    // commitment" subset (see AssignmentCell.hardCommitment) used to gate
+    // manager reassignment — generic/ad-hoc rooming doesn't count.
     const placedStaffIds = new Set<string>();
+    const committedStaffIds = new Set<string>();
     for (const office of OFFICES) {
-      for (const p of halves[half][office].providers) if (p.scribe) placedStaffIds.add(p.scribe.staffId);
-      for (const r of halves[half][office].rooming) placedStaffIds.add(r.staffId);
-      for (const x of halves[half][office].xray) placedStaffIds.add(x.staffId);
+      for (const p of halves[half][office].providers) {
+        if (p.scribe) {
+          placedStaffIds.add(p.scribe.staffId);
+          committedStaffIds.add(p.scribe.staffId);
+        }
+      }
+      for (const r of halves[half][office].rooming) {
+        placedStaffIds.add(r.staffId);
+        if (r.hardCommitment) committedStaffIds.add(r.staffId);
+      }
+      for (const x of halves[half][office].xray) {
+        placedStaffIds.add(x.staffId);
+        committedStaffIds.add(x.staffId);
+      }
     }
-    unassigned[half] = staff
-      .filter(
-        (s) => s.usesApp && !providerNames.has(s.name) && !isStaffAbsent(s.id, half) && !placedStaffIds.has(s.id)
-      )
+    const stillPresent = (s: (typeof staff)[number]) =>
+      s.usesApp && !providerNames.has(s.name) && !isStaffAbsent(s.id, half);
+    unassigned[half] = staff.filter((s) => stillPresent(s) && !placedStaffIds.has(s.id)).map((s) => ({ id: s.id, name: s.name }));
+    reassignable[half] = staff
+      .filter((s) => stillPresent(s) && !committedStaffIds.has(s.id))
       .map((s) => ({ id: s.id, name: s.name }));
   }
 
@@ -430,7 +489,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
     needsMoreStaffing = officeTotals.BETHESDA > officeTotals.GERMANTOWN ? "BETHESDA" : "GERMANTOWN";
   }
 
-  return { date, weekday, halves, officeTotals, needsMoreStaffing, unassigned };
+  return { date, weekday, halves, officeTotals, needsMoreStaffing, unassigned, reassignable };
 }
 
 // Which staff are free to self-place, per half. Anyone not absent, not

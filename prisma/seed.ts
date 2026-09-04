@@ -131,6 +131,7 @@ const STAFF: {
   homeOffice: "BETHESDA" | "GERMANTOWN" | null;
   dedicatedProviderInitials: string | null;
   defaultXrayOffice?: "BETHESDA" | "GERMANTOWN" | null;
+  defaultRoomingOffice?: "BETHESDA" | "GERMANTOWN" | null;
   // Names of OTHER staff this person backs up for X-ray when that person is
   // absent (resolved to XrayBackup rows after everyone's created).
   xrayBackupForNames?: string[];
@@ -152,9 +153,20 @@ const STAFF: {
   { name: "Anna", kind: "SCRIBE", canScribe: true, color: "hsl(80, 45%, 79%)", homeOffice: null, dedicatedProviderInitials: "Mc", pinnedGridIndex: 0 },
   { name: "Emma", kind: "SCRIBE", canScribe: true, color: "hsl(120, 38%, 80%)", homeOffice: null, dedicatedProviderInitials: "Fi", pinnedGridIndex: 10 },
   { name: "Jen", kind: "SCRIBE", canScribe: true, color: "hsl(155, 42%, 79%)", homeOffice: null, dedicatedProviderInitials: "G", pinnedGridIndex: 6 },
-  { name: "JB", kind: "GENERAL", canScribe: false, color: "hsl(185, 45%, 81%)", homeOffice: "BETHESDA", dedicatedProviderInitials: null, pinnedGridIndex: 13 },
-  // Mark is a Bethesda-leaning rooming/support person (homeOffice is just a
-  // preference, not a lock) and Cindy's X-ray backup, only when she's out.
+  // JB and Mark are standing default Support/rooming for Bethesda every day
+  // (unless absent); Charlie and Jenish, same for Germantown. See
+  // defaultRoomingOffice — a "hard" commitment like defaultXrayOffice.
+  {
+    name: "JB",
+    kind: "GENERAL",
+    canScribe: false,
+    color: "hsl(185, 45%, 81%)",
+    homeOffice: "BETHESDA",
+    dedicatedProviderInitials: null,
+    defaultRoomingOffice: "BETHESDA",
+    pinnedGridIndex: 13,
+  },
+  // Mark is also Cindy's X-ray backup, only when she's out.
   {
     name: "Mark",
     kind: "GENERAL",
@@ -162,9 +174,11 @@ const STAFF: {
     color: "hsl(212, 58%, 84%)",
     homeOffice: "BETHESDA",
     dedicatedProviderInitials: null,
+    defaultRoomingOffice: "BETHESDA",
     xrayBackupForNames: ["Cindy"],
     pinnedGridIndex: 9,
   },
+  // Charlie is also Shelby's X-ray backup, only when she's out.
   {
     name: "Charlie",
     kind: "GENERAL",
@@ -172,10 +186,20 @@ const STAFF: {
     color: "hsl(238, 55%, 87%)",
     homeOffice: "GERMANTOWN",
     dedicatedProviderInitials: null,
+    defaultRoomingOffice: "GERMANTOWN",
     xrayBackupForNames: ["Shelby"],
     pinnedGridIndex: 8,
   },
-  { name: "Jenish", kind: "GENERAL", canScribe: false, color: "hsl(268, 48%, 87%)", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null, pinnedGridIndex: 14 },
+  {
+    name: "Jenish",
+    kind: "GENERAL",
+    canScribe: false,
+    color: "hsl(268, 48%, 87%)",
+    homeOffice: "GERMANTOWN",
+    dedicatedProviderInitials: null,
+    defaultRoomingOffice: "GERMANTOWN",
+    pinnedGridIndex: 14,
+  },
   { name: "Cindy", kind: "XRAY", canScribe: false, color: "hsl(298, 45%, 86%)", homeOffice: "BETHESDA", dedicatedProviderInitials: null, defaultXrayOffice: "BETHESDA", pinnedGridIndex: 3 },
   { name: "Shelby", kind: "XRAY", canScribe: false, color: "hsl(332, 58%, 86%)", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null, defaultXrayOffice: "GERMANTOWN", pinnedGridIndex: 4 },
   // Brian and Jessica are PA-Cs (see PROVIDERS/SCHEDULES above for their clinic
@@ -307,6 +331,7 @@ async function main() {
           ? providerByInitials.get(s.dedicatedProviderInitials)!
           : null,
         defaultXrayOffice: s.defaultXrayOffice ?? null,
+        defaultRoomingOffice: s.defaultRoomingOffice ?? null,
         addableByAnyone: s.addableByAnyone ?? false,
         usesApp: s.usesApp ?? true,
         isManager: s.isManager ?? false,

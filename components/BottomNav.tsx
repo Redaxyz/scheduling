@@ -1,14 +1,13 @@
 "use client";
 
-import type { ComponentType } from "react";
+import type { ComponentType, CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useWhoAmI } from "@/lib/whoami";
-import { todayStr } from "@/lib/date";
+import { firstOfMonth, todayStr } from "@/lib/date";
 import { CalendarIcon, QuadrantGridIcon, SwitchProfileIcon, UserOffIcon } from "@/components/icons";
-import { mondayOf } from "@/lib/date";
 
-type IconType = ComponentType<{ className?: string }>;
+type IconType = ComponentType<{ className?: string; style?: CSSProperties }>;
 type Tab = { key: string; href: string; match: string; label: string; Icon: IconType; primary?: boolean };
 
 export default function BottomNav() {
@@ -18,7 +17,7 @@ export default function BottomNav() {
   const tabs: Tab[] = [
     { key: "absences", href: "/absences", match: "/absences", label: "Absences", Icon: UserOffIcon },
     { key: "schedule", href: `/schedule/${todayStr()}`, match: "/schedule", label: "Schedule", Icon: CalendarIcon, primary: true },
-    { key: "calendar", href: `/calendar/week/${mondayOf(todayStr())}`, match: "/calendar", label: "Calendar", Icon: QuadrantGridIcon },
+    { key: "calendar", href: `/calendar/month/${firstOfMonth(todayStr())}`, match: "/calendar", label: "Calendar", Icon: QuadrantGridIcon },
   ];
 
   return (
@@ -50,8 +49,12 @@ export default function BottomNav() {
                 </>
               ) : (
                 <>
-                  <tab.Icon className="h-6 w-6" />
+                  <tab.Icon className="h-6 w-6" style={active ? { color: "var(--theme-accent)" } : undefined} />
                   {tab.label}
+                  <span
+                    className="h-1 w-1 rounded-full"
+                    style={{ background: active ? "var(--theme-accent)" : "transparent" }}
+                  />
                 </>
               )}
             </Link>
