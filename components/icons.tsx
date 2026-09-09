@@ -48,25 +48,3 @@ export function QuadrantGridIcon({ className, style }: IconProps) {
     </svg>
   );
 }
-
-export function SwitchProfileIcon({ className, style }: IconProps) {
-  return (
-    <svg
-      viewBox="0 0 28 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      style={style}
-    >
-      <circle cx="14" cy="7.2" r="2.6" />
-      <path d="M9 19c0-3 2.2-5.2 5-5.2s5 2.2 5 5.2" />
-      <path d="M4.6 8.5H1.2" />
-      <path d="M3.2 6.3 1.2 8.5l2 2.2" />
-      <path d="M23.4 15.5h3.4" />
-      <path d="M24.8 13.3l2 2.2-2 2.2" />
-    </svg>
-  );
-}

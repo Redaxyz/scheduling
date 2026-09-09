@@ -1,6 +1,6 @@
 import { prisma } from "./prisma";
-import { weekdayIndex } from "./date";
-import { HALVES, OFFICES, SCRIBE_PRIORITY, type Half, type Office } from "./types";
+import { weekDates, weekdayIndex } from "./date";
+import { HALVES, OFFICES, SCRIBE_PRIORITY, type Half, type Office, type Role } from "./types";
 
 export type ProviderCell = {
   provider: { id: string; name: string; initials: string; lateMinutes: number | null };
@@ -560,4 +560,148 @@ export async function getXrayEligible(date: string, office: Office, half: Half):
   const isOverridden = (staffId: string, h: Half) => autoOverrides.some((o) => o.staffId === staffId && o.half === h);
 
   return computeXrayEligible(office, half, staff, isStaffAbsent, isStaffAssigned, isOverridden);
+}
+
+// One half-day cell of a staff member's own week ("My Schedule"). When
+// they're actually working, office/role/providerName describe it directly.
+// When they're out, those same fields describe what they NORMALLY would be
+// doing (as if present) so the UI can show it — but only alongside
+// coveringName, the specific person actually filling that slot right now.
+// If nobody has, office/role/providerName are all null (render blank) —
+// there's nothing useful to show for a slot nobody stepped into.
+export type MyScheduleCell = {
+  office: Office | null;
+  role: Role | null;
+  providerName: string | null;
+  isOut: boolean;
+  lateMinutes: number | null;
+  coveringName: string | null;
+};
+
+export type MyScheduleDay = {
+  date: string;
+  weekday: number;
+  halves: Record<Half, MyScheduleCell>;
+};
+
+export type MyScheduleRow = {
+  staffId: string;
+  name: string;
+  color: string;
+  days: MyScheduleDay[];
+};
+
+function blankCell(isOut: boolean, lateMinutes: number | null): MyScheduleCell {
+  return { office: null, role: null, providerName: null, isOut, lateMinutes, coveringName: null };
+}
+
+// Every active app-using staff member's schedule for the Mon-Fri week
+// starting `mondayStr` — what they're doing each half, or (if they're out)
+// who's covering their normal slot, if anyone. Computed for everyone at once
+// since it shares the same underlying day schedules regardless of whose
+// view you're building (see components/MyScheduleView, which then picks out
+// just the signed-in person's own row — nobody else's is ever shown).
+export async function getWeekScheduleForAllStaff(mondayStr: string): Promise<MyScheduleRow[]> {
+  const dates = weekDates(mondayStr);
+
+  const [staff, allScheduleSlots, providerAbsences, staffAbsences, scribeFallbacks, days] = await Promise.all([
+    prisma.staff.findMany({ where: { active: true, usesApp: true }, orderBy: { name: "asc" } }),
+    prisma.providerScheduleSlot.findMany(),
+    prisma.providerAbsence.findMany({ where: { date: { in: dates } } }),
+    prisma.staffAbsence.findMany({ where: { date: { in: dates } } }),
+    prisma.scribeFallback.findMany(),
+    Promise.all(dates.map((date) => getDaySchedule(date))),
+  ]);
+
+  return staff.map((s) => ({
+    staffId: s.id,
+    name: s.name,
+    color: s.color,
+    days: dates.map((date, i) => {
+      const weekday = weekdayIndex(date)!; // weekDates only ever returns Mon-Fri
+      const day = days[i];
+      const halves = {} as Record<Half, MyScheduleCell>;
+
+      for (const half of HALVES) {
+        const isOut = staffAbsences.some((a) => a.staffId === s.id && a.date === date && absenceMatches(half, a.half));
+        const lateMinutes =
+          staffAbsences.find((a) => a.staffId === s.id && a.date === date && a.half === "CUSTOM")?.lateMinutes ?? null;
+
+        // Where are they actually placed right now, per the real computed
+        // day (covers present-and-working, and also a present person who's
+        // opted out of their default and self-placed somewhere else)?
+        let found: { office: Office; role: Role; providerName: string | null } | null = null;
+        for (const office of OFFICES) {
+          const slot = day.halves[half][office];
+          const scribeHit = slot.providers.find((p) => p.scribe?.staffId === s.id);
+          if (scribeHit) found = { office, role: "SCRIBE", providerName: scribeHit.provider.name };
+          if (slot.rooming.some((r) => r.staffId === s.id)) found = { office, role: "ROOMING", providerName: null };
+          if (slot.xray.some((x) => x.staffId === s.id)) found = { office, role: "XRAY", providerName: null };
+        }
+
+        if (found) {
+          halves[half] = { ...found, isOut: false, lateMinutes, coveringName: null };
+          continue;
+        }
+
+        if (!isOut) {
+          halves[half] = blankCell(false, lateMinutes);
+          continue;
+        }
+
+        // They're out and nowhere in the real schedule — figure out what
+        // they'd normally be doing (ignoring only their own absence), then
+        // check who's actually in that exact slot instead. Only SCRIBE
+        // (tied to one provider) and XRAY (one default tech per office) are
+        // real 1:1 slots a specific substitute can be said to fill; default
+        // rooming is an uncounted shared list, so there's no single sub to
+        // name there — stays blank, same as having no duty at all.
+        const weekdaySlots = allScheduleSlots.filter((row) => row.weekday === weekday);
+        const dateProviderAbsences = providerAbsences.filter((a) => a.date === date);
+        const { isActive } = buildActivity(weekdaySlots, dateProviderAbsences);
+
+        let duty: { office: Office; role: Role; providerId: string | null } | null = null;
+
+        if (s.dedicatedProviderId && isActive(s.dedicatedProviderId, half)) {
+          const slot = weekdaySlots.find((row) => row.providerId === s.dedicatedProviderId && row.half === half);
+          if (slot?.office) duty = { office: slot.office as Office, role: "SCRIBE", providerId: s.dedicatedProviderId };
+        } else {
+          const fallbackRow = resolveFallback(scribeFallbacks, s.id, weekday, half, isActive);
+          if (fallbackRow?.targetProviderId) {
+            const slot = weekdaySlots.find((row) => row.providerId === fallbackRow.targetProviderId && row.half === half);
+            if (slot?.office) duty = { office: slot.office as Office, role: "SCRIBE", providerId: fallbackRow.targetProviderId };
+          }
+        }
+        if (!duty && s.defaultXrayOffice) {
+          duty = { office: s.defaultXrayOffice as Office, role: "XRAY", providerId: null };
+        }
+
+        if (!duty) {
+          halves[half] = blankCell(true, lateMinutes);
+          continue;
+        }
+
+        const dutySlot = day.halves[half][duty.office];
+        const coveringName =
+          duty.role === "SCRIBE"
+            ? (dutySlot.providers.find((pc) => pc.provider.id === duty!.providerId)?.scribe?.name ?? null)
+            : (dutySlot.xray[0]?.name ?? null);
+
+        // Nobody has actually stepped into the slot — blank, per spec,
+        // rather than describing a duty nobody is covering.
+        halves[half] = coveringName
+          ? {
+              office: duty.office,
+              role: duty.role,
+              providerName: duty.role === "SCRIBE" ? (dutySlot.providers.find((pc) => pc.provider.id === duty!.providerId)?.provider.name ?? null) : null,
+              isOut: true,
+              lateMinutes,
+              coveringName,
+            }
+          : blankCell(true, lateMinutes);
+      }
+
+      return { date, weekday, halves };
+    }),
+  }));
 }

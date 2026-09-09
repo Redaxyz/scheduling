@@ -3,21 +3,20 @@
 import type { ComponentType, CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useWhoAmI } from "@/lib/whoami";
-import { firstOfMonth, todayStr } from "@/lib/date";
-import { CalendarIcon, QuadrantGridIcon, SwitchProfileIcon, UserOffIcon } from "@/components/icons";
+import { firstOfMonth, mondayOf, todayStr } from "@/lib/date";
+import { CalendarIcon, ClipboardIcon, QuadrantGridIcon, UserOffIcon } from "@/components/icons";
 
 type IconType = ComponentType<{ className?: string; style?: CSSProperties }>;
 type Tab = { key: string; href: string; match: string; label: string; Icon: IconType; primary?: boolean };
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const { setCurrentId } = useWhoAmI();
 
   const tabs: Tab[] = [
     { key: "absences", href: "/absences", match: "/absences", label: "Absences", Icon: UserOffIcon },
     { key: "schedule", href: `/schedule/${todayStr()}`, match: "/schedule", label: "Schedule", Icon: CalendarIcon, primary: true },
     { key: "calendar", href: `/calendar/month/${firstOfMonth(todayStr())}`, match: "/calendar", label: "Calendar", Icon: QuadrantGridIcon },
+    { key: "my-schedule", href: `/my-schedule/${mondayOf(todayStr())}`, match: "/my-schedule", label: "My Schedule", Icon: ClipboardIcon },
   ];
 
   return (
@@ -60,15 +59,6 @@ export default function BottomNav() {
             </Link>
           );
         })}
-        <button
-          type="button"
-          onClick={() => setCurrentId(null)}
-          aria-label="Switch person"
-          className="flex flex-1 flex-col items-center gap-1.5 py-3.5 text-xs font-bold opacity-60 transition-opacity hover:opacity-100"
-        >
-          <SwitchProfileIcon className="h-6 w-6" />
-          Switch
-        </button>
       </div>
     </nav>
   );

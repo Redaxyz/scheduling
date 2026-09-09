@@ -295,7 +295,6 @@ function RoleGroup({
             <span className={c.auto ? "opacity-70" : ""}>
               {c.name}
               {c.providerName ? ` — supporting ${c.providerName}` : ""}
-              {c.auto ? " (default)" : ""}
               {lateTag(c.lateMinutes ?? null)}
             </span>
             <button
