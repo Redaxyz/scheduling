@@ -1,9 +1,10 @@
 "use client";
 
 import { useWhoAmI } from "@/lib/whoami";
-import type { MyScheduleRow } from "@/lib/schedule";
+import type { MyScheduleCell, MyScheduleRow } from "@/lib/schedule";
 import { HALVES, HALF_LABELS, OFFICE_LABELS, WEEKDAY_LABELS, type Role } from "@/lib/types";
-import { formatShort, todayStr } from "@/lib/date";
+import { OFFICE_COLOR } from "@/lib/colors";
+import { formatShort, todayStr, weekdayIndex } from "@/lib/date";
 
 const ROLE_LABEL: Record<Role, string> = {
   SCRIBE: "Scribe",
@@ -11,8 +12,59 @@ const ROLE_LABEL: Record<Role, string> = {
   XRAY: "X-ray",
 };
 
+// Germantown's near-black background needs light text throughout; Bethesda
+// stays white with the page's normal dark text (plus a border, since white
+// on white would otherwise vanish).
+function HalfBox({ half, cell }: { half: (typeof HALVES)[number]; cell: MyScheduleCell }) {
+  const dark = cell.office === "GERMANTOWN";
+  const light = cell.office === "BETHESDA";
+
+  return (
+    <div
+      className={`flex min-h-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg p-1.5 text-center ${light ? "border border-slate-300" : ""} ${dark ? "text-white" : ""}`}
+      style={cell.office ? { background: OFFICE_COLOR[cell.office] } : undefined}
+    >
+      <div className={`text-[10px] font-bold uppercase tracking-wide ${dark ? "text-white/50" : "opacity-40"}`}>{HALF_LABELS[half]}</div>
+      {cell.isProvider && cell.office ? (
+        <>
+          <div className="text-sm font-extrabold sm:text-base">{OFFICE_LABELS[cell.office]}</div>
+          <div className={`text-xs font-bold sm:text-sm ${dark ? "text-white/70" : "opacity-70"}`}>
+            Seeing patients{cell.scribeName ? ` — ${cell.scribeName} scribing` : ""}
+          </div>
+          {cell.lateMinutes ? (
+            <div className={`text-xs font-bold ${dark ? "text-amber-400" : "text-amber-700"}`}>{cell.lateMinutes}m late</div>
+          ) : null}
+        </>
+      ) : cell.office && cell.role ? (
+        <>
+          <div className="text-sm font-extrabold sm:text-base">{OFFICE_LABELS[cell.office]}</div>
+          <div className={`text-xs font-bold sm:text-sm ${dark ? "text-white/70" : "opacity-70"}`}>
+            {cell.role === "SCRIBE" ? `Scribe for ${cell.providerName}` : ROLE_LABEL[cell.role]}
+          </div>
+          {cell.lateMinutes ? (
+            <div className={`text-xs font-bold ${dark ? "text-amber-400" : "text-amber-700"}`}>{cell.lateMinutes}m late</div>
+          ) : null}
+          {cell.isOut && cell.coveringName && (
+            <div className={`text-xs font-bold ${dark ? "text-amber-400" : "text-amber-700"}`}>
+              You&apos;re out — covered by {cell.coveringName}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-2xl font-bold opacity-25">—</span>
+          {cell.isOut && <span className="text-xs font-bold text-red-500">Out</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Only ever renders the signed-in person's own row — nobody else's schedule
 // is reachable from this view, by design (see getWeekScheduleForAllStaff).
+// The 5 day-rows are flex-1, so together they always exactly fill whatever
+// height FullHeightFrame (in the page) hands down — no more, no less, no
+// scrolling either way.
 export default function MyScheduleView({ rows }: { rows: MyScheduleRow[] }) {
   const { current, ready } = useWhoAmI();
 
@@ -38,50 +90,22 @@ export default function MyScheduleView({ rows }: { rows: MyScheduleRow[] }) {
   const today = todayStr();
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
+    <div className="flex h-full min-h-0 flex-col gap-1">
       {row.days.map((day) => (
         <div
           key={day.date}
-          className={`rounded-2xl border-2 p-3 ${day.date === today ? "border-amber-300 accent-bg-softer" : "accent-border-soft"}`}
+          className={`flex min-h-0 flex-1 items-stretch gap-1.5 rounded-xl border-2 p-1 ${
+            day.date === today ? "border-amber-300 accent-bg-softer" : "accent-border-soft"
+          }`}
         >
-          <div className="mb-2 text-center">
-            <div className="text-sm font-extrabold tracking-tight">{WEEKDAY_LABELS[day.weekday]}</div>
-            <div className="text-xs font-bold opacity-40">{formatShort(day.date)}</div>
+          <div className="flex w-12 shrink-0 flex-col items-center justify-center text-center">
+            <div className="text-xs font-extrabold tracking-tight">{WEEKDAY_LABELS[weekdayIndex(day.date)!].slice(0, 3)}</div>
+            <div className="text-[10px] font-bold opacity-40">{formatShort(day.date)}</div>
           </div>
-          <div className="space-y-2">
-            {HALVES.map((half) => {
-              const cell = day.halves[half];
-              return (
-                <div key={half} className="accent-border-soft rounded-xl border-2 p-2">
-                  <div className="mb-1 text-[10px] font-bold uppercase tracking-wide opacity-40">{HALF_LABELS[half]}</div>
-                  {cell.isProvider && cell.office ? (
-                    <div className="text-sm">
-                      <div className="font-extrabold">{OFFICE_LABELS[cell.office]}</div>
-                      <div className="font-bold opacity-70">
-                        Seeing patients{cell.scribeName ? ` — ${cell.scribeName} scribing` : ""}
-                        {cell.lateMinutes ? ` (${cell.lateMinutes}m late)` : ""}
-                      </div>
-                    </div>
-                  ) : cell.office && cell.role ? (
-                    <div className="text-sm">
-                      <div className="font-extrabold">{OFFICE_LABELS[cell.office]}</div>
-                      <div className="font-bold opacity-70">
-                        {cell.role === "SCRIBE" ? `Scribe for ${cell.providerName}` : ROLE_LABEL[cell.role]}
-                        {cell.lateMinutes ? ` (${cell.lateMinutes}m late)` : ""}
-                      </div>
-                      {cell.isOut && (
-                        <div className="mt-1 text-xs font-bold text-amber-700">You&apos;re out — covered by {cell.coveringName}</div>
-                      )}
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="text-sm font-bold opacity-25">—</div>
-                      {cell.isOut && <div className="text-xs font-bold text-red-500">Out</div>}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <div className="flex min-h-0 flex-1 gap-1">
+            {HALVES.map((half) => (
+              <HalfBox key={half} half={half} cell={day.halves[half]} />
+            ))}
           </div>
         </div>
       ))}

@@ -23,6 +23,15 @@ export function addDays(dateStr: string, delta: number): string {
   return dt.toISOString().slice(0, 10);
 }
 
+// The next weekday after dateStr — Friday's next business day is Monday, so
+// a run of dates spanning a weekend still counts as one continuous stretch
+// (used to group consecutive day-off requests into a single approval).
+export function nextBusinessDay(dateStr: string): string {
+  let next = addDays(dateStr, 1);
+  while (weekdayIndex(next) === null) next = addDays(next, 1);
+  return next;
+}
+
 export function formatLong(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));
@@ -44,6 +53,17 @@ export function mondayOf(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   const jsDay = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); // 0=Sun..6=Sat
   const deltaToMonday = jsDay === 0 ? -6 : 1 - jsDay;
+  return addDays(dateStr, deltaToMonday);
+}
+
+// The Monday on/after dateStr — the opposite direction from mondayOf, used
+// when landing a month's 1st on a week: mondayOf would often roll backward
+// into the previous month (e.g. October 1st, a Thursday, lands on September
+// 28th), which reads as "went back a week" even though nothing did.
+export function mondayOnOrAfter(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const jsDay = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); // 0=Sun..6=Sat
+  const deltaToMonday = (8 - jsDay) % 7;
   return addDays(dateStr, deltaToMonday);
 }
 

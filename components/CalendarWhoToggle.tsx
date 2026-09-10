@@ -2,11 +2,26 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { firstOfMonth, mondayOf } from "@/lib/date";
+import { firstOfMonth, mondayOf, mondayOnOrAfter, todayStr } from "@/lib/date";
 
 // Matches Tailwind's `lg` breakpoint — the same width each grid's own
 // column layout switches on.
 const DESKTOP_BREAKPOINT = 1024;
+
+// A week link's anchor is either an actual Monday already (coming from a
+// week page — mondayOnOrAfter is then a no-op) or a month's 1st (coming
+// from a month page). Two things go wrong if you just use mondayOf() there:
+// 1. Anchored to the CURRENT month, mondayOf(the 1st) gives "the week
+//    containing the 1st", which is only the current week for the first few
+//    days of the month — any later, it's an earlier week entirely.
+// 2. Anchored to any OTHER month, mondayOf often rolls backward into the
+//    previous month (e.g. October 1st, a Thursday, lands on September
+//    28th) — landing on "an earlier week" every single time you switch to
+//    Week view, which is exactly the bug this fixes.
+function weekAnchorFor(anchorDate: string): string {
+  if (anchorDate === firstOfMonth(todayStr())) return mondayOf(todayStr());
+  return mondayOnOrAfter(anchorDate);
+}
 
 // providersView/staffView are only meaningful for the matching `who` value —
 // which of the two sub-views (month, computer-oriented; week, mobile-
@@ -35,12 +50,12 @@ export default function CalendarWhoToggle({
 
   function goToProviders() {
     router.push(
-      isDesktop() ? `/calendar/providers/month/${firstOfMonth(anchorDate)}` : `/calendar/providers/week/${mondayOf(anchorDate)}`
+      isDesktop() ? `/calendar/providers/month/${firstOfMonth(anchorDate)}` : `/calendar/providers/week/${weekAnchorFor(anchorDate)}`
     );
   }
 
   function goToStaff() {
-    router.push(isDesktop() ? `/calendar/staff/month/${firstOfMonth(anchorDate)}` : `/calendar/staff/week/${mondayOf(anchorDate)}`);
+    router.push(isDesktop() ? `/calendar/staff/month/${firstOfMonth(anchorDate)}` : `/calendar/staff/week/${weekAnchorFor(anchorDate)}`);
   }
 
   const activeStyle = { background: "var(--theme-accent)", color: "#334155" };
@@ -66,7 +81,7 @@ export default function CalendarWhoToggle({
             Month
           </Link>
           <Link
-            href={`/calendar/providers/week/${mondayOf(anchorDate)}`}
+            href={`/calendar/providers/week/${weekAnchorFor(anchorDate)}`}
             className="rounded-full px-2.5 py-1"
             style={providersView === "week" ? activeStyle : undefined}
           >
@@ -85,7 +100,7 @@ export default function CalendarWhoToggle({
             Month
           </Link>
           <Link
-            href={`/calendar/staff/week/${mondayOf(anchorDate)}`}
+            href={`/calendar/staff/week/${weekAnchorFor(anchorDate)}`}
             className="rounded-full px-2.5 py-1"
             style={staffView === "week" ? activeStyle : undefined}
           >

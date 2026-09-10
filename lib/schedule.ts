@@ -7,7 +7,7 @@ export type ProviderCell = {
   // assignmentId is set only for an explicit substitute (a real Assignment
   // row, removable via DELETE); null for a computed default (dedicated or
   // fallback), removable instead via an AutoOverride.
-  scribe: { staffId: string; name: string; substitute: boolean; assignmentId: string | null; lateMinutes: number | null } | null;
+  scribe: { staffId: string; name: string; color: string; substitute: boolean; assignmentId: string | null; lateMinutes: number | null } | null;
 };
 
 export type AssignmentCell = {
@@ -15,6 +15,7 @@ export type AssignmentCell = {
   role: string;
   staffId: string;
   name: string;
+  color: string;
   providerId: string | null;
   providerName: string | null;
   lateMinutes: number | null;
@@ -217,27 +218,47 @@ function resolveFallback(
 export async function getDaySchedule(date: string): Promise<DaySchedule> {
   const weekday = weekdayIndex(date);
 
-  const [scheduleSlots, providerAbsences, providerAutoOverrides, staff, staffAbsences, assignments, scribeFallbacks, autoOverrides, allProviders] =
-    await Promise.all([
-      weekday === null
-        ? Promise.resolve([])
-        : prisma.providerScheduleSlot.findMany({
-            where: { weekday },
-            include: { provider: true },
-          }),
-      prisma.providerAbsence.findMany({ where: { date } }),
-      prisma.providerAutoOverride.findMany({ where: { date } }),
-      prisma.staff.findMany({
-        where: { active: true },
-        include: { dedicatedProvider: true, xrayBackupAs: true },
-      }),
-      prisma.staffAbsence.findMany({ where: { date } }),
-      prisma.assignment.findMany({ where: { date }, include: { staff: true, provider: true } }),
-      weekday === null ? Promise.resolve([]) : prisma.scribeFallback.findMany({ where: { weekday } }),
-      prisma.autoOverride.findMany({ where: { date } }),
-      prisma.provider.findMany({ where: { active: true }, select: { name: true } }),
-    ]);
+  const [
+    scheduleSlots,
+    providerAbsences,
+    providerAutoOverrides,
+    staff,
+    staffAbsences,
+    assignments,
+    scribeFallbacks,
+    autoOverrides,
+    allProviders,
+    staffTemplateSlots,
+    optedInRows,
+  ] = await Promise.all([
+    weekday === null
+      ? Promise.resolve([])
+      : prisma.providerScheduleSlot.findMany({
+          where: { weekday },
+          include: { provider: true },
+        }),
+    prisma.providerAbsence.findMany({ where: { date } }),
+    prisma.providerAutoOverride.findMany({ where: { date } }),
+    prisma.staff.findMany({
+      where: { active: true },
+      include: { dedicatedProvider: true, xrayBackupAs: true },
+    }),
+    // A PENDING day-off request doesn't block anything until Joanna approves
+    // it — see the StaffAbsence schema comment.
+    prisma.staffAbsence.findMany({ where: { date, status: "APPROVED" } }),
+    prisma.assignment.findMany({ where: { date }, include: { staff: true, provider: true } }),
+    weekday === null ? Promise.resolve([]) : prisma.scribeFallback.findMany({ where: { weekday } }),
+    prisma.autoOverride.findMany({ where: { date } }),
+    prisma.provider.findMany({ where: { active: true }, select: { name: true } }),
+    weekday === null ? Promise.resolve([]) : prisma.staffScheduleSlot.findMany({ where: { weekday }, include: { provider: true } }),
+    // Opted-in status is per PERSON, not per weekday — someone with a
+    // template row on any other day has still fully switched over, even if
+    // today happens to be a gap (= off duty) in what they filled in.
+    prisma.staffScheduleSlot.findMany({ select: { staffId: true }, distinct: ["staffId"] }),
+  ]);
   const providerNames = new Set(allProviders.map((p) => p.name));
+  const optedInStaffIds = new Set(optedInRows.map((r) => r.staffId));
+  const templateSlotFor = (staffId: string, half: Half) => staffTemplateSlots.find((t) => t.staffId === staffId && t.half === half);
 
   const { isAbsent: isProviderAbsent, isActive: isProviderActive } = buildActivity(scheduleSlots, providerAbsences, providerAutoOverrides);
 
@@ -256,14 +277,30 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
 
   // A scribe whose own doctor doesn't need them this half, but who has a
   // fallback row naming `providerId` as their target — e.g. Reda defaults to
-  // Brian on Friday PM whenever Christo doesn't need her.
+  // Brian on Friday PM whenever Christo doesn't need her. Opted-in staff
+  // (see StaffScheduleSlot) skip this legacy path entirely — their personal
+  // template is the only source of truth once they have one.
   const resolveTargetScribe = (providerId: string, half: Half) => {
     if (weekday === null) return null;
     for (const s of staff) {
+      if (optedInStaffIds.has(s.id)) continue;
       if (!s.dedicatedProviderId || isProviderActive(s.dedicatedProviderId, half)) continue;
       if (isStaffAbsent(s.id, half) || isStaffAssigned(s.id, half) || isOverridden(s.id, half)) continue;
       const row = resolveFallback(scribeFallbacks, s.id, weekday, half, isProviderActive);
-      if (row?.targetProviderId === providerId) return { staffId: s.id, name: s.name };
+      if (row?.targetProviderId === providerId) return { staffId: s.id, name: s.name, color: s.color };
+    }
+    return null;
+  };
+
+  // A staff member's own weekly template naming `providerId` as who they
+  // scribe for this exact weekday+half — the self-service replacement for
+  // dedicatedProviderId, checked only for staff who've opted in.
+  const resolveTemplateScribe = (providerId: string, half: Half) => {
+    for (const s of staff) {
+      if (!optedInStaffIds.has(s.id)) continue;
+      if (isStaffAbsent(s.id, half) || isStaffAssigned(s.id, half) || isOverridden(s.id, half)) continue;
+      const slot = templateSlotFor(s.id, half);
+      if (slot?.role === "SCRIBE" && slot.providerId === providerId) return { staffId: s.id, name: s.name, color: s.color };
     }
     return null;
   };
@@ -280,25 +317,37 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
       );
 
       const providers: ProviderCell[] = activeSlots.map((s) => {
-        const dedicated = staff.find((st) => st.dedicatedProviderId === s.providerId);
+        const dedicated = staff.find((st) => st.dedicatedProviderId === s.providerId && !optedInStaffIds.has(st.id));
         const explicitSub = assignments.find(
           (a) => a.role === "SCRIBE" && a.providerId === s.providerId && a.half === half
         );
         const dedicatedAbsent = dedicated ? isStaffAbsent(dedicated.id, half) : true;
+        const templateScribe = resolveTemplateScribe(s.providerId, half);
 
         let scribe: ProviderCell["scribe"] = null;
         if (explicitSub) {
           scribe = {
             staffId: explicitSub.staffId,
             name: explicitSub.staff.name,
+            color: explicitSub.staff.color,
             substitute: true,
             assignmentId: explicitSub.id,
             lateMinutes: lateStaffMinutes(explicitSub.staffId),
+          };
+        } else if (templateScribe) {
+          scribe = {
+            staffId: templateScribe.staffId,
+            name: templateScribe.name,
+            color: templateScribe.color,
+            substitute: false,
+            assignmentId: null,
+            lateMinutes: lateStaffMinutes(templateScribe.staffId),
           };
         } else if (dedicated && !dedicatedAbsent && !isOverridden(dedicated.id, half) && !isStaffAssigned(dedicated.id, half)) {
           scribe = {
             staffId: dedicated.id,
             name: dedicated.name,
+            color: dedicated.color,
             substitute: false,
             assignmentId: null,
             lateMinutes: lateStaffMinutes(dedicated.id),
@@ -309,6 +358,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
             scribe = {
               staffId: target.staffId,
               name: target.name,
+              color: target.color,
               substitute: false,
               assignmentId: null,
               lateMinutes: lateStaffMinutes(target.staffId),
@@ -333,6 +383,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
         role: a.role,
         staffId: a.staffId,
         name: a.staff.name,
+        color: a.staff.color,
         providerId: a.providerId ?? null,
         providerName: a.provider?.name ?? null,
         lateMinutes: lateStaffMinutes(a.staffId),
@@ -347,6 +398,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
       const autoRoomingEntries: AssignmentCell[] = [];
       if (weekday !== null) {
         for (const s of staff) {
+          if (optedInStaffIds.has(s.id)) continue;
           if (isStaffAbsent(s.id, half) || isStaffAssigned(s.id, half) || isOverridden(s.id, half)) continue;
           if (!s.dedicatedProviderId || isProviderActive(s.dedicatedProviderId, half)) continue;
 
@@ -359,6 +411,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
               role: "ROOMING",
               staffId: s.id,
               name: s.name,
+              color: s.color,
               providerId: null,
               providerName: null,
               lateMinutes: lateStaffMinutes(s.id),
@@ -377,6 +430,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
       const autoDefaultRoomingEntries: AssignmentCell[] = staff
         .filter(
           (s) =>
+            !optedInStaffIds.has(s.id) &&
             s.defaultRoomingOffice === office &&
             !isStaffAbsent(s.id, half) &&
             !isStaffAssigned(s.id, half) &&
@@ -387,6 +441,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
           role: "ROOMING",
           staffId: s.id,
           name: s.name,
+          color: s.color,
           providerId: null,
           providerName: null,
           lateMinutes: lateStaffMinutes(s.id),
@@ -394,9 +449,35 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
           hardCommitment: true,
         }));
 
+      // A staff member's own weekly template putting them at this office for
+      // ROOMING or XRAY this exact weekday+half — the self-service
+      // replacement for defaultRoomingOffice/defaultXrayOffice, checked only
+      // for opted-in staff (see StaffScheduleSlot). Both count as a hard
+      // commitment, same as the legacy standing defaults they replace.
+      const autoTemplateEntries: AssignmentCell[] = staff
+        .filter((s) => optedInStaffIds.has(s.id) && !isStaffAbsent(s.id, half) && !isStaffAssigned(s.id, half) && !isOverridden(s.id, half))
+        .flatMap((s) => {
+          const slot = templateSlotFor(s.id, half);
+          if (!slot || slot.office !== office || (slot.role !== "ROOMING" && slot.role !== "XRAY")) return [];
+          return [
+            {
+              id: `auto:${s.id}`,
+              role: slot.role,
+              staffId: s.id,
+              name: s.name,
+              color: s.color,
+              providerId: null,
+              providerName: null,
+              lateMinutes: lateStaffMinutes(s.id),
+              auto: true,
+              hardCommitment: true,
+            },
+          ];
+        });
+
       // Default x-ray tech for this office (e.g. Cindy in Bethesda), unless
       // absent or opted out — same "auto" treatment as the scribe/aid defaults.
-      const defaultXrayStaff = staff.find((s) => s.defaultXrayOffice === office);
+      const defaultXrayStaff = staff.find((s) => !optedInStaffIds.has(s.id) && s.defaultXrayOffice === office);
       const autoXrayEntries: AssignmentCell[] =
         defaultXrayStaff &&
         !isStaffAbsent(defaultXrayStaff.id, half) &&
@@ -408,6 +489,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
                 role: "XRAY",
                 staffId: defaultXrayStaff.id,
                 name: defaultXrayStaff.name,
+                color: defaultXrayStaff.color,
                 providerId: null,
                 providerName: null,
                 lateMinutes: lateStaffMinutes(defaultXrayStaff.id),
@@ -417,15 +499,28 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
             ]
           : [];
 
+      // Backup-xray eligibility needs each person's EFFECTIVE default xray
+      // office — the legacy field for anyone still on it, or their personal
+      // template's XRAY office (if any) once opted in — so "your usual spot"
+      // still resolves correctly after switching over.
+      const xrayEligibilityStaff = staff.map((s) => ({
+        ...s,
+        defaultXrayOffice: optedInStaffIds.has(s.id) ? (templateSlotFor(s.id, half)?.role === "XRAY" ? templateSlotFor(s.id, half)!.office : null) : s.defaultXrayOffice,
+      }));
       const xrayEligible =
-        weekday === null ? [] : computeXrayEligible(office, half, staff, isStaffAbsent, isStaffAssigned, isOverridden);
+        weekday === null ? [] : computeXrayEligible(office, half, xrayEligibilityStaff, isStaffAbsent, isStaffAssigned, isOverridden);
 
       const rooming = [
         ...officeAssignments.filter((a) => a.role === "ROOMING").map(toCell),
         ...autoRoomingEntries,
         ...autoDefaultRoomingEntries,
+        ...autoTemplateEntries.filter((e) => e.role === "ROOMING"),
       ];
-      const xray = [...officeAssignments.filter((a) => a.role === "XRAY").map(toCell), ...autoXrayEntries];
+      const xray = [
+        ...officeAssignments.filter((a) => a.role === "XRAY").map(toCell),
+        ...autoXrayEntries,
+        ...autoTemplateEntries.filter((e) => e.role === "XRAY"),
+      ];
       const staffCount = providers.filter((p) => p.scribe).length + rooming.length + xray.length;
 
       halves[half][office] = {
@@ -485,7 +580,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
 export async function getFreeStaff(date: string): Promise<Record<Half, FreeStaffMember[]>> {
   const [staff, staffAbsences, assignments] = await Promise.all([
     prisma.staff.findMany({ where: { active: true } }),
-    prisma.staffAbsence.findMany({ where: { date } }),
+    prisma.staffAbsence.findMany({ where: { date, status: "APPROVED" } }),
     prisma.assignment.findMany({ where: { date } }),
   ]);
 
@@ -527,11 +622,13 @@ export async function getXrayEligible(date: string, office: Office, half: Half):
   const weekday = weekdayIndex(date);
   if (weekday === null) return [];
 
-  const [staff, staffAbsences, assignments, autoOverrides] = await Promise.all([
+  const [staff, staffAbsences, assignments, autoOverrides, templateSlots, optedInRows] = await Promise.all([
     prisma.staff.findMany({ where: { active: true }, include: { xrayBackupAs: true } }),
-    prisma.staffAbsence.findMany({ where: { date } }),
+    prisma.staffAbsence.findMany({ where: { date, status: "APPROVED" } }),
     prisma.assignment.findMany({ where: { date } }),
     prisma.autoOverride.findMany({ where: { date } }),
+    prisma.staffScheduleSlot.findMany({ where: { weekday, half } }),
+    prisma.staffScheduleSlot.findMany({ select: { staffId: true }, distinct: ["staffId"] }),
   ]);
 
   const isStaffAbsent = (staffId: string, h: Half) =>
@@ -539,7 +636,19 @@ export async function getXrayEligible(date: string, office: Office, half: Half):
   const isStaffAssigned = (staffId: string, h: Half) => assignments.some((a) => a.staffId === staffId && a.half === h);
   const isOverridden = (staffId: string, h: Half) => autoOverrides.some((o) => o.staffId === staffId && o.half === h);
 
-  return computeXrayEligible(office, half, staff, isStaffAbsent, isStaffAssigned, isOverridden);
+  // Same effective-office adaptation as getDaySchedule: once someone has any
+  // personal template row at all (any weekday/half — opted-in status isn't
+  // specific to this one), their template's XRAY office for THIS half (if
+  // any) is what "your usual spot" means now, not the legacy field.
+  const optedInStaffIds = new Set(optedInRows.map((r) => r.staffId));
+  const xrayEligibilityStaff = staff.map((s) => ({
+    ...s,
+    defaultXrayOffice: optedInStaffIds.has(s.id)
+      ? (templateSlots.find((t) => t.staffId === s.id)?.role === "XRAY" ? (templateSlots.find((t) => t.staffId === s.id)!.office ?? null) : null)
+      : s.defaultXrayOffice,
+  }));
+
+  return computeXrayEligible(office, half, xrayEligibilityStaff, isStaffAbsent, isStaffAssigned, isOverridden);
 }
 
 // Where a staff member currently sits for one half — office/role/providerId
@@ -627,16 +736,21 @@ function blankCell(isOut: boolean, lateMinutes: number | null): MyScheduleCell {
 export async function getWeekScheduleForAllStaff(mondayStr: string): Promise<MyScheduleRow[]> {
   const dates = weekDates(mondayStr);
 
-  const [staff, allScheduleSlots, providerAbsences, providerAutoOverrides, staffAbsences, scribeFallbacks, providers, days] = await Promise.all([
-    prisma.staff.findMany({ where: { active: true, usesApp: true }, orderBy: { name: "asc" } }),
-    prisma.providerScheduleSlot.findMany(),
-    prisma.providerAbsence.findMany({ where: { date: { in: dates } } }),
-    prisma.providerAutoOverride.findMany({ where: { date: { in: dates } } }),
-    prisma.staffAbsence.findMany({ where: { date: { in: dates } } }),
-    prisma.scribeFallback.findMany(),
-    prisma.provider.findMany({ where: { active: true }, select: { id: true, name: true } }),
-    Promise.all(dates.map((date) => getDaySchedule(date))),
-  ]);
+  const [staff, allScheduleSlots, providerAbsences, providerAutoOverrides, staffAbsences, scribeFallbacks, providers, allStaffTemplateSlots, days] =
+    await Promise.all([
+      prisma.staff.findMany({ where: { active: true, usesApp: true }, orderBy: { name: "asc" } }),
+      prisma.providerScheduleSlot.findMany(),
+      prisma.providerAbsence.findMany({ where: { date: { in: dates } } }),
+      prisma.providerAutoOverride.findMany({ where: { date: { in: dates } } }),
+      // A PENDING day-off request shouldn't show you as "out" until Joanna
+      // approves it — see the StaffAbsence schema comment.
+      prisma.staffAbsence.findMany({ where: { date: { in: dates }, status: "APPROVED" } }),
+      prisma.scribeFallback.findMany(),
+      prisma.provider.findMany({ where: { active: true }, select: { id: true, name: true } }),
+      prisma.staffScheduleSlot.findMany(),
+      Promise.all(dates.map((date) => getDaySchedule(date))),
+    ]);
+  const optedInStaffIds = new Set(allStaffTemplateSlots.map((t) => t.staffId));
 
   // A PA-C (or similar) who logs in as staff but is actually scheduled as a
   // Provider — a shadow Staff record sharing their exact name (see Staff.kind
@@ -719,18 +833,30 @@ export async function getWeekScheduleForAllStaff(mondayStr: string): Promise<MyS
 
         let duty: { office: Office; role: Role; providerId: string | null } | null = null;
 
-        if (s.dedicatedProviderId && isActive(s.dedicatedProviderId, half)) {
-          const slot = weekdaySlots.find((row) => row.providerId === s.dedicatedProviderId && row.half === half);
-          if (slot?.office) duty = { office: slot.office as Office, role: "SCRIBE", providerId: s.dedicatedProviderId };
-        } else {
-          const fallbackRow = resolveFallback(scribeFallbacks, s.id, weekday, half, isActive);
-          if (fallbackRow?.targetProviderId) {
-            const slot = weekdaySlots.find((row) => row.providerId === fallbackRow.targetProviderId && row.half === half);
-            if (slot?.office) duty = { office: slot.office as Office, role: "SCRIBE", providerId: fallbackRow.targetProviderId };
+        if (optedInStaffIds.has(s.id)) {
+          // Personal template is the only source once opted in — see
+          // getDaySchedule for the matching logic this mirrors.
+          const templateSlot = allStaffTemplateSlots.find((t) => t.staffId === s.id && t.weekday === weekday && t.half === half);
+          if (templateSlot?.role === "SCRIBE" && templateSlot.providerId && isActive(templateSlot.providerId, half)) {
+            const slot = weekdaySlots.find((row) => row.providerId === templateSlot.providerId && row.half === half);
+            if (slot?.office) duty = { office: slot.office as Office, role: "SCRIBE", providerId: templateSlot.providerId };
+          } else if (templateSlot?.role === "XRAY" && templateSlot.office) {
+            duty = { office: templateSlot.office as Office, role: "XRAY", providerId: null };
           }
-        }
-        if (!duty && s.defaultXrayOffice) {
-          duty = { office: s.defaultXrayOffice as Office, role: "XRAY", providerId: null };
+        } else {
+          if (s.dedicatedProviderId && isActive(s.dedicatedProviderId, half)) {
+            const slot = weekdaySlots.find((row) => row.providerId === s.dedicatedProviderId && row.half === half);
+            if (slot?.office) duty = { office: slot.office as Office, role: "SCRIBE", providerId: s.dedicatedProviderId };
+          } else {
+            const fallbackRow = resolveFallback(scribeFallbacks, s.id, weekday, half, isActive);
+            if (fallbackRow?.targetProviderId) {
+              const slot = weekdaySlots.find((row) => row.providerId === fallbackRow.targetProviderId && row.half === half);
+              if (slot?.office) duty = { office: slot.office as Office, role: "SCRIBE", providerId: fallbackRow.targetProviderId };
+            }
+          }
+          if (!duty && s.defaultXrayOffice) {
+            duty = { office: s.defaultXrayOffice as Office, role: "XRAY", providerId: null };
+          }
         }
 
         if (!duty) {

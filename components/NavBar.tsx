@@ -7,8 +7,8 @@ export default function NavBar() {
 
   return (
     <header className="accent-border-soft border-b-2">
-      <div className="relative mx-auto flex max-w-6xl items-center justify-center px-4 py-4">
-        <span className="text-xl font-extrabold tracking-tight">CFA Ortho Schedule</span>
+      <div className="relative mx-auto flex max-w-6xl items-center justify-center px-4 py-2">
+        <span className="text-base font-extrabold tracking-tight">CFA Ortho Schedule</span>
         {current && (
           <button
             type="button"

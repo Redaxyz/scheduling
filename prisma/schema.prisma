@@ -26,6 +26,7 @@ model Provider {
   fallbackTargets    ScribeFallback[]       @relation("ScribeFallbackTarget")
   assignments        Assignment[]
   autoOverrides      ProviderAutoOverride[]
+  staffScheduleSlots StaffScheduleSlot[]
 }
 
 // Recurring weekly template: what office (if any) a provider is normally in
@@ -139,6 +140,32 @@ model Staff {
   autoOverrides     AutoOverride[]
   swapRequestsOnMyPosition SwapRequest[] @relation("SwapPosition")
   swapRequestsIMade        SwapRequest[] @relation("SwapRequestedBy")
+  scheduleSlots            StaffScheduleSlot[]
+}
+
+// A staff member's own weekly default template — the self-service
+// equivalent of ProviderScheduleSlot, but for staff: each person decides
+// where they normally are each weekday+half, instead of a manager hand-
+// coding it (dedicatedProviderId / ScribeFallback / defaultRoomingOffice /
+// defaultXrayOffice on Staff). role: "SCRIBE" | "ROOMING" | "XRAY" | null
+// (null/no row = off duty that half). office is set for ROOMING/XRAY;
+// providerId is set for SCRIBE. The moment a staff member has ANY row here,
+// getDaySchedule uses this table as their ONLY source of default
+// placement — a clean, all-or-nothing handoff rather than mixing old and
+// new sources for the same person.
+model StaffScheduleSlot {
+  id         String  @id @default(cuid())
+  staffId    String
+  weekday    Int
+  half       String
+  role       String?
+  office     String?
+  providerId String?
+
+  staff    Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  provider Provider? @relation(fields: [providerId], references: [id])
+
+  @@unique([staffId, weekday, half])
 }
 
 // Opts a staff member OUT of one of their own computed defaults (dedicated
@@ -197,6 +224,13 @@ model ScribeFallback {
 
 // half: "AM" | "PM" | "ALL" | "CUSTOM" — see ProviderAbsence for what CUSTOM
 // means (a non-blocking running-late note, with lateMinutes set).
+// status: "PENDING" | "APPROVED" — a day-off request (half "AM"/"PM"/"ALL")
+// a staff member submits for themselves starts PENDING and only actually
+// blocks scheduling once Joanna (the manager) approves it; declining just
+// deletes the row rather than keeping a rejected state around. A CUSTOM row
+// (running-late note) and anything a manager creates directly — for
+// herself or on someone else's behalf — skips the queue and is APPROVED
+// immediately, since there's nobody above her to ask.
 model StaffAbsence {
   id          String   @id @default(cuid())
   staffId     String
@@ -204,6 +238,7 @@ model StaffAbsence {
   half        String
   reason      String?
   lateMinutes Int?
+  status      String   @default("APPROVED")
   createdAt   DateTime @default(now())
 
   staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)

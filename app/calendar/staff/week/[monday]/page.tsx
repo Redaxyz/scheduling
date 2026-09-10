@@ -22,7 +22,7 @@ export default async function CalendarStaffWeekPage({ params }: { params: Promis
   const isThisWeek = monday === mondayOf(todayStr());
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-extrabold tracking-tight">

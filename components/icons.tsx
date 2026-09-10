@@ -20,12 +20,11 @@ export function CalendarIcon({ className, style }: IconProps) {
   );
 }
 
-export function UserOffIcon({ className, style }: IconProps) {
+export function HomeIcon({ className, style }: IconProps) {
   return (
     <svg {...base} className={className} style={style}>
-      <circle cx="12" cy="8" r="3.4" />
-      <path d="M5.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2" />
-      <path d="M4 4l16 16" />
+      <path d="M4 11.5 12 4l8 7.5" />
+      <path d="M6 9.8V20h12V9.8" />
     </svg>
   );
 }

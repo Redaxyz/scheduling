@@ -4,7 +4,7 @@ import { useEffect, useState, type ComponentType, type CSSProperties } from "rea
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { firstOfMonth, mondayOf, todayStr } from "@/lib/date";
-import { CalendarIcon, ClipboardIcon, QuadrantGridIcon, UserOffIcon } from "@/components/icons";
+import { CalendarIcon, ClipboardIcon, HomeIcon } from "@/components/icons";
 import { useWhoAmI } from "@/lib/whoami";
 import type { SwapRequestView } from "@/lib/swap";
 
@@ -43,14 +43,14 @@ export default function BottomNav() {
   const scheduleHref = incoming.length > 0 ? `/schedule/${incoming[0].date}` : `/schedule/${todayStr()}`;
 
   const tabs: Tab[] = [
-    { key: "absences", href: "/absences", match: "/absences", label: "Absences", Icon: UserOffIcon },
-    { key: "schedule", href: scheduleHref, match: "/schedule", label: "Schedule", Icon: CalendarIcon, primary: true, badge: incoming.length },
-    { key: "calendar", href: `/calendar/providers/month/${firstOfMonth(todayStr())}`, match: "/calendar", label: "Calendar", Icon: QuadrantGridIcon },
-    { key: "my-schedule", href: `/my-schedule/${mondayOf(todayStr())}`, match: "/my-schedule", label: "My Schedule", Icon: ClipboardIcon },
+    { key: "schedule", href: `/calendar/providers/month/${firstOfMonth(todayStr())}`, match: "/calendar", label: "Schedule", Icon: CalendarIcon },
+    { key: "home", href: scheduleHref, match: "/schedule", label: "Home", Icon: HomeIcon, primary: true, badge: incoming.length },
+    { key: "me", href: `/my-schedule/${mondayOf(todayStr())}`, match: "/my-schedule", label: "Me", Icon: ClipboardIcon },
   ];
 
   return (
     <nav
+      id="bottom-nav"
       className="accent-border-soft fixed inset-x-0 bottom-0 z-40 border-t-2 bg-white"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >

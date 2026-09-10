@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "CFA Ortho Schedule",
     short_name: "Schedule",
-    // Always land on the Schedule tab (which redirects to today) on launch,
+    // Always land on the Home tab (which redirects to today) on launch,
     // regardless of whatever page was open when this was added to the home screen.
     start_url: "/",
     display: "standalone",

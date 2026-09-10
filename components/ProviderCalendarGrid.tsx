@@ -4,14 +4,34 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ProviderCalendarRow, ProviderHalfCell } from "@/lib/calendar";
 import { weekdayIndex } from "@/lib/date";
-import { HALVES, HALF_LABELS, type Half } from "@/lib/types";
+import { HALVES, HALF_LABELS, OFFICE_LABELS, type Half, type Office } from "@/lib/types";
 import { useWhoAmI } from "@/lib/whoami";
-import { SURGERY_COLOR, OFF_COLOR } from "@/lib/colors";
+import { SURGERY_COLOR, OFF_COLOR, OFFICE_COLOR } from "@/lib/colors";
 
-const STATUS_COLOR = { PRESENT: "#579669", ABSENT: OFF_COLOR, SURGERY: SURGERY_COLOR } as const;
+// PRESENT isn't one fixed color anymore — it's whichever office the weekly
+// template has them at that half (white for Bethesda, near-black for
+// Germantown; see lib/colors.ts). A PRESENT half with no template office at
+// all is "off duty" — a gap in the template, not a real absence — shown in
+// neutral gray.
+const OFF_DUTY_COLOR = "#cbd5e1";
 const STATUS_LABEL = { PRESENT: "present", ABSENT: "absent", SURGERY: "in surgery" } as const;
-// Click cycles PRESENT -> ABSENT -> SURGERY -> PRESENT.
+// Click cycles office -> absent -> surgery -> back to office. Coming back to
+// "office" never asks which one — a provider's office for a given weekday
+// half comes from the template and doesn't change week to week, so there's
+// nothing to cycle between Bethesda and Germantown.
 const NEXT_STATUS = { PRESENT: "ABSENT", ABSENT: "SURGERY", SURGERY: "PRESENT" } as const;
+const OFFICE_LETTER: Record<Office, string> = { BETHESDA: "B", GERMANTOWN: "G" };
+
+function cellColor(cell: ProviderHalfCell): string {
+  if (cell.status === "ABSENT") return OFF_COLOR;
+  if (cell.status === "SURGERY") return SURGERY_COLOR;
+  return cell.office ? OFFICE_COLOR[cell.office] : OFF_DUTY_COLOR;
+}
+
+// White-on-Bethesda is the one combination dark text instead of white.
+function cellTextClass(cell: ProviderHalfCell): string {
+  return cell.status === "PRESENT" && cell.office === "BETHESDA" ? "text-slate-700" : "text-white/90";
+}
 
 const WEEKDAY_LETTERS = ["M", "T", "W", "R", "F"];
 
@@ -72,23 +92,24 @@ export default function ProviderCalendarGrid({
 
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold opacity-60">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded" style={{ background: STATUS_COLOR.PRESENT }} /> Present
+          <span className="inline-block h-3 w-3 rounded border border-slate-300" style={{ background: OFFICE_COLOR.BETHESDA }} /> Bethesda
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded" style={{ background: STATUS_COLOR.ABSENT }} /> Absent
+          <span className="inline-block h-3 w-3 rounded" style={{ background: OFFICE_COLOR.GERMANTOWN }} /> Germantown
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded" style={{ background: STATUS_COLOR.SURGERY }} /> In surgery
+          <span className="inline-block h-3 w-3 rounded" style={{ background: OFF_COLOR }} /> Absent
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="relative inline-block h-3 w-3 rounded bg-slate-300">
-            <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-amber-500" />
-          </span>
-          Running late
+          <span className="inline-block h-3 w-3 rounded" style={{ background: SURGERY_COLOR }} /> In surgery
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded" style={{ background: OFF_DUTY_COLOR }} /> Off duty
         </span>
         {current && (
           <span className="opacity-70">
-            — tap AM or PM to cycle present → absent → in surgery (a soft white ring marks a usual surgery day from the weekly template)
+            — tap AM or PM to cycle office → absent → in surgery (office always comes back as wherever the weekly template has them; a
+            soft white ring marks a usual surgery day)
           </span>
         )}
       </div>
@@ -142,7 +163,10 @@ export default function ProviderCalendarGrid({
                   HALVES.map((half) => {
                     const cell = row.days[date][half];
                     const key = `${row.providerId}:${date}:${half}`;
-                    const label = `${row.name} — ${date} ${HALF_LABELS[half]}: ${STATUS_LABEL[cell.status]}${cell.fromTemplate ? " (usual surgery day)" : ""}${cell.late ? " (running late)" : ""}`;
+                    const officeName = cell.office ? OFFICE_LABELS[cell.office] : null;
+                    const label = `${row.name} — ${date} ${HALF_LABELS[half]}: ${
+                      cell.status === "PRESENT" && !officeName ? "off duty" : STATUS_LABEL[cell.status]
+                    }${officeName ? ` at ${officeName}` : ""}${cell.fromTemplate ? " (usual surgery day)" : ""}`;
                     return (
                       <td key={key} className={`p-1 text-center ${half === "AM" ? "border-l-2 accent-border-soft" : ""}`}>
                         <button
@@ -151,11 +175,14 @@ export default function ProviderCalendarGrid({
                           disabled={pending === key}
                           aria-label={`${label} (tap to toggle)`}
                           title={`${label} (tap to toggle)`}
-                          className="relative block w-full rounded-lg transition active:scale-95 disabled:opacity-40"
-                          style={{ background: STATUS_COLOR[cell.status], boxShadow: cell.fromTemplate ? "inset 0 0 0 2px rgba(255,255,255,0.6)" : undefined }}
+                          className="relative block w-full rounded-lg border border-slate-900/10 transition active:scale-95 disabled:opacity-40"
+                          style={{ background: cellColor(cell), boxShadow: cell.fromTemplate ? "inset 0 0 0 2px rgba(255,255,255,0.6)" : undefined }}
                         >
-                          <span className={`block w-full ${boxHeight}`} />
-                          {cell.late && <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-white bg-amber-500" />}
+                          <span
+                            className={`flex w-full items-center justify-center font-extrabold ${cellTextClass(cell)} ${boxHeight} ${dense ? "text-[9px]" : "text-xs"}`}
+                          >
+                            {cell.status === "PRESENT" && cell.office ? OFFICE_LETTER[cell.office] : ""}
+                          </span>
                         </button>
                       </td>
                     );
