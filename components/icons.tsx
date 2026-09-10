@@ -48,3 +48,13 @@ export function QuadrantGridIcon({ className, style }: IconProps) {
     </svg>
   );
 }
+
+// Two arrows pointing in opposite directions — swap.
+export function SwapIcon({ className, style }: IconProps) {
+  return (
+    <svg {...base} className={className} style={style}>
+      <path d="M4 8h15M15.5 4.5 19 8l-3.5 3.5" />
+      <path d="M20 16H5M8.5 12.5 5 16l3.5 3.5" />
+    </svg>
+  );
+}

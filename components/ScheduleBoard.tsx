@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { DaySchedule, FreeStaffMember, HalfSlot, ProviderCell } from "@/lib/schedule";
-import { HALVES, HALF_LABELS, OFFICES, OFFICE_LABELS, type Half } from "@/lib/types";
+import type { SwapRequestView } from "@/lib/swap";
+import { HALVES, HALF_LABELS, OFFICES, OFFICE_LABELS, type Half, type Role } from "@/lib/types";
 import { useWhoAmI } from "@/lib/whoami";
+import { SwapIcon } from "@/components/icons";
+import AutoRefresh from "@/components/AutoRefresh";
+
+const SWAP_POLL_MS = 8000;
 
 type Props = {
   date: string;
@@ -32,33 +37,33 @@ async function postJSON(url: string, method: string, body?: unknown) {
 export default function ScheduleBoard({ date, day, freeStaff }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  const { current } = useWhoAmI();
+  const currentId = current?.id ?? null;
+  const [swapRequests, setSwapRequests] = useState<SwapRequestView[]>([]);
+
+  const loadSwapRequests = useCallback(() => {
+    const params = new URLSearchParams({ date });
+    if (currentId) params.set("viewerId", currentId);
+    fetch(`/api/swap-requests?${params}`)
+      .then((r) => r.json())
+      .then((data: SwapRequestView[]) => setSwapRequests(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [date, currentId]);
+
+  useEffect(() => {
+    loadSwapRequests();
+    const id = window.setInterval(loadSwapRequests, SWAP_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [loadSwapRequests]);
 
   function refresh() {
     startTransition(() => router.refresh());
+    loadSwapRequests();
   }
-
-  const totalGap = Math.abs(day.officeTotals.BETHESDA - day.officeTotals.GERMANTOWN);
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
-        {OFFICES.map((office) => (
-          <div
-            key={office}
-            className={`rounded-2xl border-2 p-4 ${
-              day.needsMoreStaffing === office ? "border-amber-300 accent-bg-softer" : "accent-border-soft"
-            }`}
-          >
-            <div className="text-sm font-bold opacity-60">{OFFICE_LABELS[office]} — patients today</div>
-            <div className="text-2xl font-extrabold tracking-tight">{day.officeTotals[office]}</div>
-            {day.needsMoreStaffing === office && (
-              <div className="mt-1 text-xs font-bold text-amber-700">
-                Needs more staffing (+{totalGap} vs. {OFFICE_LABELS[office === "BETHESDA" ? "GERMANTOWN" : "BETHESDA"]})
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+      <AutoRefresh intervalMs={20000} />
 
       {HALVES.map((half) => (
         <div key={half}>
@@ -72,6 +77,8 @@ export default function ScheduleBoard({ date, day, freeStaff }: Props) {
                 free={freeStaff[half]}
                 reassignable={day.reassignable[half]}
                 onChanged={refresh}
+                currentId={currentId}
+                swapRequests={swapRequests}
               />
             ))}
           </div>
@@ -92,12 +99,16 @@ function OfficeHalfCell({
   free,
   reassignable,
   onChanged,
+  currentId,
+  swapRequests,
 }: {
   date: string;
   slot: HalfSlot;
   free: FreeStaffMember[];
   reassignable: { id: string; name: string }[];
   onChanged: () => void;
+  currentId: string | null;
+  swapRequests: SwapRequestView[];
 }) {
   const [error, setError] = useState<string | null>(null);
 
@@ -111,18 +122,36 @@ function OfficeHalfCell({
     }
   }
 
+  function toggleSwap(position: { role: Role; providerId: string | null; staffId: string }) {
+    if (!currentId) return;
+    run(() =>
+      postJSON("/api/swap-requests", "POST", {
+        date,
+        half: slot.half,
+        office: slot.office,
+        role: position.role,
+        providerId: position.providerId,
+        positionStaffId: position.staffId,
+        requestedByStaffId: currentId,
+      })
+    );
+  }
+
+  function respondSwap(requestId: string, accept: boolean) {
+    if (!currentId) return;
+    run(() => postJSON(`/api/swap-requests/${requestId}`, "POST", { staffId: currentId, accept }));
+  }
+
   const scribeEligible = free.filter((s) => s.canScribe);
   const columnCount = Math.max(slot.providers.length, 1);
 
-  const balanceClass =
-    slot.balance === "GOOD"
-      ? "border-emerald-200 bg-emerald-50"
-      : slot.balance === "NEEDS_HELP"
-        ? "border-red-200 bg-red-50"
-        : "accent-border-soft";
+  // Bethesda/Germantown always get the same office-identity color everywhere
+  // in the app (see lib/colors.ts) — green for Bethesda, a soft dark/slate
+  // tone standing in for Germantown's black.
+  const officeClass = slot.office === "BETHESDA" ? "border-emerald-200 bg-emerald-50" : "border-slate-300 bg-slate-100";
 
   return (
-    <div className={`rounded-2xl border-2 p-3 transition-colors sm:p-4 ${balanceClass}`}>
+    <div className={`rounded-2xl border-2 p-3 transition-colors sm:p-4 ${officeClass}`}>
       <h3 className="mb-3 font-extrabold tracking-tight">{OFFICE_LABELS[slot.office]}</h3>
 
       {error && <p className="mb-2 rounded-xl bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700">{error}</p>}
@@ -139,9 +168,12 @@ function OfficeHalfCell({
               cell={cell}
               scribeEligible={scribeEligible}
               reassignable={reassignable}
-              onChanged={onChanged}
               run={run}
               office={slot.office}
+              currentId={currentId}
+              swapRequests={swapRequests}
+              onToggleSwap={toggleSwap}
+              onRespondSwap={respondSwap}
             />
           ))}
         </div>
@@ -149,9 +181,14 @@ function OfficeHalfCell({
 
       <RoleGroup
         title="Support / rooming"
+        role="ROOMING"
         cells={slot.rooming}
         onRemove={(id) => run(() => postJSON(`/api/assignments/${id}`, "DELETE"))}
         onChangeAuto={(staffId) => run(() => postJSON("/api/auto-override", "POST", { staffId, date, half: slot.half }))}
+        currentId={currentId}
+        swapRequests={swapRequests}
+        onToggleSwap={toggleSwap}
+        onRespondSwap={respondSwap}
       >
         <TakeRoleButton
           options={free}
@@ -172,9 +209,14 @@ function OfficeHalfCell({
 
       <RoleGroup
         title="X-ray"
+        role="XRAY"
         cells={slot.xray}
         onRemove={(id) => run(() => postJSON(`/api/assignments/${id}`, "DELETE"))}
         onChangeAuto={(staffId) => run(() => postJSON("/api/auto-override", "POST", { staffId, date, half: slot.half }))}
+        currentId={currentId}
+        swapRequests={swapRequests}
+        onToggleSwap={toggleSwap}
+        onRespondSwap={respondSwap}
       >
         <TakeRoleButton
           options={slot.xrayEligible}
@@ -203,8 +245,11 @@ function ProviderColumn({
   cell,
   scribeEligible,
   reassignable,
-  onChanged,
   run,
+  currentId,
+  swapRequests,
+  onToggleSwap,
+  onRespondSwap,
 }: {
   date: string;
   half: Half;
@@ -212,8 +257,11 @@ function ProviderColumn({
   cell: ProviderCell;
   scribeEligible: FreeStaffMember[];
   reassignable: { id: string; name: string }[];
-  onChanged: () => void;
   run: (action: () => Promise<unknown>) => Promise<void>;
+  currentId: string | null;
+  swapRequests: SwapRequestView[];
+  onToggleSwap: (position: { role: Role; providerId: string | null; staffId: string }) => void;
+  onRespondSwap: (requestId: string, accept: boolean) => void;
 }) {
   return (
     <div className="min-w-0">
@@ -222,7 +270,6 @@ function ProviderColumn({
           {cell.provider.name}
           {cell.provider.lateMinutes && <span className="font-bold text-amber-700">{lateTag(cell.provider.lateMinutes)}</span>}
         </div>
-        <PatientCountInput date={date} half={half} providerId={cell.provider.id} value={cell.patientCount} onSaved={onChanged} />
       </div>
 
       <div className="accent-border-soft border-b-2 py-2">
@@ -234,16 +281,26 @@ function ProviderColumn({
               {cell.scribe.substitute ? " (sub)" : ""}
               {lateTag(cell.scribe.lateMinutes)}
             </span>
-            <button
-              onClick={() =>
-                cell.scribe!.assignmentId
-                  ? run(() => postJSON(`/api/assignments/${cell.scribe!.assignmentId}`, "DELETE"))
-                  : run(() => postJSON("/api/auto-override", "POST", { staffId: cell.scribe!.staffId, date, half }))
-              }
-              className="shrink-0 text-[10px] font-bold text-red-500 opacity-70 hover:opacity-100"
-            >
-              remove
-            </button>
+            <span className="flex shrink-0 items-center gap-1.5">
+              <SwapControl
+                position={{ role: "SCRIBE", providerId: cell.provider.id, staffId: cell.scribe.staffId }}
+                positionName={cell.scribe.name}
+                currentId={currentId}
+                swapRequests={swapRequests}
+                onToggleSwap={onToggleSwap}
+                onRespondSwap={onRespondSwap}
+              />
+              <button
+                onClick={() =>
+                  cell.scribe!.assignmentId
+                    ? run(() => postJSON(`/api/assignments/${cell.scribe!.assignmentId}`, "DELETE"))
+                    : run(() => postJSON("/api/auto-override", "POST", { staffId: cell.scribe!.staffId, date, half }))
+                }
+                className="text-[10px] font-bold text-red-500 opacity-70 hover:opacity-100"
+              >
+                remove
+              </button>
+            </span>
           </div>
         ) : (
           <div className="space-y-1">
@@ -274,15 +331,25 @@ function ProviderColumn({
 
 function RoleGroup({
   title,
+  role,
   cells,
   onRemove,
   onChangeAuto,
+  currentId,
+  swapRequests,
+  onToggleSwap,
+  onRespondSwap,
   children,
 }: {
   title: string;
+  role: Role;
   cells: { id: string; name: string; staffId: string; providerName: string | null; auto?: boolean; lateMinutes?: number | null }[];
   onRemove: (id: string) => void;
   onChangeAuto: (staffId: string) => void;
+  currentId: string | null;
+  swapRequests: SwapRequestView[];
+  onToggleSwap: (position: { role: Role; providerId: string | null; staffId: string }) => void;
+  onRespondSwap: (requestId: string, accept: boolean) => void;
   children: React.ReactNode;
 }) {
   return (
@@ -297,12 +364,22 @@ function RoleGroup({
               {c.providerName ? ` — supporting ${c.providerName}` : ""}
               {lateTag(c.lateMinutes ?? null)}
             </span>
-            <button
-              onClick={() => (c.auto ? onChangeAuto(c.staffId) : onRemove(c.id))}
-              className="text-xs font-bold text-red-500 opacity-70 hover:opacity-100"
-            >
-              remove
-            </button>
+            <span className="flex shrink-0 items-center gap-2">
+              <SwapControl
+                position={{ role, providerId: null, staffId: c.staffId }}
+                positionName={c.name}
+                currentId={currentId}
+                swapRequests={swapRequests}
+                onToggleSwap={onToggleSwap}
+                onRespondSwap={onRespondSwap}
+              />
+              <button
+                onClick={() => (c.auto ? onChangeAuto(c.staffId) : onRemove(c.id))}
+                className="text-xs font-bold text-red-500 opacity-70 hover:opacity-100"
+              >
+                remove
+              </button>
+            </span>
           </li>
         ))}
       </ul>
@@ -374,45 +451,90 @@ function TakeRoleButton({
   );
 }
 
-function PatientCountInput({
-  date,
-  half,
-  providerId,
-  value,
-  onSaved,
-}: {
-  date: string;
-  half: Half;
-  providerId: string;
-  value: number | null;
-  onSaved: () => void;
-}) {
-  const [local, setLocal] = useState(value === null ? "" : String(value));
-  const [saving, setSaving] = useState(false);
 
-  async function save() {
-    if (local === "") return;
-    setSaving(true);
-    try {
-      await postJSON("/api/patient-counts", "PUT", { providerId, date, half, count: Number(local) });
-      onSaved();
-    } finally {
-      setSaving(false);
-    }
+// The two-arrows swap control shown next to a position's remove button.
+// Clicking it on your own position broadcasts that you're open to swap it
+// (visible to everyone, click again to retract); clicking it on someone
+// else's position sends a direct proposal that only they can see and
+// accept/deny — accepting trades your current position for theirs.
+function SwapControl({
+  position,
+  positionName,
+  currentId,
+  swapRequests,
+  onToggleSwap,
+  onRespondSwap,
+}: {
+  position: { role: Role; providerId: string | null; staffId: string };
+  positionName: string;
+  currentId: string | null;
+  swapRequests: SwapRequestView[];
+  onToggleSwap: (position: { role: Role; providerId: string | null; staffId: string }) => void;
+  onRespondSwap: (requestId: string, accept: boolean) => void;
+}) {
+  if (!currentId) return null;
+
+  const forThis = swapRequests.filter(
+    (r) => r.positionStaffId === position.staffId && r.role === position.role && r.providerId === position.providerId
+  );
+  const isOwner = currentId === position.staffId;
+  const incomingToMe = isOwner ? forThis.find((r) => !r.isBroadcast) : undefined;
+  const myOutgoing = !isOwner ? forThis.find((r) => !r.isBroadcast && r.requestedByStaffId === currentId) : undefined;
+  const broadcast = forThis.find((r) => r.isBroadcast);
+
+  if (incomingToMe) {
+    return (
+      <span className="inline-flex items-center gap-1 whitespace-nowrap">
+        <span className="text-[10px] font-bold accent-text">{incomingToMe.requestedByStaffName} wants to swap</span>
+        <button
+          onClick={() => onRespondSwap(incomingToMe.id, true)}
+          aria-label="Accept swap"
+          title="Accept swap"
+          className="rounded-full px-1 text-xs font-extrabold text-emerald-600 hover:opacity-70"
+        >
+          ✓
+        </button>
+        <button
+          onClick={() => onRespondSwap(incomingToMe.id, false)}
+          aria-label="Deny swap"
+          title="Deny swap"
+          className="rounded-full px-1 text-xs font-extrabold text-red-500 hover:opacity-70"
+        >
+          ✕
+        </button>
+      </span>
+    );
   }
 
+  let tag: string | null = null;
+  let active = false;
+  if (myOutgoing) {
+    tag = "swap pending";
+    active = true;
+  } else if (broadcast) {
+    tag = "open to swap";
+    active = isOwner;
+  }
+
+  const label = myOutgoing
+    ? "Cancel your swap request"
+    : isOwner
+      ? broadcast
+        ? "Cancel your open-to-swap offer"
+        : "Offer to swap this position"
+      : `Propose a swap with ${positionName}`;
+
   return (
-    <div className="flex items-center gap-1.5 text-xs font-bold opacity-60">
-      patients
-      <input
-        type="number"
-        min={0}
-        className="accent-border-soft w-12 border-b-2 bg-transparent text-right text-sm font-extrabold text-slate-700 opacity-100 outline-none"
-        value={local}
-        onChange={(e) => setLocal(e.target.value)}
-        onBlur={save}
-      />
-      {saving && <span>…</span>}
-    </div>
+    <span className="inline-flex items-center gap-1 whitespace-nowrap">
+      {tag && <span className="text-[9px] font-bold uppercase tracking-wide accent-text opacity-80">{tag}</span>}
+      <button
+        onClick={() => onToggleSwap(position)}
+        aria-label={label}
+        title={label}
+        className={`rounded-full p-0.5 transition ${active ? "accent-text opacity-100" : "opacity-40 hover:opacity-80"}`}
+      >
+        <SwapIcon className="h-3.5 w-3.5" />
+      </button>
+    </span>
   );
 }

@@ -1,76 +1,69 @@
 import { prisma } from "./prisma";
 import { monthWeekdays, weekDates, weekdayIndex } from "./date";
-import { HALVES, WEEKDAY_LABELS, type Half, type Office } from "./types";
+import { HALVES, type Half } from "./types";
 
-export type QuadrantEntry = {
+// Per half-day: an explicit ProviderAbsence row (SURGERY if flagged, else
+// ABSENT) always wins; failing that, the provider's own template defaults
+// to surgery this weekday+half (see ProviderScheduleSlot.surgery) unless a
+// ProviderAutoOverride opts this specific date back to present; otherwise
+// PRESENT. late is independent of AM/PM — a CUSTOM row is a running-late
+// note for the whole day, not tied to one half, so it's on both.
+export type ProviderHalfStatus = "PRESENT" | "ABSENT" | "SURGERY";
+
+export type ProviderHalfCell = {
+  status: ProviderHalfStatus;
+  late: boolean;
+  // true when this half's status comes from the template default rather
+  // than an explicit absence row for this exact date — so the UI can hint
+  // that toggling it creates a one-off exception instead of editing history.
+  fromTemplate: boolean;
+};
+
+export type ProviderCalendarRow = {
   providerId: string;
-  initials: string;
   name: string;
-  present: boolean;
-  absenceId: string | null; // set when present === false, so the UI can un-mark it
+  initials: string;
+  days: Record<string, Record<Half, ProviderHalfCell>>;
 };
 
-export type DayQuadrants = {
-  date: string;
-  weekdayLabel: string;
-  // office -> half -> entries scheduled there that day
-  cells: Record<Office, Record<Half, QuadrantEntry[]>>;
-};
-
-// Quadrant layout: RUQ = Bethesda AM, LUQ = Germantown AM, RLQ = Bethesda PM,
-// LLQ = Germantown PM. Rendered as [GT | BT] columns x [AM | PM] rows so BT
-// stays on the right and GT on the left in both rows, matching the naming.
-export const QUADRANT_LAYOUT: { office: Office; half: Half; label: string }[][] = [
-  [
-    { office: "GERMANTOWN", half: "AM", label: "GT" },
-    { office: "BETHESDA", half: "AM", label: "BT" },
-  ],
-  [
-    { office: "GERMANTOWN", half: "PM", label: "GT" },
-    { office: "BETHESDA", half: "PM", label: "BT" },
-  ],
-];
-
-async function getCalendarForDates(dates: string[]): Promise<DayQuadrants[]> {
-  const [scheduleSlots, absences] = await Promise.all([
-    prisma.providerScheduleSlot.findMany({
-      where: { office: { not: null } },
-      include: { provider: true },
-    }),
+async function getProviderCalendarForDates(dates: string[]): Promise<ProviderCalendarRow[]> {
+  const [providers, absences, overrides, templateSlots] = await Promise.all([
+    prisma.provider.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     prisma.providerAbsence.findMany({ where: { date: { in: dates } } }),
+    prisma.providerAutoOverride.findMany({ where: { date: { in: dates } } }),
+    prisma.providerScheduleSlot.findMany({ where: { surgery: true } }),
   ]);
 
-  return dates.map((date) => {
-    const weekday = weekdayIndex(date)!;
-    const cells = {} as DayQuadrants["cells"];
-    for (const office of ["BETHESDA", "GERMANTOWN"] as Office[]) {
-      cells[office] = {} as Record<Half, QuadrantEntry[]>;
+  return providers.map((p) => {
+    const days = {} as Record<string, Record<Half, ProviderHalfCell>>;
+    for (const date of dates) {
+      const weekday = weekdayIndex(date);
+      const rows = absences.filter((a) => a.providerId === p.id && a.date === date);
+      const late = rows.some((a) => a.half === "CUSTOM");
+      const halves = {} as Record<Half, ProviderHalfCell>;
       for (const half of HALVES) {
-        const slots = scheduleSlots.filter((s) => s.weekday === weekday && s.office === office && s.half === half);
-        cells[office][half] = slots.map((s) => {
-          const absence = absences.find(
-            (a) => a.providerId === s.providerId && a.date === date && (a.half === "ALL" || a.half === half)
-          );
-          return {
-            providerId: s.providerId,
-            initials: s.provider.initials,
-            name: s.provider.name,
-            present: !absence,
-            absenceId: absence?.id ?? null,
-          };
-        });
+        const matching = rows.filter((a) => a.half === "ALL" || a.half === half);
+        if (matching.length > 0) {
+          halves[half] = { status: matching.some((a) => a.surgery) ? "SURGERY" : "ABSENT", late, fromTemplate: false };
+          continue;
+        }
+        const overridden = overrides.some((o) => o.providerId === p.id && o.date === date && o.half === half);
+        const defaultsToSurgery =
+          !overridden && weekday !== null && templateSlots.some((s) => s.providerId === p.id && s.weekday === weekday && s.half === half);
+        halves[half] = { status: defaultsToSurgery ? "SURGERY" : "PRESENT", late, fromTemplate: defaultsToSurgery };
       }
+      days[date] = halves;
     }
-    return { date, weekdayLabel: WEEKDAY_LABELS[weekday], cells };
+    return { providerId: p.id, name: p.name, initials: p.initials, days };
   });
 }
 
-export function getWeekCalendar(mondayStr: string): Promise<DayQuadrants[]> {
-  return getCalendarForDates(weekDates(mondayStr));
+export function getProviderMonthCalendar(firstOfMonthStr: string): Promise<ProviderCalendarRow[]> {
+  return getProviderCalendarForDates(monthWeekdays(firstOfMonthStr));
 }
 
-export function getMonthCalendar(firstOfMonthStr: string): Promise<DayQuadrants[]> {
-  return getCalendarForDates(monthWeekdays(firstOfMonthStr));
+export function getProviderWeekCalendar(mondayStr: string): Promise<ProviderCalendarRow[]> {
+  return getProviderCalendarForDates(weekDates(mondayStr));
 }
 
 // PRESENT = no absence at all that day. ABSENT = out the whole day (an ALL
@@ -79,16 +72,14 @@ export function getMonthCalendar(firstOfMonthStr: string): Promise<DayQuadrants[
 // still worth flagging).
 export type StaffDayStatus = "PRESENT" | "ABSENT" | "PARTIAL";
 
-export type StaffMonthRow = {
+export type StaffCalendarRow = {
   staffId: string;
   name: string;
   color: string;
   days: Record<string, StaffDayStatus>;
 };
 
-export async function getStaffMonthCalendar(firstOfMonthStr: string): Promise<StaffMonthRow[]> {
-  const dates = monthWeekdays(firstOfMonthStr);
-
+async function getStaffCalendarForDates(dates: string[]): Promise<StaffCalendarRow[]> {
   const [staff, absences] = await Promise.all([
     prisma.staff.findMany({ where: { active: true, usesApp: true }, orderBy: { name: "asc" } }),
     prisma.staffAbsence.findMany({ where: { date: { in: dates } } }),
@@ -105,4 +96,12 @@ export async function getStaffMonthCalendar(firstOfMonthStr: string): Promise<St
     }
     return { staffId: s.id, name: s.name, color: s.color, days };
   });
+}
+
+export function getStaffMonthCalendar(firstOfMonthStr: string): Promise<StaffCalendarRow[]> {
+  return getStaffCalendarForDates(monthWeekdays(firstOfMonthStr));
+}
+
+export function getStaffWeekCalendar(mondayStr: string): Promise<StaffCalendarRow[]> {
+  return getStaffCalendarForDates(weekDates(mondayStr));
 }

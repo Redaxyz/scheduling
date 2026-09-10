@@ -97,15 +97,20 @@ export default function UserPicker() {
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden select-none bg-slate-100">
-      {phase === "idle" &&
+      {phase !== "fade" &&
         cells.map((cell) => (
           <button
             key={cell.staff.id}
             type="button"
             aria-label={`Continue as ${cell.staff.name}`}
-            onClick={() => pick(cell)}
+            onClick={phase === "idle" ? () => pick(cell) : undefined}
+            tabIndex={phase === "idle" ? 0 : -1}
             className="absolute inset-0 h-full w-full"
-            style={{ clipPath: cellClipPath(cell.row, cell.col, curves), background: cell.staff.color }}
+            style={{
+              clipPath: cellClipPath(cell.row, cell.col, curves),
+              background: cell.staff.color,
+              pointerEvents: phase === "idle" ? "auto" : "none",
+            }}
           >
             <span
               className="absolute font-extrabold tracking-tight text-slate-700"
@@ -124,15 +129,29 @@ export default function UserPicker() {
 
       {picked && phase !== "idle" && (
         <div
-          className="fixed inset-0 flex items-center justify-center"
+          className="fixed inset-0"
           style={{
             background: picked.color,
             clipPath: `circle(${radius}px at ${origin.x}px ${origin.y}px)`,
             opacity,
           }}
+        />
+      )}
+
+      {picked && phase !== "idle" && (
+        <span
+          className="pointer-events-none absolute font-extrabold tracking-tight text-slate-700"
+          style={{
+            left: origin.x,
+            top: origin.y,
+            transform: "translate(-50%, -50%)",
+            fontSize: "clamp(1rem, 2.4vw, 1.5rem)",
+            whiteSpace: "nowrap",
+            opacity,
+          }}
         >
-          <span className="text-3xl font-extrabold tracking-tight text-slate-700 sm:text-4xl">{picked.name}</span>
-        </div>
+          {picked.name}
+        </span>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getWeekScheduleForAllStaff } from "@/lib/schedule";
 import { addDays, mondayOf, todayStr } from "@/lib/date";
 import MyScheduleView from "@/components/MyScheduleView";
+import AutoRefresh from "@/components/AutoRefresh";
 
 export default async function MySchedulePage({ params }: { params: Promise<{ monday: string }> }) {
   const { monday: mondayParam } = await params;
@@ -21,6 +22,7 @@ export default async function MySchedulePage({ params }: { params: Promise<{ mon
 
   return (
     <div className="space-y-6">
+      <AutoRefresh />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-extrabold tracking-tight">My Schedule</h1>

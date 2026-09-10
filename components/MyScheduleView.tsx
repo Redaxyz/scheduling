@@ -54,7 +54,15 @@ export default function MyScheduleView({ rows }: { rows: MyScheduleRow[] }) {
               return (
                 <div key={half} className="accent-border-soft rounded-xl border-2 p-2">
                   <div className="mb-1 text-[10px] font-bold uppercase tracking-wide opacity-40">{HALF_LABELS[half]}</div>
-                  {cell.office && cell.role ? (
+                  {cell.isProvider && cell.office ? (
+                    <div className="text-sm">
+                      <div className="font-extrabold">{OFFICE_LABELS[cell.office]}</div>
+                      <div className="font-bold opacity-70">
+                        Seeing patients{cell.scribeName ? ` — ${cell.scribeName} scribing` : ""}
+                        {cell.lateMinutes ? ` (${cell.lateMinutes}m late)` : ""}
+                      </div>
+                    </div>
+                  ) : cell.office && cell.role ? (
                     <div className="text-sm">
                       <div className="font-extrabold">{OFFICE_LABELS[cell.office]}</div>
                       <div className="font-bold opacity-70">

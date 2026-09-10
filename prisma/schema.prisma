@@ -25,27 +25,50 @@ model Provider {
   fallbackConditions ScribeFallback[]       @relation("ScribeFallbackConditional")
   fallbackTargets    ScribeFallback[]       @relation("ScribeFallbackTarget")
   assignments        Assignment[]
+  autoOverrides      ProviderAutoOverride[]
 }
 
 // Recurring weekly template: what office (if any) a provider is normally in
 // for a given weekday + half-day. weekday: 0=Mon .. 4=Fri. half: "AM" | "PM".
 // office: "BETHESDA" | "GERMANTOWN" | null (not in clinic that half).
+// surgery: true means this provider is normally in surgery this weekday+half
+// by default — same "not in clinic" effect as an absence (see buildActivity
+// in lib/schedule.ts), applied every week without a fresh ProviderAbsence
+// row, unless a ProviderAutoOverride opts a specific date back to present.
 model ProviderScheduleSlot {
   id         String  @id @default(cuid())
   providerId String
   weekday    Int
   half       String
   office     String?
+  surgery    Boolean @default(false)
 
   provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   @@unique([providerId, weekday, half])
 }
 
+// Opts a provider OUT of their own default template surgery day for one
+// date+half (see ProviderScheduleSlot.surgery), so they show as present
+// instead — the provider equivalent of AutoOverride for staff.
+model ProviderAutoOverride {
+  id         String @id @default(cuid())
+  providerId String
+  date       String
+  half       String
+
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, date, half])
+}
+
 // A one-off override marking a provider OUT for a specific date/half,
 // regardless of their recurring template. half: "AM" | "PM" | "ALL" | "CUSTOM".
 // "CUSTOM" doesn't block scheduling at all (see absenceMatches) — it's just
 // a running-late note; lateMinutes holds how late, in 15-minute increments.
+// surgery: true means this row is specifically "in surgery" rather than a
+// generic absence — same effect on scheduling (not in clinic that half),
+// just shown as a distinct blue in the calendar instead of red.
 model ProviderAbsence {
   id          String   @id @default(cuid())
   providerId  String
@@ -53,6 +76,7 @@ model ProviderAbsence {
   half        String
   reason      String?
   lateMinutes Int?
+  surgery     Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
@@ -113,6 +137,8 @@ model Staff {
   // (e.g. Cindy is backed up by Mark).
   xrayBackedUpBy    XrayBackup[]     @relation("XrayBackupPrimary")
   autoOverrides     AutoOverride[]
+  swapRequestsOnMyPosition SwapRequest[] @relation("SwapPosition")
+  swapRequestsIMade        SwapRequest[] @relation("SwapRequestedBy")
 }
 
 // Opts a staff member OUT of one of their own computed defaults (dedicated
@@ -197,6 +223,40 @@ model PatientCount {
   provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   @@unique([providerId, date, half])
+}
+
+// A request to swap two schedule positions for the same date+half.
+// positionStaffId/Office/Role/ProviderId describe the position the swap
+// button was clicked on; requestedByStaffId is whoever clicked it.
+// requestedByStaffId === positionStaffId means "I'm giving up my own spot" —
+// a broadcast, visible to everyone, with no one specific person to respond.
+// requestedByStaffId !== positionStaffId means a direct proposal ("I want to
+// swap MY current spot for THEIRS") — only positionStaffId (the person being
+// asked) can accept/deny it; the requester's own current position isn't
+// stored here, it's resolved live off the schedule at accept time, so a
+// stale snapshot never gets swapped in.
+// status: "OPEN" (awaiting a response, or just an open broadcast) |
+// "ACCEPTED" | "DECLINED" | "CANCELLED" (retracted, or invalidated because
+// the position changed before anyone responded).
+model SwapRequest {
+  id                 String    @id @default(cuid())
+  date               String
+  half               String
+  positionOffice     String
+  positionRole       String
+  positionProviderId String?
+  positionStaffId    String
+  requestedByStaffId String
+  status             String    @default("OPEN")
+  createdAt          DateTime  @default(now())
+  respondedAt        DateTime?
+
+  positionStaff    Staff @relation("SwapPosition", fields: [positionStaffId], references: [id], onDelete: Cascade)
+  requestedByStaff Staff @relation("SwapRequestedBy", fields: [requestedByStaffId], references: [id], onDelete: Cascade)
+
+  @@index([date, half, status])
+  @@index([positionStaffId, status])
+  @@index([requestedByStaffId, status])
 }
 
 // A staff self-placement for a given date/half.

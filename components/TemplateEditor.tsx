@@ -1,11 +1,44 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { WEEKDAY_LABELS } from "@/lib/types";
+import { WEEKDAY_LABELS, HALVES, HALF_LABELS, type Half } from "@/lib/types";
+import { OFFICE_COLOR, SURGERY_COLOR, OFF_COLOR } from "@/lib/colors";
 
-type Slot = { weekday: number; half: string; office: string | null };
+type Slot = { weekday: number; half: string; office: string | null; surgery: boolean };
 type Provider = { id: string; name: string; slots: Slot[] };
+
+type OptionKey = "OFF" | "BETHESDA" | "GERMANTOWN" | "SURGERY";
+
+const OPTIONS: { key: OptionKey; label: string; title: string; office: string | null; surgery: boolean; activeColor: string; activeTextColor: string }[] = [
+  { key: "OFF", label: "Off", title: "Off", office: null, surgery: false, activeColor: OFF_COLOR, activeTextColor: "#fff" },
+  {
+    key: "BETHESDA",
+    label: "BT",
+    title: "Bethesda",
+    office: "BETHESDA",
+    surgery: false,
+    activeColor: OFFICE_COLOR.BETHESDA,
+    activeTextColor: "#fff",
+  },
+  {
+    key: "GERMANTOWN",
+    label: "GT",
+    title: "Germantown",
+    office: "GERMANTOWN",
+    surgery: false,
+    activeColor: OFFICE_COLOR.GERMANTOWN,
+    activeTextColor: "#fff",
+  },
+  { key: "SURGERY", label: "Surgery", title: "In surgery", office: null, surgery: true, activeColor: SURGERY_COLOR, activeTextColor: "#0c4a6e" },
+];
+
+function keyFor(slot: Slot | undefined): OptionKey {
+  if (slot?.surgery) return "SURGERY";
+  if (slot?.office === "BETHESDA") return "BETHESDA";
+  if (slot?.office === "GERMANTOWN") return "GERMANTOWN";
+  return "OFF";
+}
 
 async function putJSON(url: string, body: unknown) {
   const res = await fetch(url, {
@@ -19,53 +52,62 @@ async function putJSON(url: string, body: unknown) {
   }
 }
 
+// Organized by day: a big box per weekday, split into Morning/Afternoon,
+// each listing every provider with a 4-way pill (Bethesda / Germantown /
+// Surgery / Off) — Off is rarely used since most providers are somewhere
+// every half, but it's there for the occasional exception (e.g. a provider
+// who's away every other week).
 export default function TemplateEditor({ providers }: { providers: Provider[] }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
-  async function update(providerId: string, weekday: number, half: "AM" | "PM", office: string) {
-    await putJSON("/api/templates", { providerId, weekday, half, office: office === "OFF" ? null : office });
+  async function setSlot(providerId: string, weekday: number, half: Half, office: string | null, surgery: boolean) {
+    await putJSON("/api/templates", { providerId, weekday, half, office, surgery });
     startTransition(() => router.refresh());
   }
 
   return (
     <div className="space-y-6">
-      {providers.map((p) => (
-        <div key={p.id} className="accent-border-soft rounded-2xl border-2 p-4">
-          <h2 className="mb-2 font-extrabold tracking-tight">{p.name}</h2>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left font-bold opacity-50">
-                <th className="py-1 pr-2 font-bold">Day</th>
-                <th className="py-1 pr-2 font-bold">Morning</th>
-                <th className="py-1 pr-2 font-bold">Afternoon</th>
-              </tr>
-            </thead>
-            <tbody>
-              {WEEKDAY_LABELS.map((label, weekday) => (
-                <tr key={weekday} className="accent-border-soft border-t-2">
-                  <td className="py-1.5 pr-2 font-bold opacity-70">{label}</td>
-                  {(["AM", "PM"] as const).map((half) => {
+      <p className="text-xs font-bold opacity-40">
+        Bethesda / Germantown set where a provider normally is; Surgery marks their usual surgery half (excluded from clinic
+        staffing automatically, every week); Off means not normally working that half at all.
+      </p>
+
+      {WEEKDAY_LABELS.map((label, weekday) => (
+        <div key={weekday} className="accent-border-soft rounded-2xl border-2 p-4">
+          <h2 className="mb-3 text-lg font-extrabold tracking-tight">{label}</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:divide-x sm:divide-slate-200">
+            {HALVES.map((half) => (
+              <div key={half} className="sm:pl-4 first:sm:pl-0">
+                <div className="mb-2 text-xs font-bold uppercase tracking-wide opacity-40">{HALF_LABELS[half]}</div>
+                <div className="space-y-1.5">
+                  {providers.map((p) => {
                     const slot = p.slots.find((s) => s.weekday === weekday && s.half === half);
-                    const value = slot?.office ?? "OFF";
+                    const active = keyFor(slot);
                     return (
-                      <td key={half} className="py-1.5 pr-2">
-                        <select
-                          className="accent-border-soft border-b-2 bg-transparent py-1 font-extrabold text-slate-700 outline-none"
-                          defaultValue={value}
-                          onChange={(e) => update(p.id, weekday, half, e.target.value)}
-                        >
-                          <option value="OFF">Off</option>
-                          <option value="BETHESDA">Bethesda</option>
-                          <option value="GERMANTOWN">Germantown</option>
-                        </select>
-                      </td>
+                      <div key={p.id} className="flex items-center justify-between gap-2">
+                        <span className="truncate text-sm font-bold">{p.name}</span>
+                        <div className="accent-border inline-flex shrink-0 rounded-full border-2 p-0.5 text-[10px] font-extrabold">
+                          {OPTIONS.map((opt) => (
+                            <button
+                              key={opt.key}
+                              type="button"
+                              title={opt.title}
+                              onClick={() => setSlot(p.id, weekday, half, opt.office, opt.surgery)}
+                              className="rounded-full px-2 py-1 transition"
+                              style={active === opt.key ? { background: opt.activeColor, color: opt.activeTextColor } : { opacity: 0.5 }}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     );
                   })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ))}
     </div>

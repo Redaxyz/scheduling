@@ -20,7 +20,7 @@ export default async function TemplatesPage() {
         providers={providers.map((p) => ({
           id: p.id,
           name: p.name,
-          slots: p.scheduleSlots.map((s) => ({ weekday: s.weekday, half: s.half, office: s.office })),
+          slots: p.scheduleSlots.map((s) => ({ weekday: s.weekday, half: s.half, office: s.office, surgery: s.surgery })),
         }))}
       />
     </div>

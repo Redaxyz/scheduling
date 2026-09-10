@@ -8,7 +8,6 @@ export type ProviderCell = {
   // row, removable via DELETE); null for a computed default (dedicated or
   // fallback), removable instead via an AutoOverride.
   scribe: { staffId: string; name: string; substitute: boolean; assignmentId: string | null; lateMinutes: number | null } | null;
-  patientCount: number | null;
 };
 
 export type AssignmentCell = {
@@ -29,11 +28,6 @@ export type AssignmentCell = {
   hardCommitment: boolean;
 };
 
-// "GOOD" = fewer patients than the other office this half but more staff
-// covering it (comparatively over-staffed); "NEEDS_HELP" = the mirror case
-// (more patients, fewer staff); "NEUTRAL" = no such mismatch.
-export type OfficeBalance = "GOOD" | "NEEDS_HELP" | "NEUTRAL";
-
 export type HalfSlot = {
   office: Office;
   half: Half;
@@ -44,17 +38,13 @@ export type HalfSlot = {
   // designated primary is out) — distinct from the generic free-staff list
   // since eligibility here is conditional, not just "not otherwise busy".
   xrayEligible: FreeStaffMember[];
-  patientTotal: number;
   staffCount: number;
-  balance: OfficeBalance;
 };
 
 export type DaySchedule = {
   date: string;
   weekday: number | null;
   halves: Record<Half, Record<Office, HalfSlot>>;
-  officeTotals: Record<Office, number>;
-  needsMoreStaffing: Office | null;
   // Active staff, per half, who are present (not absent) but currently
   // placed nowhere — not a scribe, not in rooming, not doing x-ray, at
   // either office. Includes x-ray techs (unlike the generic free-staff
@@ -92,8 +82,9 @@ function scribeRank(name: string) {
   return i === -1 ? SCRIBE_PRIORITY.length : i;
 }
 
-type ScheduleSlotRow = { providerId: string; half: string; office: string | null };
+type ScheduleSlotRow = { providerId: string; half: string; office: string | null; surgery: boolean };
 type ProviderAbsenceRow = { providerId: string; half: string };
+type ProviderAutoOverrideRow = { providerId: string; half: string };
 type ScribeFallbackRow = {
   staffId: string;
   weekday: number;
@@ -168,10 +159,26 @@ function computeXrayEligible(
 }
 
 // Shared "who's actually working, and where" logic for a day's recurring
-// template + one-off absences — used by both exports below.
-function buildActivity(scheduleSlots: ScheduleSlotRow[], providerAbsences: ProviderAbsenceRow[]) {
-  const isAbsent = (providerId: string, half: Half) =>
-    providerAbsences.some((a) => a.providerId === providerId && absenceMatches(half, a.half));
+// template + one-off absences — used by both exports below. A provider
+// counts as absent either from an explicit ProviderAbsence row, or (absent
+// that too) from their own template defaulting to surgery this weekday+half
+// (see ProviderScheduleSlot.surgery) unless a ProviderAutoOverride opts this
+// specific date back to present.
+function buildActivity(
+  scheduleSlots: ScheduleSlotRow[],
+  providerAbsences: ProviderAbsenceRow[],
+  providerAutoOverrides: ProviderAutoOverrideRow[] = []
+) {
+  const isOverridden = (providerId: string, half: Half) =>
+    providerAutoOverrides.some((o) => o.providerId === providerId && o.half === half);
+
+  const defaultsToSurgery = (providerId: string, half: Half) =>
+    scheduleSlots.some((s) => s.providerId === providerId && s.half === half && s.surgery);
+
+  const isAbsent = (providerId: string, half: Half) => {
+    if (providerAbsences.some((a) => a.providerId === providerId && absenceMatches(half, a.half))) return true;
+    return !isOverridden(providerId, half) && defaultsToSurgery(providerId, half);
+  };
 
   const isActive = (providerId: string, half: Half) =>
     scheduleSlots.some((s) => s.providerId === providerId && s.half === half && s.office !== null) &&
@@ -210,7 +217,7 @@ function resolveFallback(
 export async function getDaySchedule(date: string): Promise<DaySchedule> {
   const weekday = weekdayIndex(date);
 
-  const [scheduleSlots, providerAbsences, staff, staffAbsences, patientCounts, assignments, scribeFallbacks, autoOverrides, allProviders] =
+  const [scheduleSlots, providerAbsences, providerAutoOverrides, staff, staffAbsences, assignments, scribeFallbacks, autoOverrides, allProviders] =
     await Promise.all([
       weekday === null
         ? Promise.resolve([])
@@ -219,12 +226,12 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
             include: { provider: true },
           }),
       prisma.providerAbsence.findMany({ where: { date } }),
+      prisma.providerAutoOverride.findMany({ where: { date } }),
       prisma.staff.findMany({
         where: { active: true },
         include: { dedicatedProvider: true, xrayBackupAs: true },
       }),
       prisma.staffAbsence.findMany({ where: { date } }),
-      prisma.patientCount.findMany({ where: { date } }),
       prisma.assignment.findMany({ where: { date }, include: { staff: true, provider: true } }),
       weekday === null ? Promise.resolve([]) : prisma.scribeFallback.findMany({ where: { weekday } }),
       prisma.autoOverride.findMany({ where: { date } }),
@@ -232,7 +239,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
     ]);
   const providerNames = new Set(allProviders.map((p) => p.name));
 
-  const { isAbsent: isProviderAbsent, isActive: isProviderActive } = buildActivity(scheduleSlots, providerAbsences);
+  const { isAbsent: isProviderAbsent, isActive: isProviderActive } = buildActivity(scheduleSlots, providerAbsences, providerAutoOverrides);
 
   const isStaffAbsent = (staffId: string, half: Half) =>
     staffAbsences.some((a) => a.staffId === staffId && absenceMatches(half, a.half));
@@ -262,7 +269,6 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
   };
 
   const halves = {} as Record<Half, Record<Office, HalfSlot>>;
-  const officeTotals: Record<Office, number> = { BETHESDA: 0, GERMANTOWN: 0 };
   const unassigned = {} as Record<Half, { id: string; name: string }[]>;
   const reassignable = {} as Record<Half, { id: string; name: string }[]>;
 
@@ -310,8 +316,6 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
           }
         }
 
-        const pc = patientCounts.find((p) => p.providerId === s.providerId && p.half === half);
-
         return {
           provider: {
             id: s.providerId,
@@ -320,7 +324,6 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
             lateMinutes: lateProviderMinutes(s.providerId),
           },
           scribe,
-          patientCount: pc ? pc.count : null,
         };
       });
 
@@ -417,9 +420,6 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
       const xrayEligible =
         weekday === null ? [] : computeXrayEligible(office, half, staff, isStaffAbsent, isStaffAssigned, isOverridden);
 
-      const patientTotal = providers.reduce((sum, p) => sum + (p.patientCount ?? 0), 0);
-      officeTotals[office] += patientTotal;
-
       const rooming = [
         ...officeAssignments.filter((a) => a.role === "ROOMING").map(toCell),
         ...autoRoomingEntries,
@@ -435,23 +435,8 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
         rooming,
         xray,
         xrayEligible,
-        patientTotal,
         staffCount,
-        balance: "NEUTRAL",
       };
-    }
-
-    // Compare Bethesda vs Germantown for this half: whichever has fewer
-    // patients but more staff covering it is comparatively over-staffed
-    // ("GOOD"); the other is comparatively under-staffed ("NEEDS_HELP").
-    const bt = halves[half].BETHESDA;
-    const gt = halves[half].GERMANTOWN;
-    if (bt.patientTotal < gt.patientTotal && bt.staffCount > gt.staffCount) {
-      bt.balance = "GOOD";
-      gt.balance = "NEEDS_HELP";
-    } else if (gt.patientTotal < bt.patientTotal && gt.staffCount > bt.staffCount) {
-      gt.balance = "GOOD";
-      bt.balance = "NEEDS_HELP";
     }
 
     // Who's present this half but placed nowhere — a scribe, rooming, or
@@ -484,12 +469,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
       .map((s) => ({ id: s.id, name: s.name }));
   }
 
-  let needsMoreStaffing: Office | null = null;
-  if (officeTotals.BETHESDA !== officeTotals.GERMANTOWN) {
-    needsMoreStaffing = officeTotals.BETHESDA > officeTotals.GERMANTOWN ? "BETHESDA" : "GERMANTOWN";
-  }
-
-  return { date, weekday, halves, officeTotals, needsMoreStaffing, unassigned, reassignable };
+  return { date, weekday, halves, unassigned, reassignable };
 }
 
 // Which staff are free to self-place, per half. Anyone not absent, not
@@ -562,6 +542,42 @@ export async function getXrayEligible(date: string, office: Office, half: Half):
   return computeXrayEligible(office, half, staff, isStaffAbsent, isStaffAssigned, isOverridden);
 }
 
+// Where a staff member currently sits for one half — office/role/providerId
+// describe the slot shape (enough to recreate it for someone else);
+// assignmentId is the real Assignment row backing it, or null if it's a
+// computed default (dedicated scribe, default x-ray/rooming) with nothing to
+// delete — freeing that spot instead means an AutoOverride. Used by the swap
+// feature to resolve both sides of a trade live off the current schedule,
+// rather than trusting a stale snapshot from whenever the request was made.
+export type PositionRef = {
+  office: Office;
+  half: Half;
+  role: Role;
+  providerId: string | null;
+  staffId: string;
+  assignmentId: string | null;
+};
+
+export function findStaffPosition(day: DaySchedule, half: Half, staffId: string): PositionRef | null {
+  for (const office of OFFICES) {
+    const slot = day.halves[half][office];
+    for (const p of slot.providers) {
+      if (p.scribe?.staffId === staffId) {
+        return { office, half, role: "SCRIBE", providerId: p.provider.id, staffId, assignmentId: p.scribe.assignmentId };
+      }
+    }
+    const room = slot.rooming.find((r) => r.staffId === staffId);
+    if (room) {
+      return { office, half, role: "ROOMING", providerId: null, staffId, assignmentId: room.id.startsWith("auto:") ? null : room.id };
+    }
+    const xr = slot.xray.find((x) => x.staffId === staffId);
+    if (xr) {
+      return { office, half, role: "XRAY", providerId: null, staffId, assignmentId: xr.id.startsWith("auto:") ? null : xr.id };
+    }
+  }
+  return null;
+}
+
 // One half-day cell of a staff member's own week ("My Schedule"). When
 // they're actually working, office/role/providerName describe it directly.
 // When they're out, those same fields describe what they NORMALLY would be
@@ -569,6 +585,11 @@ export async function getXrayEligible(date: string, office: Office, half: Half):
 // coveringName, the specific person actually filling that slot right now.
 // If nobody has, office/role/providerName are all null (render blank) —
 // there's nothing useful to show for a slot nobody stepped into.
+// isProvider is set instead of role for a PA-C who logs in as staff but is
+// actually scheduled as a Provider (a shadow Staff record sharing their
+// name) — office describes where they're seeing patients, and scribeName
+// (if any) is who's scribing for them, rather than a role placement of
+// their own.
 export type MyScheduleCell = {
   office: Office | null;
   role: Role | null;
@@ -576,6 +597,8 @@ export type MyScheduleCell = {
   isOut: boolean;
   lateMinutes: number | null;
   coveringName: string | null;
+  isProvider: boolean;
+  scribeName: string | null;
 };
 
 export type MyScheduleDay = {
@@ -592,7 +615,7 @@ export type MyScheduleRow = {
 };
 
 function blankCell(isOut: boolean, lateMinutes: number | null): MyScheduleCell {
-  return { office: null, role: null, providerName: null, isOut, lateMinutes, coveringName: null };
+  return { office: null, role: null, providerName: null, isOut, lateMinutes, coveringName: null, isProvider: false, scribeName: null };
 }
 
 // Every active app-using staff member's schedule for the Mon-Fri week
@@ -604,14 +627,22 @@ function blankCell(isOut: boolean, lateMinutes: number | null): MyScheduleCell {
 export async function getWeekScheduleForAllStaff(mondayStr: string): Promise<MyScheduleRow[]> {
   const dates = weekDates(mondayStr);
 
-  const [staff, allScheduleSlots, providerAbsences, staffAbsences, scribeFallbacks, days] = await Promise.all([
+  const [staff, allScheduleSlots, providerAbsences, providerAutoOverrides, staffAbsences, scribeFallbacks, providers, days] = await Promise.all([
     prisma.staff.findMany({ where: { active: true, usesApp: true }, orderBy: { name: "asc" } }),
     prisma.providerScheduleSlot.findMany(),
     prisma.providerAbsence.findMany({ where: { date: { in: dates } } }),
+    prisma.providerAutoOverride.findMany({ where: { date: { in: dates } } }),
     prisma.staffAbsence.findMany({ where: { date: { in: dates } } }),
     prisma.scribeFallback.findMany(),
+    prisma.provider.findMany({ where: { active: true }, select: { id: true, name: true } }),
     Promise.all(dates.map((date) => getDaySchedule(date))),
   ]);
+
+  // A PA-C (or similar) who logs in as staff but is actually scheduled as a
+  // Provider — a shadow Staff record sharing their exact name (see Staff.kind
+  // doc comment). Their "my schedule" reflects their own provider slot, not
+  // a role placement, since they're never staffed into one.
+  const providerIdByStaffName = new Map(providers.map((p) => [p.name, p.id]));
 
   return staff.map((s) => ({
     staffId: s.id,
@@ -640,7 +671,32 @@ export async function getWeekScheduleForAllStaff(mondayStr: string): Promise<MyS
         }
 
         if (found) {
-          halves[half] = { ...found, isOut: false, lateMinutes, coveringName: null };
+          halves[half] = { ...found, isOut: false, lateMinutes, coveringName: null, isProvider: false, scribeName: null };
+          continue;
+        }
+
+        const shadowProviderId = providerIdByStaffName.get(s.name);
+        if (shadowProviderId) {
+          let providerHit: { office: Office; scribeName: string | null; lateMinutes: number | null } | null = null;
+          for (const office of OFFICES) {
+            const hit = day.halves[half][office].providers.find((p) => p.provider.id === shadowProviderId);
+            if (hit) {
+              providerHit = { office, scribeName: hit.scribe?.name ?? null, lateMinutes: hit.provider.lateMinutes };
+              break;
+            }
+          }
+          halves[half] = providerHit
+            ? {
+                office: providerHit.office,
+                role: null,
+                providerName: null,
+                isOut: false,
+                lateMinutes: providerHit.lateMinutes,
+                coveringName: null,
+                isProvider: true,
+                scribeName: providerHit.scribeName,
+              }
+            : blankCell(false, null);
           continue;
         }
 
@@ -658,7 +714,8 @@ export async function getWeekScheduleForAllStaff(mondayStr: string): Promise<MyS
         // name there — stays blank, same as having no duty at all.
         const weekdaySlots = allScheduleSlots.filter((row) => row.weekday === weekday);
         const dateProviderAbsences = providerAbsences.filter((a) => a.date === date);
-        const { isActive } = buildActivity(weekdaySlots, dateProviderAbsences);
+        const dateProviderAutoOverrides = providerAutoOverrides.filter((o) => o.date === date);
+        const { isActive } = buildActivity(weekdaySlots, dateProviderAbsences, dateProviderAutoOverrides);
 
         let duty: { office: Office; role: Role; providerId: string | null } | null = null;
 
@@ -697,6 +754,8 @@ export async function getWeekScheduleForAllStaff(mondayStr: string): Promise<MyS
               isOut: true,
               lateMinutes,
               coveringName,
+              isProvider: false,
+              scribeName: null,
             }
           : blankCell(true, lateMinutes);
       }
