@@ -4,6 +4,7 @@ import { getProviderMonthCalendar } from "@/lib/calendar";
 import { addMonths, firstOfMonth, formatMonthLabel, monthWeekdays, todayStr } from "@/lib/date";
 import ProviderCalendarGrid from "@/components/ProviderCalendarGrid";
 import CalendarWhoToggle from "@/components/CalendarWhoToggle";
+import CalendarNavLinks from "@/components/CalendarNavLinks";
 
 export default async function CalendarProvidersMonthPage({ params }: { params: Promise<{ month: string }> }) {
   const { month: monthParam } = await params;
@@ -38,14 +39,12 @@ export default async function CalendarProvidersMonthPage({ params }: { params: P
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <CalendarWhoToggle who="providers" anchorDate={month} providersView="month" />
-          <div className="flex gap-2 text-sm font-bold">
-            <Link href={`/calendar/providers/month/${addMonths(month, -1)}`} className="accent-border rounded-full border-2 px-4 py-1.5">
-              ← Previous month
-            </Link>
-            <Link href={`/calendar/providers/month/${addMonths(month, 1)}`} className="accent-border rounded-full border-2 px-4 py-1.5">
-              Next month →
-            </Link>
-          </div>
+          <CalendarNavLinks
+            prevHref={`/calendar/providers/month/${addMonths(month, -1)}`}
+            nextHref={`/calendar/providers/month/${addMonths(month, 1)}`}
+            prevLabel="Previous month"
+            nextLabel="Next month"
+          />
         </div>
       </div>
 

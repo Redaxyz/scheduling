@@ -4,6 +4,7 @@ import { getStaffMonthCalendar } from "@/lib/calendar";
 import { addMonths, firstOfMonth, formatMonthLabel, monthWeekdays, todayStr } from "@/lib/date";
 import StaffCalendarGrid from "@/components/StaffCalendarGrid";
 import CalendarWhoToggle from "@/components/CalendarWhoToggle";
+import CalendarNavLinks from "@/components/CalendarNavLinks";
 
 export default async function CalendarStaffMonthPage({ params }: { params: Promise<{ month: string }> }) {
   const { month: monthParam } = await params;
@@ -35,14 +36,12 @@ export default async function CalendarStaffMonthPage({ params }: { params: Promi
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <CalendarWhoToggle who="staff" anchorDate={month} staffView="month" />
-          <div className="flex gap-2 text-sm font-bold">
-            <Link href={`/calendar/staff/month/${addMonths(month, -1)}`} className="accent-border rounded-full border-2 px-4 py-1.5">
-              ← Previous month
-            </Link>
-            <Link href={`/calendar/staff/month/${addMonths(month, 1)}`} className="accent-border rounded-full border-2 px-4 py-1.5">
-              Next month →
-            </Link>
-          </div>
+          <CalendarNavLinks
+            prevHref={`/calendar/staff/month/${addMonths(month, -1)}`}
+            nextHref={`/calendar/staff/month/${addMonths(month, 1)}`}
+            prevLabel="Previous month"
+            nextLabel="Next month"
+          />
         </div>
       </div>
 

@@ -32,6 +32,22 @@ export function nextBusinessDay(dateStr: string): string {
   return next;
 }
 
+// The weekday before dateStr — mirrors nextBusinessDay for stepping
+// backward (Monday's previous business day is Friday).
+export function previousBusinessDay(dateStr: string): string {
+  let prev = addDays(dateStr, -1);
+  while (weekdayIndex(prev) === null) prev = addDays(prev, -1);
+  return prev;
+}
+
+// Rounds a weekend date forward to the Monday after it; a weekday passes
+// through unchanged. Used to keep the date picker from ever landing on a
+// Saturday/Sunday, since a native <input type="date"> has no way to
+// actually disable specific days.
+export function nearestBusinessDayOnOrAfter(dateStr: string): string {
+  return weekdayIndex(dateStr) === null ? nextBusinessDay(dateStr) : dateStr;
+}
+
 export function formatLong(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));

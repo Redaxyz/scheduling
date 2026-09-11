@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { firstOfMonth, mondayOf, mondayOnOrAfter, todayStr } from "@/lib/date";
+import { useThemeMode } from "@/lib/theme";
 
 // Matches Tailwind's `lg` breakpoint — the same width each grid's own
 // column layout switches on.
@@ -39,6 +40,7 @@ export default function CalendarWhoToggle({
   staffView?: "month" | "week";
 }) {
   const router = useRouter();
+  const { active: modern } = useThemeMode();
 
   // Both entry points default by screen width — a computer lands on the
   // full month, a phone lands on the one-week view — checked at click time
@@ -58,32 +60,49 @@ export default function CalendarWhoToggle({
     router.push(isDesktop() ? `/calendar/staff/month/${firstOfMonth(anchorDate)}` : `/calendar/staff/week/${weekAnchorFor(anchorDate)}`);
   }
 
-  const activeStyle = { background: "var(--theme-accent)", color: "#334155" };
+  const activeStyle = modern
+    ? { background: "linear-gradient(135deg, var(--cao-blue,#1878b4), var(--cao-blue-light,#4fb3e8))", color: "#fff" }
+    : { background: "var(--theme-accent)", color: "#334155" };
+  const inactiveStyle = modern ? { color: "#64748b" } : undefined;
+
+  const trackClass = modern
+    ? "inline-flex rounded-full bg-black/[0.04] p-0.5 text-sm font-bold"
+    : "accent-border inline-flex rounded-full border-2 p-0.5 text-sm font-bold";
+  const subTrackClass = modern
+    ? "inline-flex rounded-full bg-black/[0.04] p-0.5 text-xs font-bold"
+    : "accent-border inline-flex rounded-full border-2 p-0.5 text-xs font-bold opacity-80";
+  const segClass = `rounded-full px-3 py-1${modern ? " transition" : ""}`;
+  const subSegClass = `rounded-full px-2.5 py-1${modern ? " transition" : ""}`;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="accent-border inline-flex rounded-full border-2 p-0.5 text-sm font-bold">
-        <button type="button" onClick={goToProviders} className="rounded-full px-3 py-1" style={who === "providers" ? activeStyle : undefined}>
+      <div className={trackClass}>
+        <button
+          type="button"
+          onClick={goToProviders}
+          className={segClass}
+          style={who === "providers" ? activeStyle : inactiveStyle}
+        >
           Providers
         </button>
-        <button type="button" onClick={goToStaff} className="rounded-full px-3 py-1" style={who === "staff" ? activeStyle : undefined}>
+        <button type="button" onClick={goToStaff} className={segClass} style={who === "staff" ? activeStyle : inactiveStyle}>
           Staff
         </button>
       </div>
 
       {who === "providers" && (
-        <div className="accent-border inline-flex rounded-full border-2 p-0.5 text-xs font-bold opacity-80">
+        <div className={subTrackClass}>
           <Link
             href={`/calendar/providers/month/${firstOfMonth(anchorDate)}`}
-            className="rounded-full px-2.5 py-1"
-            style={providersView === "month" ? activeStyle : undefined}
+            className={subSegClass}
+            style={providersView === "month" ? activeStyle : inactiveStyle}
           >
             Month
           </Link>
           <Link
             href={`/calendar/providers/week/${weekAnchorFor(anchorDate)}`}
-            className="rounded-full px-2.5 py-1"
-            style={providersView === "week" ? activeStyle : undefined}
+            className={subSegClass}
+            style={providersView === "week" ? activeStyle : inactiveStyle}
           >
             Week
           </Link>
@@ -91,18 +110,18 @@ export default function CalendarWhoToggle({
       )}
 
       {who === "staff" && (
-        <div className="accent-border inline-flex rounded-full border-2 p-0.5 text-xs font-bold opacity-80">
+        <div className={subTrackClass}>
           <Link
             href={`/calendar/staff/month/${firstOfMonth(anchorDate)}`}
-            className="rounded-full px-2.5 py-1"
-            style={staffView === "month" ? activeStyle : undefined}
+            className={subSegClass}
+            style={staffView === "month" ? activeStyle : inactiveStyle}
           >
             Month
           </Link>
           <Link
             href={`/calendar/staff/week/${weekAnchorFor(anchorDate)}`}
-            className="rounded-full px-2.5 py-1"
-            style={staffView === "week" ? activeStyle : undefined}
+            className={subSegClass}
+            style={staffView === "week" ? activeStyle : inactiveStyle}
           >
             Week
           </Link>

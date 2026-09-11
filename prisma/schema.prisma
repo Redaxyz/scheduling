@@ -224,13 +224,6 @@ model ScribeFallback {
 
 // half: "AM" | "PM" | "ALL" | "CUSTOM" — see ProviderAbsence for what CUSTOM
 // means (a non-blocking running-late note, with lateMinutes set).
-// status: "PENDING" | "APPROVED" — a day-off request (half "AM"/"PM"/"ALL")
-// a staff member submits for themselves starts PENDING and only actually
-// blocks scheduling once Joanna (the manager) approves it; declining just
-// deletes the row rather than keeping a rejected state around. A CUSTOM row
-// (running-late note) and anything a manager creates directly — for
-// herself or on someone else's behalf — skips the queue and is APPROVED
-// immediately, since there's nobody above her to ask.
 model StaffAbsence {
   id          String   @id @default(cuid())
   staffId     String
@@ -238,7 +231,6 @@ model StaffAbsence {
   half        String
   reason      String?
   lateMinutes Int?
-  status      String   @default("APPROVED")
   createdAt   DateTime @default(now())
 
   staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)

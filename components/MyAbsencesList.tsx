@@ -11,7 +11,6 @@ type AbsenceRow = {
   half: string;
   reason: string | null;
   lateMinutes: number | null;
-  status: string;
   staff: { name: string };
 };
 
@@ -33,10 +32,8 @@ async function del(url: string) {
 // Absences page had, now living under the Schedule tab's staff view instead
 // (that page's create-with-reason form is gone — the calendar's click-to-
 // toggle and "running late" box cover creating these now; this is just the
-// list-and-cancel half of it). Only ever shows settled entries — a day-off
-// request still awaiting a decision lives in PendingRequestsList instead,
-// grouped by consecutive days, so it doesn't get lost in here. Everyone
-// sees and can cancel their own; Joanna sees and can cancel everyone's.
+// list-and-cancel half of it). Everyone sees and can cancel their own;
+// Joanna (manager) sees and can cancel everyone's.
 export default function MyAbsencesList() {
   const { current } = useWhoAmI();
   const router = useRouter();
@@ -49,7 +46,7 @@ export default function MyAbsencesList() {
   function load() {
     fetch("/api/absences/staff")
       .then((r) => r.json())
-      .then((data: AbsenceRow[]) => setRows(Array.isArray(data) ? data.filter((r) => r.status !== "PENDING") : []))
+      .then((data) => setRows(Array.isArray(data) ? data : []))
       .catch(() => setError("Couldn't load your absences"))
       .finally(() => setLoading(false));
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { addDays } from "@/lib/date";
+import { nearestBusinessDayOnOrAfter, nextBusinessDay, previousBusinessDay } from "@/lib/date";
 
 export default function ScheduleDateNav({ date }: { date: string }) {
   const router = useRouter();
@@ -14,7 +14,7 @@ export default function ScheduleDateNav({ date }: { date: string }) {
     <div className="flex items-center gap-1.5">
       <button
         type="button"
-        onClick={() => go(addDays(date, -1))}
+        onClick={() => go(previousBusinessDay(date))}
         aria-label="Previous day"
         title="Previous day"
         className="accent-border flex h-8 w-8 items-center justify-center rounded-full border-2 font-bold transition active:scale-95"
@@ -25,13 +25,16 @@ export default function ScheduleDateNav({ date }: { date: string }) {
         type="date"
         value={date}
         onChange={(e) => {
-          if (e.target.value) go(e.target.value);
+          // The native picker has no way to disable Saturdays/Sundays
+          // outright, so a weekend pick is rounded forward to the Monday
+          // after it instead of just letting the clinic-closed page load.
+          if (e.target.value) go(nearestBusinessDayOnOrAfter(e.target.value));
         }}
         className="accent-border rounded-full border-2 bg-transparent px-4 py-1.5 text-sm font-bold outline-none"
       />
       <button
         type="button"
-        onClick={() => go(addDays(date, 1))}
+        onClick={() => go(nextBusinessDay(date))}
         aria-label="Next day"
         title="Next day"
         className="accent-border flex h-8 w-8 items-center justify-center rounded-full border-2 font-bold transition active:scale-95"

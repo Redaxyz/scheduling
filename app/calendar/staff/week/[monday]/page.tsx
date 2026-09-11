@@ -4,6 +4,7 @@ import { getStaffWeekCalendar } from "@/lib/calendar";
 import { addDays, formatShort, mondayOf, todayStr, weekDates } from "@/lib/date";
 import StaffCalendarGrid from "@/components/StaffCalendarGrid";
 import CalendarWhoToggle from "@/components/CalendarWhoToggle";
+import CalendarNavLinks from "@/components/CalendarNavLinks";
 
 export default async function CalendarStaffWeekPage({ params }: { params: Promise<{ monday: string }> }) {
   const { monday: mondayParam } = await params;
@@ -38,14 +39,12 @@ export default async function CalendarStaffWeekPage({ params }: { params: Promis
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <CalendarWhoToggle who="staff" anchorDate={monday} staffView="week" />
-          <div className="flex gap-2 text-sm font-bold">
-            <Link href={`/calendar/staff/week/${addDays(monday, -7)}`} className="accent-border rounded-full border-2 px-4 py-1.5">
-              ← Previous week
-            </Link>
-            <Link href={`/calendar/staff/week/${addDays(monday, 7)}`} className="accent-border rounded-full border-2 px-4 py-1.5">
-              Next week →
-            </Link>
-          </div>
+          <CalendarNavLinks
+            prevHref={`/calendar/staff/week/${addDays(monday, -7)}`}
+            nextHref={`/calendar/staff/week/${addDays(monday, 7)}`}
+            prevLabel="Previous week"
+            nextLabel="Next week"
+          />
         </div>
       </div>
 

@@ -24,13 +24,10 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { staffId, startDate, endDate, half, reason, requestedByStaffId } = body ?? {};
+  const { staffId, startDate, endDate, half, reason } = body ?? {};
 
   if (typeof staffId !== "string") {
     return NextResponse.json({ error: "Missing staffId" }, { status: 400 });
-  }
-  if (typeof requestedByStaffId !== "string") {
-    return NextResponse.json({ error: "Missing requestedByStaffId" }, { status: 400 });
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate || startDate)) {
     return NextResponse.json({ error: "Invalid date(s)" }, { status: 400 });
@@ -45,18 +42,8 @@ export async function POST(req: NextRequest) {
   }
   const lateMinutes = late.value;
 
-  const [staff, requestor] = await Promise.all([
-    prisma.staff.findUnique({ where: { id: staffId } }),
-    prisma.staff.findUnique({ where: { id: requestedByStaffId } }),
-  ]);
+  const staff = await prisma.staff.findUnique({ where: { id: staffId } });
   if (!staff) return NextResponse.json({ error: "Unknown staff member" }, { status: 400 });
-  if (!requestor) return NextResponse.json({ error: "Unknown requester" }, { status: 400 });
-
-  // A running-late note isn't a day-off request — nothing to approve. A
-  // manager acting (for herself or on someone else's behalf) also skips the
-  // queue, since there's nobody above her to ask. Anyone else requesting a
-  // real day off needs Joanna's sign-off first.
-  const status = half === "CUSTOM" || requestor.isManager ? "APPROVED" : "PENDING";
 
   const dates = expandDateRange(startDate, endDate || startDate);
   if (dates.length === 0) return NextResponse.json({ error: "Invalid range" }, { status: 400 });
@@ -65,11 +52,11 @@ export async function POST(req: NextRequest) {
     dates.map((date) =>
       prisma.staffAbsence.upsert({
         where: { staffId_date_half: { staffId, date, half } },
-        update: { reason: reason || null, lateMinutes, status },
-        create: { staffId, date, half, reason: reason || null, lateMinutes, status },
+        update: { reason: reason || null, lateMinutes },
+        create: { staffId, date, half, reason: reason || null, lateMinutes },
       })
     )
   );
 
-  return NextResponse.json({ ok: true, count: dates.length, status }, { status: 201 });
+  return NextResponse.json({ ok: true, count: dates.length }, { status: 201 });
 }

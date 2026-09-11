@@ -2,9 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getWeekScheduleForAllStaff } from "@/lib/schedule";
 import { addDays, mondayOf, todayStr } from "@/lib/date";
-import MyScheduleView from "@/components/MyScheduleView";
+import MyScheduleViewSwitcher from "@/components/MyScheduleViewSwitcher";
 import AutoRefresh from "@/components/AutoRefresh";
-import FullHeightFrame from "@/components/FullHeightFrame";
 import MyTemplateEditor from "@/components/MyTemplateEditor";
 
 export default async function MySchedulePage({ params }: { params: Promise<{ monday: string }> }) {
@@ -44,9 +43,7 @@ export default async function MySchedulePage({ params }: { params: Promise<{ mon
         </div>
       </div>
 
-      <FullHeightFrame className="pb-1" reserveBelow={52} heightScale={0.95}>
-        <MyScheduleView rows={rows} />
-      </FullHeightFrame>
+      <MyScheduleViewSwitcher rows={rows} />
 
       <MyTemplateEditor />
     </div>

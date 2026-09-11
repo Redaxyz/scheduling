@@ -71,13 +71,11 @@ export function getProviderWeekCalendar(mondayStr: string): Promise<ProviderCale
   return getProviderCalendarForDates(weekDates(mondayStr));
 }
 
-// PRESENT = no approved absence at all that day. ABSENT = out the whole day
-// (an ALL row, or separate AM+PM rows covering both halves), approved.
-// PARTIAL = approved for only one half, or just a CUSTOM running-late note
-// (not a real absence, but still worth flagging). PENDING = a day-off
-// request submitted but not yet approved by Joanna — see the StaffAbsence
-// schema comment; doesn't block anything yet, just needs a decision.
-export type StaffDayStatus = "PRESENT" | "ABSENT" | "PARTIAL" | "PENDING";
+// PRESENT = no absence at all that day. ABSENT = out the whole day (an ALL
+// row, or separate AM+PM rows covering both halves). PARTIAL = out for only
+// one half, or just a CUSTOM running-late note (not a real absence, but
+// still worth flagging).
+export type StaffDayStatus = "PRESENT" | "ABSENT" | "PARTIAL";
 
 export type StaffCalendarRow = {
   staffId: string;
@@ -96,12 +94,10 @@ async function getStaffCalendarForDates(dates: string[]): Promise<StaffCalendarR
     const days = {} as Record<string, StaffDayStatus>;
     for (const date of dates) {
       const rows = absences.filter((a) => a.staffId === s.id && a.date === date);
-      const approved = rows.filter((a) => a.status === "APPROVED");
-      const hasAM = approved.some((a) => a.half === "ALL" || a.half === "AM");
-      const hasPM = approved.some((a) => a.half === "ALL" || a.half === "PM");
-      const hasCustom = approved.some((a) => a.half === "CUSTOM");
-      const hasPending = rows.some((a) => a.status === "PENDING");
-      days[date] = hasAM && hasPM ? "ABSENT" : hasAM || hasPM || hasCustom ? "PARTIAL" : hasPending ? "PENDING" : "PRESENT";
+      const hasAM = rows.some((a) => a.half === "ALL" || a.half === "AM");
+      const hasPM = rows.some((a) => a.half === "ALL" || a.half === "PM");
+      const hasCustom = rows.some((a) => a.half === "CUSTOM");
+      days[date] = hasAM && hasPM ? "ABSENT" : hasAM || hasPM || hasCustom ? "PARTIAL" : "PRESENT";
     }
     return { staffId: s.id, name: s.name, color: s.color, days };
   });

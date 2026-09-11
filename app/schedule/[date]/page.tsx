@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getDaySchedule, getFreeStaff } from "@/lib/schedule";
 import { formatLong, todayStr } from "@/lib/date";
 import { WEEKDAY_LABELS } from "@/lib/types";
-import ScheduleBoard from "@/components/ScheduleBoard";
+import ScheduleBoardSwitcher from "@/components/ScheduleBoardSwitcher";
 import ScheduleDateNav from "@/components/ScheduleDateNav";
 
 export default async function SchedulePage({ params }: { params: Promise<{ date: string }> }) {
@@ -36,7 +36,7 @@ export default async function SchedulePage({ params }: { params: Promise<{ date:
           No clinic scheduled on weekends.
         </p>
       ) : (
-        <ScheduleBoard date={date} day={day} freeStaff={freeStaff} />
+        <ScheduleBoardSwitcher date={date} day={day} freeStaff={freeStaff} />
       )}
     </div>
   );

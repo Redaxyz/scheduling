@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import type { StaffCalendarRow, StaffDayStatus } from "@/lib/calendar";
 import { todayStr, weekdayIndex } from "@/lib/date";
 import { useWhoAmI } from "@/lib/whoami";
+import { useThemeMode } from "@/lib/theme";
 import MyAbsencesList from "@/components/MyAbsencesList";
-import PendingRequestsList from "@/components/PendingRequestsList";
 
 const LATE_MINUTE_OPTIONS = [15, 30, 45, 60, 90, 120];
 
@@ -14,14 +14,12 @@ const STATUS_COLOR: Record<StaffDayStatus, string> = {
   PRESENT: "#579669",
   ABSENT: "#dc2626",
   PARTIAL: "#d97706",
-  PENDING: "#3b82f6",
 };
 
 const STATUS_LABEL: Record<StaffDayStatus, string> = {
   PRESENT: "present",
   ABSENT: "absent",
   PARTIAL: "partial / running late",
-  PENDING: "day off requested — awaiting approval",
 };
 
 const WEEKDAY_LETTERS = ["M", "T", "W", "R", "F"];
@@ -41,12 +39,12 @@ async function postJSON(url: string, method: string, body?: unknown) {
 
 // dense=true (month view): compact boxes across many columns, built for a
 // wide screen. dense=false (week view): fewer columns, larger tap targets,
-// built for a thumb. Either way, tapping a green box requests the whole day
-// off for whoever's allowed to touch that row — a manager's own tap applies
-// immediately (red), everyone else's own tap lands as a pending request
-// (blue) until Joanna approves it; tapping any non-green box again withdraws
-// it. Marking yourself late (below the grid) is the only way to land on the
-// third, orange state, and always applies immediately.
+// built for a thumb. Either way, a green box is a single click/tap away
+// from red for whoever's allowed to touch that row — a manager can edit
+// anyone's, everyone else only their own — which just flips the whole day
+// present/absent. Marking yourself late (below the grid) is the only way to
+// land on the third, orange state; tapping that orange box clears it the
+// same way tapping a red one does.
 export default function StaffCalendarGrid({
   dates,
   rows,
@@ -57,6 +55,7 @@ export default function StaffCalendarGrid({
   dense?: boolean;
 }) {
   const { current } = useWhoAmI();
+  const { active: modern } = useThemeMode();
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -65,23 +64,12 @@ export default function StaffCalendarGrid({
   const [markingLate, setMarkingLate] = useState(false);
 
   async function toggle(staffId: string, date: string, status: StaffDayStatus) {
-    if (!current) return;
     const key = `${staffId}:${date}`;
     setError(null);
     setPending(key);
     try {
       if (status === "PRESENT") {
-        // Non-managers requesting their own day off land as PENDING until
-        // Joanna approves it; a manager acting (on herself or anyone else)
-        // applies immediately — see the StaffAbsence schema comment.
-        await postJSON("/api/absences/staff", "POST", {
-          staffId,
-          startDate: date,
-          endDate: date,
-          half: "ALL",
-          reason: "",
-          requestedByStaffId: current.id,
-        });
+        await postJSON("/api/absences/staff", "POST", { staffId, startDate: date, endDate: date, half: "ALL", reason: "" });
       } else {
         await postJSON(`/api/absences/staff/day?staffId=${staffId}&date=${date}`, "DELETE");
       }
@@ -105,7 +93,6 @@ export default function StaffCalendarGrid({
         half: "CUSTOM",
         lateMinutes: Number(lateMinutes),
         reason: "",
-        requestedByStaffId: current.id,
       });
       startTransition(() => router.refresh());
     } catch (e) {
@@ -135,29 +122,137 @@ export default function StaffCalendarGrid({
     ? [...rows].sort((a, b) => (a.staffId === current.id ? -1 : b.staffId === current.id ? 1 : 0))
     : rows;
 
+  const legend = (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold opacity-60">
+      <span className="flex items-center gap-1.5">
+        <span className="inline-block h-3 w-3 rounded-full" style={{ background: STATUS_COLOR.PRESENT }} /> Present
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="inline-block h-3 w-3 rounded-full" style={{ background: STATUS_COLOR.ABSENT }} /> Absent
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="inline-block h-3 w-3 rounded-full" style={{ background: STATUS_COLOR.PARTIAL }} /> Partial / running late
+      </span>
+      {current && (
+        <span className="hidden opacity-70 sm:inline">
+          — tap a box in your own row to toggle it{current.isManager ? " (you can toggle anyone's)" : ""}
+        </span>
+      )}
+    </div>
+  );
+
+  const lateBox = current && (
+    <div className="accent-border-soft flex flex-wrap items-center gap-2 rounded-2xl border-2 p-2 text-sm">
+      <span className="font-bold opacity-70">Running late this morning?</span>
+      <select
+        value={lateMinutes}
+        onChange={(e) => setLateMinutes(e.target.value)}
+        className="accent-border-soft rounded-full border-2 bg-transparent px-3 py-0.5 font-bold outline-none"
+      >
+        {LATE_MINUTE_OPTIONS.map((m) => (
+          <option key={m} value={m}>
+            {m} min
+          </option>
+        ))}
+      </select>
+      <button
+        type="button"
+        onClick={markLate}
+        disabled={markingLate}
+        className="accent-border rounded-full border-2 px-4 py-0.5 font-bold transition active:scale-95 disabled:opacity-40"
+      >
+        Mark me late today
+      </button>
+      <span className="hidden text-xs font-bold opacity-40 sm:inline">Turns your box for today orange — tap it again to clear.</span>
+    </div>
+  );
+
+  // Modern: no bordered card around the grid, no table chrome — a full-bleed
+  // heatmap where every cell is a tap target and the gaps between them are
+  // the only "lines" in the whole thing.
+  if (modern) {
+    const gridCols = `${dense ? "88px" : "104px"} repeat(${dates.length}, minmax(0, 1fr))`;
+    const modernBoxHeight = dense ? "h-7" : "h-14";
+    const modernOtherBoxHeight = dense ? "h-2" : "h-3";
+    return (
+      <div className="relative left-1/2 w-screen -translate-x-1/2">
+        <div className="mx-auto max-w-6xl space-y-3 px-4 py-3 sm:px-8">
+          {error && <p className="rounded-xl bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-500">{error}</p>}
+          {legend}
+
+          <div className="overflow-x-auto">
+            <div style={{ minWidth: dense ? "760px" : undefined }}>
+              <div className="grid items-end pb-1" style={{ gridTemplateColumns: gridCols }}>
+                <div />
+                {dates.map((date) => {
+                  const wd = weekdayIndex(date)!;
+                  return (
+                    <div key={date} className="text-center text-[10px] font-black uppercase tracking-wide opacity-40">
+                      <div>{WEEKDAY_LETTERS[wd]}</div>
+                      <div>{Number(date.slice(-2))}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-col gap-[3px]">
+                {sortedRows.map((row) => {
+                  const isMe = current?.id === row.staffId;
+                  const isManagerView = current?.isManager ?? false;
+                  const editable = Boolean(current) && (isManagerView || isMe);
+                  const isBig = isMe || isManagerView;
+                  const rowBoxHeight = isBig ? modernBoxHeight : modernOtherBoxHeight;
+                  return (
+                    <div key={row.staffId} className="grid items-center gap-x-[3px]" style={{ gridTemplateColumns: gridCols }}>
+                      <div
+                        className={`truncate pr-2 text-right font-bold ${isBig ? "text-xs" : "text-[9px] opacity-40"}`}
+                        style={isMe ? { color: "var(--cao-blue, inherit)" } : undefined}
+                      >
+                        {row.name}
+                      </div>
+                      {dates.map((date) => {
+                        const status = row.days[date];
+                        const key = `${row.staffId}:${date}`;
+                        const label = `${row.name} — ${date}: ${STATUS_LABEL[status]}`;
+                        return editable ? (
+                          <button
+                            key={date}
+                            type="button"
+                            onClick={() => toggle(row.staffId, date, status)}
+                            disabled={pending === key}
+                            aria-label={`${label} (tap to toggle)`}
+                            title={`${label} (tap to toggle)`}
+                            className={`block w-full ${rowBoxHeight} transition active:scale-95 disabled:opacity-40`}
+                            style={{ background: STATUS_COLOR[status] }}
+                          />
+                        ) : (
+                          <span
+                            key={date}
+                            className={`block w-full ${rowBoxHeight} opacity-80`}
+                            style={{ background: STATUS_COLOR[status] }}
+                            title={label}
+                          />
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {lateBox}
+          <MyAbsencesList />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
       {error && <p className="rounded-xl bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700">{error}</p>}
 
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold opacity-60">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded" style={{ background: STATUS_COLOR.PRESENT }} /> Present
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded" style={{ background: STATUS_COLOR.ABSENT }} /> Absent
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded" style={{ background: STATUS_COLOR.PARTIAL }} /> Partial / running late
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded" style={{ background: STATUS_COLOR.PENDING }} /> Requested, awaiting approval
-        </span>
-        {current && (
-          <span className="hidden opacity-70 sm:inline">
-            — tap a box in your own row to toggle it{current.isManager ? " (you can toggle anyone's)" : ""}
-          </span>
-        )}
-      </div>
+      {legend}
 
       <div className="accent-border-soft overflow-x-auto rounded-2xl border-2">
         <table
@@ -236,33 +331,8 @@ export default function StaffCalendarGrid({
         </table>
       </div>
 
-      {current && (
-        <div className="accent-border-soft flex flex-wrap items-center gap-2 rounded-2xl border-2 p-2 text-sm">
-          <span className="font-bold opacity-70">Running late this morning?</span>
-          <select
-            value={lateMinutes}
-            onChange={(e) => setLateMinutes(e.target.value)}
-            className="accent-border-soft rounded-full border-2 bg-transparent px-3 py-0.5 font-bold outline-none"
-          >
-            {LATE_MINUTE_OPTIONS.map((m) => (
-              <option key={m} value={m}>
-                {m} min
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={markLate}
-            disabled={markingLate}
-            className="accent-border rounded-full border-2 px-4 py-0.5 font-bold transition active:scale-95 disabled:opacity-40"
-          >
-            Mark me late today
-          </button>
-          <span className="hidden text-xs font-bold opacity-40 sm:inline">Turns your box for today orange — tap it again to clear.</span>
-        </div>
-      )}
+      {lateBox}
 
-      <PendingRequestsList />
       <MyAbsencesList />
     </div>
   );

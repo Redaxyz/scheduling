@@ -243,9 +243,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
       where: { active: true },
       include: { dedicatedProvider: true, xrayBackupAs: true },
     }),
-    // A PENDING day-off request doesn't block anything until Joanna approves
-    // it — see the StaffAbsence schema comment.
-    prisma.staffAbsence.findMany({ where: { date, status: "APPROVED" } }),
+    prisma.staffAbsence.findMany({ where: { date } }),
     prisma.assignment.findMany({ where: { date }, include: { staff: true, provider: true } }),
     weekday === null ? Promise.resolve([]) : prisma.scribeFallback.findMany({ where: { weekday } }),
     prisma.autoOverride.findMany({ where: { date } }),
@@ -580,7 +578,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
 export async function getFreeStaff(date: string): Promise<Record<Half, FreeStaffMember[]>> {
   const [staff, staffAbsences, assignments] = await Promise.all([
     prisma.staff.findMany({ where: { active: true } }),
-    prisma.staffAbsence.findMany({ where: { date, status: "APPROVED" } }),
+    prisma.staffAbsence.findMany({ where: { date } }),
     prisma.assignment.findMany({ where: { date } }),
   ]);
 
@@ -624,7 +622,7 @@ export async function getXrayEligible(date: string, office: Office, half: Half):
 
   const [staff, staffAbsences, assignments, autoOverrides, templateSlots, optedInRows] = await Promise.all([
     prisma.staff.findMany({ where: { active: true }, include: { xrayBackupAs: true } }),
-    prisma.staffAbsence.findMany({ where: { date, status: "APPROVED" } }),
+    prisma.staffAbsence.findMany({ where: { date } }),
     prisma.assignment.findMany({ where: { date } }),
     prisma.autoOverride.findMany({ where: { date } }),
     prisma.staffScheduleSlot.findMany({ where: { weekday, half } }),
@@ -742,9 +740,7 @@ export async function getWeekScheduleForAllStaff(mondayStr: string): Promise<MyS
       prisma.providerScheduleSlot.findMany(),
       prisma.providerAbsence.findMany({ where: { date: { in: dates } } }),
       prisma.providerAutoOverride.findMany({ where: { date: { in: dates } } }),
-      // A PENDING day-off request shouldn't show you as "out" until Joanna
-      // approves it — see the StaffAbsence schema comment.
-      prisma.staffAbsence.findMany({ where: { date: { in: dates }, status: "APPROVED" } }),
+      prisma.staffAbsence.findMany({ where: { date: { in: dates } } }),
       prisma.scribeFallback.findMany(),
       prisma.provider.findMany({ where: { active: true }, select: { id: true, name: true } }),
       prisma.staffScheduleSlot.findMany(),
