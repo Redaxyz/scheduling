@@ -82,6 +82,8 @@ export default function ProviderCalendarGrid({
   const [rowPx, setRowPx] = useState<number | null>(null);
 
   useEffect(() => {
+    if (!containerRef.current || rows.length === 0) return;
+
     function compute() {
       if (!containerRef.current || rows.length === 0) return;
       const top = containerRef.current.getBoundingClientRect().top;
@@ -92,8 +94,24 @@ export default function ProviderCalendarGrid({
       setRowPx(available / rows.length);
     }
     compute();
+
+    // A plain "resize" listener only catches the window actually changing
+    // size — it misses the bottom nav's own height changing for other
+    // reasons (e.g. the modern theme's floating-dock padding kicking in a
+    // beat after this component's first mount-time measurement, since that
+    // CSS attribute flip lands in a separate effect elsewhere in the tree).
+    // A ResizeObserver on the nav itself catches that regardless of effect
+    // ordering. Deliberately NOT observing containerRef itself — this
+    // effect is what sets its rows' heights, so watching it would just
+    // observe its own writes and loop forever.
+    const bottomNav = document.getElementById("bottom-nav");
+    const ro = bottomNav ? new ResizeObserver(compute) : null;
+    ro?.observe(bottomNav!);
     window.addEventListener("resize", compute);
-    return () => window.removeEventListener("resize", compute);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", compute);
+    };
   }, [rows.length, modern, dense]);
 
   const minRowPx = dense ? (modern ? 28 : 24) : 56;

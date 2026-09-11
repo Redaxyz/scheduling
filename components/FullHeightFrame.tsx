@@ -29,6 +29,8 @@ export default function FullHeightFrame({
   const [height, setHeight] = useState<number | null>(null);
 
   useEffect(() => {
+    if (!ref.current) return;
+
     function compute() {
       if (!ref.current) return;
       const top = ref.current.getBoundingClientRect().top;
@@ -38,8 +40,23 @@ export default function FullHeightFrame({
       setHeight(Math.max(0, available));
     }
     compute();
+
+    // A plain "resize" listener only fires for the window itself changing
+    // size — it misses the bottom nav's own height changing for unrelated
+    // reasons (e.g. the modern theme's floating-dock padding landing a beat
+    // after this component's first measurement, via a separate effect
+    // elsewhere in the tree). Watching the nav with a ResizeObserver catches
+    // that regardless of effect-ordering timing. Deliberately NOT observing
+    // `ref.current` itself — its height is what this effect sets, so
+    // watching it would just observe its own writes and loop forever.
+    const bottomNav = document.getElementById("bottom-nav");
+    const ro = bottomNav ? new ResizeObserver(compute) : null;
+    ro?.observe(bottomNav!);
     window.addEventListener("resize", compute);
-    return () => window.removeEventListener("resize", compute);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", compute);
+    };
   }, [reserveBelow, heightScale]);
 
   return (
