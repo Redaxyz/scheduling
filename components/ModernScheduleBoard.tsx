@@ -50,7 +50,10 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
     loadSwapRequests();
   }
 
-  const unassignedLine = HALVES.map((half) => day.unassigned[half].map((s) => s.name)).flat();
+  // Unlike the classic board (which lists this per half), the modern layout
+  // folds AM and PM into one summary line — so anyone unassigned for both
+  // halves needs deduping here, or they'd otherwise print twice.
+  const unassignedLine = Array.from(new Map(HALVES.flatMap((half) => day.unassigned[half]).map((s) => [s.id, s.name])).values());
 
   // On a phone the two offices stack, so whichever one is actually "yours"
   // should land on top instead of always defaulting to Bethesda-then-
@@ -140,8 +143,8 @@ function OfficeHalf({
     run(() => postJSON(`/api/swap-requests/${requestId}`, "POST", { staffId: currentId, accept }));
   }
 
-  function dropOnto(half: Half, target: DropTarget) {
-    return (source: PositionRef) => run(() => moveStaff(date, half, source, target));
+  function dropOnto(half: Half, target: DropTarget, displaced?: PositionRef | null) {
+    return (source: PositionRef) => run(() => moveStaff(date, half, source, target, displaced));
   }
 
   return (
@@ -188,7 +191,20 @@ function OfficeHalf({
                       swapRequests={swapRequests}
                       onToggleSwap={(p) => toggleSwap(half, p)}
                       onRespondSwap={respondSwap}
-                      onDropStaff={dropOnto(half, { role: "SCRIBE", office, providerId: cell.provider.id })}
+                      onDropStaff={dropOnto(
+                        half,
+                        { role: "SCRIBE", office, providerId: cell.provider.id },
+                        cell.scribe
+                          ? {
+                              office,
+                              half,
+                              role: "SCRIBE",
+                              providerId: cell.provider.id,
+                              staffId: cell.scribe.staffId,
+                              assignmentId: cell.scribe.assignmentId,
+                            }
+                          : null
+                      )}
                     />
                   ))}
                 </div>

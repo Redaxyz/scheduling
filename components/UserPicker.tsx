@@ -47,11 +47,10 @@ function modernCellColor(row: number, col: number) {
 
 export default function UserPicker() {
   const { staffList, setCurrentId } = useWhoAmI();
-  // Nobody's signed in yet at this screen, so the usual "is this Reda"
-  // check (which needs `current`) can't gate the modern look here — the
-  // raw persisted toggle is the only signal available, but since the
-  // toggle itself is only ever shown to Reda, a browser with it set to "on"
-  // is Reda's browser regardless of who's mid-pick right now.
+  // Nobody's signed in yet at this screen, so there's no `current` to check
+  // — but modern is now the default look for everyone anyway, and the raw
+  // persisted toggle (true unless a device explicitly opted out) already
+  // reflects that regardless of who's mid-pick right now.
   const { modernEnabled: modern } = useThemeMode();
   const [phase, setPhase] = useState<Phase>("idle");
   const [picked, setPicked] = useState<StaffOption | null>(null);

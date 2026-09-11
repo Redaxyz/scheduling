@@ -108,10 +108,13 @@ type XrayBackupStaffRow = {
 
 // Who's eligible to self-add as X-ray for `office`+`half` right now: the
 // office's own default tech, if they're free but not currently placed there
-// (e.g. they changed away and want back in); or a backup whose designated
-// primary (or, for a floating backup like Lester, any one of several) is
-// absent this half. Nobody is office-locked — a backup can help at either
-// office. Nobody here who's themselves absent/already assigned.
+// (e.g. they changed away and want back in); or anyone certified as a
+// backup (e.g. Charlie/Mark, or a floating backup like Lester) — certified
+// backups are always eligible, not just when their primary is out, though
+// Cindy/Shelby stay the standing default techs either way (see
+// defaultXrayOffice/autoXrayEntries, untouched by this). Nobody is
+// office-locked — a backup can help at either office. Nobody here who's
+// themselves absent/already assigned.
 function computeXrayEligible(
   office: Office,
   half: Half,
@@ -142,9 +145,11 @@ function computeXrayEligible(
     if (s.xrayBackupAs.length === 0) continue;
 
     const outPrimaries = s.xrayBackupAs.filter((b) => isStaffAbsent(b.primaryStaffId, half));
-    if (outPrimaries.length === 0) continue;
-
-    const primaryNames = outPrimaries.map((b) => nameById.get(b.primaryStaffId) ?? "someone").join(" or ");
+    const allPrimaryNames = s.xrayBackupAs.map((b) => nameById.get(b.primaryStaffId) ?? "someone").join(" / ");
+    const reason =
+      outPrimaries.length > 0
+        ? `Backing up ${outPrimaries.map((b) => nameById.get(b.primaryStaffId) ?? "someone").join(" or ")}`
+        : `Certified backup (usually ${allPrimaryNames})`;
     result.push({
       id: s.id,
       name: s.name,
@@ -152,7 +157,7 @@ function computeXrayEligible(
       canScribe: s.canScribe,
       homeOffice: (s.homeOffice as Office | null) ?? null,
       dedicatedProviderName: null,
-      reason: `Backing up ${primaryNames}`,
+      reason,
       addableByAnyone: s.addableByAnyone,
     });
   }
@@ -566,34 +571,29 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
 }
 
 // Which staff are free to self-place, per half. Anyone not absent, not
-// already placed elsewhere this half, and using the app at all is eligible
-// for ROOMING/SCRIBE — being someone's dedicated scribe or the default
-// x-ray tech no longer blocks self-placing elsewhere; picking a NEW slot
-// naturally supersedes a computed default (see getDaySchedule, which
-// already backs off a default once its holder has a real Assignment).
+// already placed ANYWHERE this half — at either office, whether by a real
+// Assignment row or a computed default (dedicated scribe, default
+// rooming/x-ray office, personal template) — and using the app at all is
+// eligible for ROOMING/SCRIBE. Deliberately built on top of getDaySchedule's
+// own placedStaffIds (via `unassigned`) instead of re-deriving "already
+// placed" from just the assignments table: that narrower check used to miss
+// every computed-default placement, so someone auto-rooming in Germantown
+// (say) would still show up as an addable option in Bethesda too.
 // X-ray techs (kind XRAY) are excluded here entirely — they only ever
 // self-place via getXrayEligible, never into a non-x-ray role.
 // Scribe-eligible entries are ordered by experience (SCRIBE_PRIORITY) so
 // substitute pickers suggest the most experienced available scribe first.
 export async function getFreeStaff(date: string): Promise<Record<Half, FreeStaffMember[]>> {
-  const [staff, staffAbsences, assignments] = await Promise.all([
-    prisma.staff.findMany({ where: { active: true } }),
-    prisma.staffAbsence.findMany({ where: { date } }),
-    prisma.assignment.findMany({ where: { date } }),
-  ]);
+  const day = await getDaySchedule(date);
+  const staff = await prisma.staff.findMany({ where: { active: true } });
+  const staffById = new Map(staff.map((s) => [s.id, s]));
 
   const result: Record<Half, FreeStaffMember[]> = { AM: [], PM: [] };
 
   for (const half of HALVES) {
-    for (const s of staff) {
-      if (!s.usesApp) continue; // e.g. Lester — never in the generic pool
-      if (s.kind === "XRAY") continue; // x-ray techs only self-place via getXrayEligible
-
-      const isAbsent = staffAbsences.some((a) => a.staffId === s.id && absenceMatches(half, a.half));
-      if (isAbsent) continue;
-
-      const alreadyAssigned = assignments.some((a) => a.staffId === s.id && a.half === half);
-      if (alreadyAssigned) continue;
+    for (const u of day.unassigned[half]) {
+      const s = staffById.get(u.id);
+      if (!s || s.kind === "XRAY") continue;
 
       result[half].push({
         id: s.id,

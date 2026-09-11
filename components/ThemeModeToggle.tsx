@@ -2,9 +2,10 @@
 
 import { useThemeMode } from "@/lib/theme";
 
-// Reda-only A/B toggle between the classic look and the modern CAO-branded
-// redesign — see globals.css's [data-modern="true"] rules for the actual
-// restyling. Nobody else ever sees this control or the modern theme.
+// The modern CAO-branded redesign (see globals.css's [data-modern="true"]
+// rules) now ships as the default look for everyone. This toggle is a
+// Reda-only personal escape hatch back to the classic look — nobody else
+// ever sees the control, but that no longer means nobody else sees modern.
 //
 // Deliberately unlabeled and nearly invisible: just a dot in the corner that
 // brightens on hover/focus. Reda knows it's there; nobody else needs to.

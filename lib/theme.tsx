@@ -6,13 +6,14 @@ import { useWhoAmI } from "./whoami";
 const STORAGE_KEY = "cfa-modern-theme";
 
 type ThemeModeCtx = {
-  // Whether Reda has flipped the toggle on — persisted, but only ever acted
-  // on while she's actually signed in (see `active` below), so switching to
-  // anyone else always shows the classic look regardless of what's stored.
+  // Modern is now the shipped look for everyone, so this defaults to true
+  // for every browser — it only reads false if a device explicitly stored
+  // "0" (i.e. someone flipped the hidden toggle off on that device).
   modernEnabled: boolean;
   setModernEnabled: (v: boolean) => void;
-  // The toggle itself is only ever shown to Reda — everyone else never sees
-  // it and never gets the modern theme, no matter what's in localStorage.
+  // The hidden toggle itself is only ever shown to Reda, as a personal
+  // escape hatch back to the classic look — it no longer gates who gets
+  // the modern theme, just who can see the switch.
   modernAvailable: boolean;
   active: boolean;
 };
@@ -21,15 +22,15 @@ const Ctx = createContext<ThemeModeCtx | null>(null);
 
 export function ThemeModeProvider({ children }: { children: ReactNode }) {
   const { current } = useWhoAmI();
-  const [modernEnabled, setModernEnabledState] = useState(false);
+  const [modernEnabled, setModernEnabledState] = useState(true);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored === "1") setModernEnabledState(true);
+    if (stored === "0") setModernEnabledState(false);
   }, []);
 
   const modernAvailable = current?.name === "Reda";
-  const active = modernAvailable && modernEnabled;
+  const active = modernEnabled;
 
   useEffect(() => {
     document.body.setAttribute("data-modern", active ? "true" : "false");

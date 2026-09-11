@@ -39,11 +39,26 @@ export async function postJSON(url: string, method: string, body?: unknown) {
 // superseded once the new one exists, see getDaySchedule's isStaffAssigned
 // checks), then create the new one. A drop back onto the exact slot it came
 // from is a no-op rather than a pointless delete+recreate round-trip.
-export async function moveStaff(date: string, half: Half, source: PositionRef, target: DropTarget) {
+//
+// `displaced` is whoever currently occupies the target slot, for the
+// single-occupant case (a provider's scribe) — dropping there previously
+// just bumped that person into thin air (their computed default silently
+// stopped applying, or their real row got orphaned) instead of actually
+// freeing them up. When given, they trade places: they take the dragged
+// person's old spot instead of disappearing. Omit it for multi-occupant
+// targets (rooming/x-ray groups), where dropping just adds someone and
+// nobody needs to be displaced.
+export async function moveStaff(date: string, half: Half, source: PositionRef, target: DropTarget, displaced?: PositionRef | null) {
   if (source.role === target.role && source.office === target.office && source.providerId === target.providerId) return;
+  const swapping = Boolean(displaced) && displaced!.staffId !== source.staffId;
+
   if (source.assignmentId) {
     await postJSON(`/api/assignments/${source.assignmentId}`, "DELETE");
   }
+  if (swapping && displaced!.assignmentId) {
+    await postJSON(`/api/assignments/${displaced!.assignmentId}`, "DELETE");
+  }
+
   await postJSON("/api/assignments", "POST", {
     date,
     half,
@@ -52,6 +67,17 @@ export async function moveStaff(date: string, half: Half, source: PositionRef, t
     staffId: source.staffId,
     providerId: target.providerId ?? undefined,
   });
+
+  if (swapping) {
+    await postJSON("/api/assignments", "POST", {
+      date,
+      half,
+      office: source.office,
+      role: source.role,
+      staffId: displaced!.staffId,
+      providerId: source.providerId ?? undefined,
+    });
+  }
 }
 
 export function readDragPosition(e: DragEvent): PositionRef | null {

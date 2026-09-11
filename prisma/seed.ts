@@ -166,7 +166,8 @@ const STAFF: {
     defaultRoomingOffice: "BETHESDA",
     pinnedGridIndex: 13,
   },
-  // Mark is also Cindy's X-ray backup, only when she's out.
+  // Mark is also certified for X-ray, backing up either Cindy or Shelby
+  // when one of them is out (it's not his dedicated role, just a backup).
   {
     name: "Mark",
     kind: "GENERAL",
@@ -175,10 +176,11 @@ const STAFF: {
     homeOffice: "BETHESDA",
     dedicatedProviderInitials: null,
     defaultRoomingOffice: "BETHESDA",
-    xrayBackupForNames: ["Cindy"],
+    xrayBackupForNames: ["Cindy", "Shelby"],
     pinnedGridIndex: 9,
   },
-  // Charlie is also Shelby's X-ray backup, only when she's out.
+  // Charlie is also certified for X-ray, backing up either Cindy or Shelby
+  // when one of them is out (it's not his dedicated role, just a backup).
   {
     name: "Charlie",
     kind: "GENERAL",
@@ -187,7 +189,7 @@ const STAFF: {
     homeOffice: "GERMANTOWN",
     dedicatedProviderInitials: null,
     defaultRoomingOffice: "GERMANTOWN",
-    xrayBackupForNames: ["Shelby"],
+    xrayBackupForNames: ["Cindy", "Shelby"],
     pinnedGridIndex: 8,
   },
   {

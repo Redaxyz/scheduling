@@ -129,8 +129,8 @@ function OfficeHalfCell({
     run(() => postJSON(`/api/swap-requests/${requestId}`, "POST", { staffId: currentId, accept }));
   }
 
-  function dropOnto(target: DropTarget) {
-    return (source: PositionRef) => run(() => moveStaff(date, slot.half, source, target));
+  function dropOnto(target: DropTarget, displaced?: PositionRef | null) {
+    return (source: PositionRef) => run(() => moveStaff(date, slot.half, source, target, displaced));
   }
 
   const scribeEligible = free.filter((s) => s.canScribe);
@@ -168,7 +168,19 @@ function OfficeHalfCell({
               swapRequests={swapRequests}
               onToggleSwap={toggleSwap}
               onRespondSwap={respondSwap}
-              onDropStaff={dropOnto({ role: "SCRIBE", office: slot.office, providerId: cell.provider.id })}
+              onDropStaff={dropOnto(
+                { role: "SCRIBE", office: slot.office, providerId: cell.provider.id },
+                cell.scribe
+                  ? {
+                      office: slot.office,
+                      half: slot.half,
+                      role: "SCRIBE",
+                      providerId: cell.provider.id,
+                      staffId: cell.scribe.staffId,
+                      assignmentId: cell.scribe.assignmentId,
+                    }
+                  : null
+              )}
             />
           ))}
         </div>
