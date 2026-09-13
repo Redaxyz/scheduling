@@ -294,7 +294,31 @@ const SCRIBE_FALLBACKS: Record<string, FallbackRow[]> = {
   ],
 };
 
+// This script wipes and recreates every table below — assignments, absences,
+// staff, providers, all of it. It's meant for a fresh local database only.
+// Running it against production even once would erase real coworkers' real
+// schedule entries (this happened before), so it refuses to run against
+// anything that isn't obviously localhost unless someone deliberately opts
+// in with SEED_I_UNDERSTAND_THIS_WIPES_THE_DATABASE=yes.
+function assertSafeToSeed() {
+  const url = process.env.DATABASE_URL ?? "";
+  const looksLocal = /localhost|127\.0\.0\.1/.test(url);
+  if (looksLocal) return;
+  if (process.env.SEED_I_UNDERSTAND_THIS_WIPES_THE_DATABASE === "yes") {
+    console.warn("⚠️  Seeding a non-local database because the override flag is set. Proceeding...");
+    return;
+  }
+  console.error(
+    "\nRefusing to seed: DATABASE_URL doesn't look like localhost, so this could be production.\n" +
+      "This script deletes ALL assignments, absences, staff, and providers before recreating them.\n" +
+      "If you are absolutely sure you want to wipe this database, re-run with:\n" +
+      "  SEED_I_UNDERSTAND_THIS_WIPES_THE_DATABASE=yes npx prisma db seed\n"
+  );
+  process.exit(1);
+}
+
 async function main() {
+  assertSafeToSeed();
   console.log("Seeding...");
 
   await prisma.assignment.deleteMany();
