@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { StaffCalendarRow, StaffDayStatus } from "@/lib/calendar";
-import { nearestBusinessDayOnOrAfter, todayStr, weekdayIndex } from "@/lib/date";
+import { mondayOf, nearestBusinessDayOnOrAfter, todayStr, weekdayIndex } from "@/lib/date";
 import { federalHolidayName, HOLIDAY_COLOR } from "@/lib/holidays";
 import { getBottomNavHeight } from "@/lib/bottomNav";
 import { useWhoAmI } from "@/lib/whoami";
@@ -91,6 +91,10 @@ export default function StaffCalendarGrid({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [lateMinutes, setLateMinutes] = useState(String(LATE_MINUTE_OPTIONS[1]));
+  // Computed once per render, not per date — cheap, and this only needs to
+  // be right to the day.
+  const today = todayStr();
+  const currentWeekMonday = mondayOf(today);
   const [markingLate, setMarkingLate] = useState(false);
   const [showAnotherDay, setShowAnotherDay] = useState(false);
   const [anotherDate, setAnotherDate] = useState(todayStr());
@@ -385,12 +389,16 @@ export default function StaffCalendarGrid({
                     const day = Number(date.slice(-2));
                     const wd = weekdayIndex(date)!;
                     const holiday = federalHolidayName(date);
+                    const isToday = date === today;
+                    const inCurrentWeek = mondayOf(date) === currentWeekMonday;
                     return (
                       <th
                         key={date}
-                        className={`accent-border-soft border-b-2 text-center font-bold ${holiday ? "" : "opacity-50"} ${dense ? "px-1 py-1 text-[10px]" : "px-1 py-1 text-sm"}`}
+                        className={`accent-border-soft border-b-2 text-center font-bold ${holiday ? "" : "opacity-50"} ${dense ? "px-1 py-1 text-[10px]" : "px-1 py-1 text-sm"} ${
+                          inCurrentWeek ? "cal-current-week" : ""
+                        } ${isToday ? "cal-today-header" : ""}`}
                         style={holiday ? { color: HOLIDAY_COLOR } : undefined}
-                        title={holiday ?? undefined}
+                        title={holiday ?? (isToday ? "Today" : undefined)}
                       >
                         <div className="h-[10px] text-[8px] normal-case leading-[10px] opacity-80">{holiday ? "holiday" : " "}</div>
                         <div>{WEEKDAY_LETTERS[wd]}</div>
@@ -427,8 +435,9 @@ export default function StaffCalendarGrid({
                         const fill = holiday ? HOLIDAY_COLOR : STATUS_COLOR[cell.status];
                         const durationText = !holiday && cell.status === "PARTIAL" && cell.lateMinutes ? formatLateDuration(cell.lateMinutes) : null;
                         const label = `${row.name} — ${date}: ${holiday ?? (durationText ? `${STATUS_LABEL[cell.status]} (${durationText})` : STATUS_LABEL[cell.status])}`;
+                        const inCurrentWeek = mondayOf(date) === currentWeekMonday;
                         return (
-                          <td key={date} className={`${rowCellPad} text-center`}>
+                          <td key={date} className={`${rowCellPad} text-center ${inCurrentWeek ? "cal-current-week" : ""}`}>
                             {editable ? (
                               <button
                                 type="button"

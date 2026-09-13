@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ProviderCalendarRow, ProviderHalfCell } from "@/lib/calendar";
-import { weekdayIndex } from "@/lib/date";
+import { mondayOf, todayStr, weekdayIndex } from "@/lib/date";
 import { federalHolidayName, HOLIDAY_COLOR } from "@/lib/holidays";
 import { getBottomNavHeight } from "@/lib/bottomNav";
 import { HALVES, HALF_LABELS, OFFICE_LABELS, type Half, type Office } from "@/lib/types";
@@ -105,6 +105,8 @@ export default function ProviderCalendarGrid({
   const [, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
+  const today = todayStr();
+  const currentWeekMonday = mondayOf(today);
 
   // Rows grow to actually use whatever vertical space the window has
   // instead of sitting fixed-size with dead space below on a tall screen —
@@ -196,13 +198,17 @@ export default function ProviderCalendarGrid({
               const day = Number(date.slice(-2));
               const wd = weekdayIndex(date)!;
               const holiday = federalHolidayName(date);
+              const isToday = date === today;
+              const inCurrentWeek = mondayOf(date) === currentWeekMonday;
               return (
                 <th
                   key={date}
                   colSpan={2}
-                  className={`accent-border-soft border-b-2 border-l-2 text-center font-bold ${holiday ? "" : "opacity-50"} ${dense ? "px-1 py-1 text-[10px]" : "px-1 py-1.5 text-sm"}`}
+                  className={`accent-border-soft border-b-2 border-l-2 text-center font-bold ${holiday ? "" : "opacity-50"} ${dense ? "px-1 py-1 text-[10px]" : "px-1 py-1.5 text-sm"} ${
+                    inCurrentWeek ? "cal-current-week" : ""
+                  } ${isToday ? "cal-today-header" : ""}`}
                   style={holiday ? { color: HOLIDAY_COLOR } : undefined}
-                  title={holiday ?? undefined}
+                  title={holiday ?? (isToday ? "Today" : undefined)}
                 >
                   <div className="h-[10px] text-[8px] normal-case leading-[10px] opacity-80">{holiday ? "holiday" : " "}</div>
                   <div>{WEEKDAY_LETTERS[wd]}</div>
@@ -212,16 +218,19 @@ export default function ProviderCalendarGrid({
             })}
           </tr>
           <tr>
-            {dates.flatMap((date) =>
-              HALVES.map((half) => (
+            {dates.flatMap((date) => {
+              const inCurrentWeek = mondayOf(date) === currentWeekMonday;
+              return HALVES.map((half) => (
                 <th
                   key={`${date}-${half}`}
-                  className={`accent-border-soft border-b-2 text-center text-[9px] font-bold uppercase tracking-wide opacity-40 ${half === "AM" ? "border-l-2" : ""}`}
+                  className={`accent-border-soft border-b-2 text-center text-[9px] font-bold uppercase tracking-wide opacity-40 ${half === "AM" ? "border-l-2" : ""} ${
+                    inCurrentWeek ? "cal-current-week" : ""
+                  }`}
                 >
                   {half}
                 </th>
-              ))
-            )}
+              ));
+            })}
           </tr>
         </thead>
         <tbody>
@@ -234,13 +243,17 @@ export default function ProviderCalendarGrid({
                   const key = `${row.providerId}:${date}:${half}`;
                   const officeName = cell.office ? OFFICE_LABELS[cell.office] : null;
                   const holiday = federalHolidayName(date);
+                  const inCurrentWeek = mondayOf(date) === currentWeekMonday;
                   const label = holiday
                     ? `${row.name} — ${date} ${HALF_LABELS[half]}: ${holiday}`
                     : `${row.name} — ${date} ${HALF_LABELS[half]}: ${
                         cell.status === "PRESENT" && !officeName ? "off duty" : STATUS_LABEL[cell.status]
                       }${officeName ? ` at ${officeName}` : ""}${cell.fromTemplate ? " (usual surgery day)" : ""}`;
                   return (
-                    <td key={key} className={`p-1 text-center ${half === "AM" ? "border-l-2 accent-border-soft" : ""}`}>
+                    <td
+                      key={key}
+                      className={`p-1 text-center ${half === "AM" ? "border-l-2 accent-border-soft" : ""} ${inCurrentWeek ? "cal-current-week" : ""}`}
+                    >
                       <button
                         type="button"
                         onClick={() => toggle(row.providerId, date, half, cell)}
