@@ -8,6 +8,43 @@ export function todayStr(): string {
   return tz.toISOString().slice(0, 10);
 }
 
+// Eastern-time "YYYY-MM-DD" + current hour (0-23), read via Intl instead of
+// a timezone library — this is the one place the app cares about a real
+// wall-clock time (everywhere else just compares whole calendar days).
+function easternNow(): { date: string; hour: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, hour: Number(get("hour")) % 24 };
+}
+
+// "Today," for the purposes of what every tab defaults to — not the actual
+// calendar date real absences/holidays/late-marks key off of (see
+// todayStr for that). Once it's past 5pm Eastern, the current day's
+// schedule isn't useful to land on anymore, so this rolls forward to the
+// next business day (skipping straight over a weekend, same as landing on
+// an actual Saturday/Sunday would) — e.g. Friday 6pm and all of Saturday/
+// Sunday all resolve to next Monday.
+export function effectiveScheduleDate(): string {
+  const { date, hour } = easternNow();
+  let d = hour >= 17 ? addDays(date, 1) : date;
+  while (weekdayIndex(d) === null) d = addDays(d, 1);
+  return d;
+}
+
+// The Monday every tab's own "current week" default should use — composes
+// with effectiveScheduleDate so Friday-after-5pm and weekends land on next
+// week's Monday, not the week that's ending/just ended.
+export function effectiveMonday(): string {
+  return mondayOf(effectiveScheduleDate());
+}
+
 // Monday=0 .. Friday=4, Saturday/Sunday => null
 export function weekdayIndex(dateStr: string): number | null {
   const [y, m, d] = dateStr.split("-").map(Number);

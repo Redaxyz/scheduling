@@ -273,10 +273,14 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
   const isOverridden = (staffId: string, half: Half) => autoOverrides.some((o) => o.staffId === staffId && o.half === half);
   // A CUSTOM absence doesn't block anything (see absenceMatches) — it's just
   // a running-late note, surfaced next to the person's name in the UI.
-  const lateStaffMinutes = (staffId: string) =>
-    staffAbsences.find((a) => a.staffId === staffId && a.half === "CUSTOM")?.lateMinutes ?? null;
-  const lateProviderMinutes = (providerId: string) =>
-    providerAbsences.find((a) => a.providerId === providerId && a.half === "CUSTOM")?.lateMinutes ?? null;
+  // "Running late" only ever describes the START of the day — nobody's
+  // afternoon is delayed by a morning tardiness — so it only ever applies
+  // to the AM half, regardless of which half the CUSTOM row happens to be
+  // stored against.
+  const lateStaffMinutes = (staffId: string, half: Half) =>
+    half === "AM" ? (staffAbsences.find((a) => a.staffId === staffId && a.half === "CUSTOM")?.lateMinutes ?? null) : null;
+  const lateProviderMinutes = (providerId: string, half: Half) =>
+    half === "AM" ? (providerAbsences.find((a) => a.providerId === providerId && a.half === "CUSTOM")?.lateMinutes ?? null) : null;
 
   // A scribe whose own doctor doesn't need them this half, but who has a
   // fallback row naming `providerId` as their target — e.g. Reda defaults to
@@ -335,7 +339,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
             color: explicitSub.staff.color,
             substitute: true,
             assignmentId: explicitSub.id,
-            lateMinutes: lateStaffMinutes(explicitSub.staffId),
+            lateMinutes: lateStaffMinutes(explicitSub.staffId, half),
           };
         } else if (templateScribe) {
           scribe = {
@@ -344,7 +348,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
             color: templateScribe.color,
             substitute: false,
             assignmentId: null,
-            lateMinutes: lateStaffMinutes(templateScribe.staffId),
+            lateMinutes: lateStaffMinutes(templateScribe.staffId, half),
           };
         } else if (dedicated && !dedicatedAbsent && !isOverridden(dedicated.id, half) && !isStaffAssigned(dedicated.id, half)) {
           scribe = {
@@ -353,7 +357,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
             color: dedicated.color,
             substitute: false,
             assignmentId: null,
-            lateMinutes: lateStaffMinutes(dedicated.id),
+            lateMinutes: lateStaffMinutes(dedicated.id, half),
           };
         } else {
           const target = resolveTargetScribe(s.providerId, half);
@@ -364,7 +368,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
               color: target.color,
               substitute: false,
               assignmentId: null,
-              lateMinutes: lateStaffMinutes(target.staffId),
+              lateMinutes: lateStaffMinutes(target.staffId, half),
             };
           }
         }
@@ -374,7 +378,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
             id: s.providerId,
             name: s.provider.name,
             initials: s.provider.initials,
-            lateMinutes: lateProviderMinutes(s.providerId),
+            lateMinutes: lateProviderMinutes(s.providerId, half),
           },
           scribe,
         };
@@ -389,7 +393,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
         color: a.staff.color,
         providerId: a.providerId ?? null,
         providerName: a.provider?.name ?? null,
-        lateMinutes: lateStaffMinutes(a.staffId),
+        lateMinutes: lateStaffMinutes(a.staffId, half),
         auto: false,
         hardCommitment: a.role === "XRAY",
       });
@@ -417,7 +421,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
               color: s.color,
               providerId: null,
               providerName: null,
-              lateMinutes: lateStaffMinutes(s.id),
+              lateMinutes: lateStaffMinutes(s.id, half),
               auto: true,
               hardCommitment: false,
             });
@@ -447,7 +451,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
           color: s.color,
           providerId: null,
           providerName: null,
-          lateMinutes: lateStaffMinutes(s.id),
+          lateMinutes: lateStaffMinutes(s.id, half),
           auto: true,
           hardCommitment: true,
         }));
@@ -471,7 +475,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
               color: s.color,
               providerId: null,
               providerName: null,
-              lateMinutes: lateStaffMinutes(s.id),
+              lateMinutes: lateStaffMinutes(s.id, half),
               auto: true,
               hardCommitment: true,
             },
@@ -495,7 +499,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
                 color: defaultXrayStaff.color,
                 providerId: null,
                 providerName: null,
-                lateMinutes: lateStaffMinutes(defaultXrayStaff.id),
+                lateMinutes: lateStaffMinutes(defaultXrayStaff.id, half),
                 auto: true,
                 hardCommitment: true,
               },
@@ -765,8 +769,12 @@ export async function getWeekScheduleForAllStaff(mondayStr: string): Promise<MyS
 
       for (const half of HALVES) {
         const isOut = staffAbsences.some((a) => a.staffId === s.id && a.date === date && absenceMatches(half, a.half));
+        // Running late only ever describes the start of the day, so it never
+        // applies to the PM half (mirrors lateStaffMinutes in getDaySchedule).
         const lateMinutes =
-          staffAbsences.find((a) => a.staffId === s.id && a.date === date && a.half === "CUSTOM")?.lateMinutes ?? null;
+          half === "AM"
+            ? staffAbsences.find((a) => a.staffId === s.id && a.date === date && a.half === "CUSTOM")?.lateMinutes ?? null
+            : null;
 
         // Where are they actually placed right now, per the real computed
         // day (covers present-and-working, and also a present person who's

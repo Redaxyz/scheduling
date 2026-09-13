@@ -92,8 +92,8 @@ export default function ModernMyScheduleView({ rows }: { rows: MyScheduleRow[] }
       {row.days.map((day) => {
         const isToday = day.date === today;
         return (
-          <div key={day.date} className={`flex min-h-0 flex-1 items-stretch ${isToday ? "ring-2 ring-inset ring-[var(--cao-orange,#f5871f)]" : ""}`}>
-            <div className="flex w-16 shrink-0 flex-col items-center justify-center gap-0.5 bg-[var(--cao-navy,#333f4c)] text-center text-white sm:w-24">
+          <div key={day.date} className={`flex min-h-0 flex-1 items-stretch ${isToday ? "ring-2 ring-inset ring-[var(--theme-accent)]" : ""}`}>
+            <div className="flex w-16 shrink-0 flex-col items-center justify-center gap-0.5 bg-slate-700 text-center text-white sm:w-24">
               <div className="text-xs font-black uppercase tracking-wide sm:text-sm">{WEEKDAY_LABELS[weekdayIndex(day.date)!].slice(0, 3)}</div>
               <div className="text-[10px] font-bold text-white/50 sm:text-xs">{formatShort(day.date)}</div>
             </div>

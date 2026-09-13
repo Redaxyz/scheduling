@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getWeekScheduleForAllStaff } from "@/lib/schedule";
-import { addDays, mondayOf, todayStr } from "@/lib/date";
-import MyScheduleViewSwitcher from "@/components/MyScheduleViewSwitcher";
+import { addDays, effectiveMonday, mondayOf } from "@/lib/date";
+import ModernMyScheduleView from "@/components/ModernMyScheduleView";
+import FullHeightFrame from "@/components/FullHeightFrame";
 import AutoRefresh from "@/components/AutoRefresh";
 import MyTemplateEditor from "@/components/MyTemplateEditor";
+import CalendarNavLinks from "@/components/CalendarNavLinks";
+import MyScheduleHeading from "@/components/MyScheduleHeading";
 
 export default async function MySchedulePage({ params }: { params: Promise<{ monday: string }> }) {
   const { monday: mondayParam } = await params;
@@ -19,31 +22,33 @@ export default async function MySchedulePage({ params }: { params: Promise<{ mon
   }
 
   const rows = await getWeekScheduleForAllStaff(monday);
-  const isThisWeek = monday === mondayOf(todayStr());
+  const isThisWeek = monday === effectiveMonday();
 
   return (
     <div className="space-y-2">
       <AutoRefresh />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-lg font-extrabold tracking-tight">Me</h1>
+          <MyScheduleHeading />
           {!isThisWeek && (
-            <Link href={`/my-schedule/${mondayOf(todayStr())}`} className="accent-text text-xs font-bold hover:underline">
+            <Link href={`/my-schedule/${effectiveMonday()}`} className="accent-text text-xs font-bold hover:underline">
               Jump to this week
             </Link>
           )}
         </div>
-        <div className="flex gap-2 text-xs font-bold">
-          <Link href={`/my-schedule/${addDays(monday, -7)}`} className="accent-border rounded-full border-2 px-3 py-1">
-            ← Previous week
-          </Link>
-          <Link href={`/my-schedule/${addDays(monday, 7)}`} className="accent-border rounded-full border-2 px-3 py-1">
-            Next week →
-          </Link>
-        </div>
+        <CalendarNavLinks
+          prevHref={`/my-schedule/${addDays(monday, -7)}`}
+          nextHref={`/my-schedule/${addDays(monday, 7)}`}
+          prevLabel="Previous week"
+          nextLabel="Next week"
+        />
       </div>
 
-      <MyScheduleViewSwitcher rows={rows} />
+      <div className="relative left-1/2 w-screen -translate-x-1/2">
+        <FullHeightFrame reserveBelow={72} heightScale={0.92}>
+          <ModernMyScheduleView rows={rows} />
+        </FullHeightFrame>
+      </div>
 
       <MyTemplateEditor />
     </div>

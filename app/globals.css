@@ -6,6 +6,15 @@
   color-scheme: light;
   /* Neutral default until a staff member is picked; then set per-person. */
   --theme-accent: #94a3b8;
+  /* CAO brand palette — used permanently by the sign-in picker and the
+     bottom nav dock/raised Home button (the two surfaces that keep the
+     CAO look), never by --theme-accent itself. Everywhere else (Home, Me,
+     the Schedule tab, and every other button/border) stays on the
+     per-person accent color. */
+  --cao-blue: #1878b4;
+  --cao-blue-light: #4fb3e8;
+  --cao-orange: #f5871f;
+  --cao-navy: #333f4c;
 }
 
 body {
@@ -43,112 +52,26 @@ textarea:focus {
 }
 
 /* ============================================================
-   Modern theme — a Reda-only, toggleable redesign (see lib/theme.tsx
-   and components/ThemeModeToggle.tsx). Everything here is scoped under
-   body[data-modern="true"], so it's completely inert for everyone else
-   and fully reversible with one click. Built on the CAO brand palette
-   (pin blue/orange/navy) instead of the per-person pastel accent, with
-   a cleaner, flatter, more spacious "futuristic dashboard" language:
-   glass chrome, floating nav, soft elevation instead of heavy borders.
-   Functional status colors (present/absent/late, office identity, per-
-   person pill colors) are all set inline in the components themselves
-   and are untouched here on purpose — this reskins structure and
-   chrome, not meaning. ============================================ */
-
-body[data-modern="true"] {
-  /* Retinting --theme-accent to the CAO blue means every .accent-* utility
-     (used everywhere — borders, soft backgrounds, focus rings, "(you)"
-     text) already inherits the brand color for free, no per-component
-     changes needed. */
-  --theme-accent: #1878b4;
-  --cao-blue: #1878b4;
-  --cao-blue-light: #4fb3e8;
-  --cao-orange: #f5871f;
-  --cao-navy: #333f4c;
-  background:
-    radial-gradient(ellipse 900px 600px at 0% 0%, rgba(79, 179, 232, 0.1), transparent 60%),
-    radial-gradient(ellipse 900px 600px at 100% 100%, rgba(245, 135, 31, 0.08), transparent 60%),
-    #f7fafb;
-  color: #263140;
-}
-
-/* Tighter, heavier headings read as more "designed" than the default. */
-body[data-modern="true"] h1,
-body[data-modern="true"] h2,
-body[data-modern="true"] h3 {
-  letter-spacing: -0.02em;
-}
-
-/* A small CAO-colored glow mark in front of the wordmark — a compact nod
-   to the pin logo without needing to ship an image asset. */
-body[data-modern="true"] header.accent-border-soft > div > span:first-child::before {
-  content: "";
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  margin-right: 8px;
-  border-radius: 50%;
-  vertical-align: middle;
-  background: radial-gradient(circle at 35% 35%, var(--cao-blue-light), var(--cao-blue) 60%, var(--cao-orange) 100%);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 0 14px rgba(24, 120, 180, 0.45);
-}
-
-/* Sticky glass header instead of a flat bordered bar. */
-body[data-modern="true"] header.accent-border-soft {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(18px) saturate(1.4);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4);
-  border-bottom: 1px solid rgba(24, 120, 180, 0.14);
-  box-shadow: 0 1px 0 rgba(24, 120, 180, 0.05);
-}
-
-/* Thinner borders + soft elevation instead of chunky 2px outlines —
-   every rounded-2xl/rounded-xl "card" in the app picks this up for free. */
-body[data-modern="true"] .border-2 {
-  border-width: 1px;
-}
-body[data-modern="true"] .rounded-2xl {
-  border-radius: 1.25rem;
-}
-body[data-modern="true"] .rounded-2xl,
-body[data-modern="true"] .rounded-xl {
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    0 10px 28px -14px rgba(24, 120, 180, 0.22);
-}
-
-/* Pill buttons/toggles get a faint brand-gradient fill and a subtle lift
-   on hover instead of a flat outline — functional status colors are set
-   inline elsewhere and simply win over this (transparent) background. */
-body[data-modern="true"] .rounded-full.border-2 {
-  border-width: 1px;
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease,
-    background 0.15s ease;
-}
-body[data-modern="true"] button.rounded-full.border-2:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 20px -8px rgba(24, 120, 180, 0.35);
-}
-body[data-modern="true"] a.rounded-full.border-2,
-body[data-modern="true"] button.rounded-full.border-2 {
-  background: linear-gradient(135deg, rgba(24, 120, 180, 0.07), rgba(245, 135, 31, 0.07));
-}
+   Permanent chrome — the two surfaces that always keep the CAO-branded
+   look regardless of page: the sign-in picker and the bottom nav dock
+   (there's no top header anymore — it was removed entirely in favor of
+   the "switch person" button living in the bottom nav instead).
+   Everything else (Home, Me, the Schedule tab, and all ordinary
+   buttons/cards) stays on the classic per-person --theme-accent look and
+   default Tailwind chrome — these rules deliberately don't touch
+   --theme-accent itself, so they can't bleed CAO blue/orange into
+   anything else. ============================================ */
 
 /* Floating glass dock instead of an edge-to-edge bar — outer element keeps
    its full bounding height (via padding, not margin) so FullHeightFrame's
    runtime measurement of #bottom-nav still reserves the right amount of
    space above it. */
-body[data-modern="true"] #bottom-nav {
+#bottom-nav {
   background: transparent;
   border-top: none;
-  padding: 0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom));
+  padding: 0.375rem 0.75rem calc(0.375rem + env(safe-area-inset-bottom));
 }
-body[data-modern="true"] #bottom-nav > div {
+#bottom-nav > div {
   background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(18px) saturate(1.4);
   -webkit-backdrop-filter: blur(18px) saturate(1.4);
@@ -160,8 +83,10 @@ body[data-modern="true"] #bottom-nav > div {
 }
 /* The raised Home button always gets the full brand gradient, regardless
    of whose --theme-accent is set (it's forced with !important since the
-   base component sets it as an inline style). */
-body[data-modern="true"] #bottom-nav .border-4.border-white {
+   base component sets it as an inline style). Matched by id (not its
+   border classes, which change if the button's ever resized) — the same
+   id lib/bottomNav.ts uses to find its true top edge. */
+#bottom-nav-raised {
   border-color: #fff !important;
   background: linear-gradient(135deg, var(--cao-blue), var(--cao-orange)) !important;
   box-shadow:
@@ -169,8 +94,95 @@ body[data-modern="true"] #bottom-nav .border-4.border-white {
     0 10px 26px -10px rgba(24, 120, 180, 0.55);
 }
 
-/* Calendar/schedule tables: barely-there grid lines and a soft hover
-   highlight instead of a dense ruled grid. */
-body[data-modern="true"] table.border-collapse tbody tr:hover > td {
-  background: rgba(24, 120, 180, 0.045);
+/* Modern Home page's AM/PM columns (ModernScheduleBoard): named grid areas
+   instead of two independent vertical stacks, so Rooming/X-ray always start
+   at the same row regardless of how many providers happen to be in AM vs
+   PM that day — a stray gap under a shorter provider list is worth it for
+   the two columns actually lining up. Below the sm breakpoint AM/PM stack
+   as a single readable column instead (same named cells, just re-flowed),
+   matching Tailwind's own sm: breakpoint (640px) so this stays in lockstep
+   with the grid-cols-1 sm:grid-cols-2 it replaces. */
+.modern-half-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  column-gap: 2.5rem;
+  row-gap: 1.5rem;
+  grid-template-areas:
+    "am-label"
+    "am-providers"
+    "am-rooming"
+    "am-xray"
+    "pm-label"
+    "pm-providers"
+    "pm-rooming"
+    "pm-xray";
+}
+.modern-half-grid > [data-cell="am-label"] { grid-area: am-label; }
+.modern-half-grid > [data-cell="pm-label"] { grid-area: pm-label; }
+.modern-half-grid > [data-cell="am-providers"] { grid-area: am-providers; }
+.modern-half-grid > [data-cell="pm-providers"] { grid-area: pm-providers; }
+.modern-half-grid > [data-cell="am-rooming"] { grid-area: am-rooming; }
+.modern-half-grid > [data-cell="pm-rooming"] { grid-area: pm-rooming; }
+.modern-half-grid > [data-cell="am-xray"] { grid-area: am-xray; }
+.modern-half-grid > [data-cell="pm-xray"] { grid-area: pm-xray; }
+
+@media (min-width: 640px) {
+  .modern-half-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "am-label pm-label"
+      "am-providers pm-providers"
+      "am-rooming pm-rooming"
+      "am-xray pm-xray";
+  }
+}
+
+/* A single continuous divider down the middle, only once AM/PM are
+   actually side by side — four separate per-row borders would leave gaps
+   at the row seams instead of one clean line. */
+.modern-half-divider {
+  display: none;
+}
+@media (min-width: 640px) {
+  .modern-half-divider {
+    display: block;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    transform: translateX(-50%);
+  }
+}
+
+/* Trapezoid/slanted pill controls for the calendar tab's Providers/Staff
+   and Month/Week toggles, and the prev/next nav buttons — a deliberate
+   deviation from the fully-rounded pills used everywhere else, at the
+   user's request. The skew lives on the outer track only; each segment's
+   own label counter-skews back upright so text stays legible while the
+   pill itself reads as a slanted parallelogram. */
+.skew-track {
+  display: inline-flex;
+  align-items: stretch;
+  transform: skewX(-12deg);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.skew-seg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.skew-label {
+  display: inline-block;
+  transform: skewX(12deg);
+}
+/* A standalone slanted button — the calendar prev/next controls, same
+   visual family as the toggles above. */
+.skew-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: skewX(-12deg);
+  border-radius: 6px;
 }

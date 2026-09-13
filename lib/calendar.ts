@@ -77,11 +77,19 @@ export function getProviderWeekCalendar(mondayStr: string): Promise<ProviderCale
 // still worth flagging).
 export type StaffDayStatus = "PRESENT" | "ABSENT" | "PARTIAL";
 
+export type StaffDayCell = {
+  status: StaffDayStatus;
+  // Set only when a CUSTOM running-late row exists for the day — the cell
+  // shows this as its own text (e.g. "30m"/"1h") instead of just a plain
+  // color, so a tardy's actual length doesn't need a hover to see.
+  lateMinutes: number | null;
+};
+
 export type StaffCalendarRow = {
   staffId: string;
   name: string;
   color: string;
-  days: Record<string, StaffDayStatus>;
+  days: Record<string, StaffDayCell>;
 };
 
 async function getStaffCalendarForDates(dates: string[]): Promise<StaffCalendarRow[]> {
@@ -91,13 +99,14 @@ async function getStaffCalendarForDates(dates: string[]): Promise<StaffCalendarR
   ]);
 
   return staff.map((s) => {
-    const days = {} as Record<string, StaffDayStatus>;
+    const days = {} as Record<string, StaffDayCell>;
     for (const date of dates) {
       const rows = absences.filter((a) => a.staffId === s.id && a.date === date);
       const hasAM = rows.some((a) => a.half === "ALL" || a.half === "AM");
       const hasPM = rows.some((a) => a.half === "ALL" || a.half === "PM");
-      const hasCustom = rows.some((a) => a.half === "CUSTOM");
-      days[date] = hasAM && hasPM ? "ABSENT" : hasAM || hasPM || hasCustom ? "PARTIAL" : "PRESENT";
+      const customRow = rows.find((a) => a.half === "CUSTOM");
+      const status: StaffDayStatus = hasAM && hasPM ? "ABSENT" : hasAM || hasPM || customRow ? "PARTIAL" : "PRESENT";
+      days[date] = { status, lateMinutes: customRow?.lateMinutes ?? null };
     }
     return { staffId: s.id, name: s.name, color: s.color, days };
   });

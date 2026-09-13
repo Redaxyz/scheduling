@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getStaffWeekCalendar } from "@/lib/calendar";
-import { addDays, formatShort, mondayOf, todayStr, weekDates } from "@/lib/date";
-import StaffCalendarGrid from "@/components/StaffCalendarGrid";
+import { addDays, effectiveMonday, formatShort, mondayOf, weekDates } from "@/lib/date";
+import StaffCalendarGrid, { StaffLegend } from "@/components/StaffCalendarGrid";
 import CalendarWhoToggle from "@/components/CalendarWhoToggle";
 import CalendarNavLinks from "@/components/CalendarNavLinks";
 
@@ -20,35 +20,35 @@ export default async function CalendarStaffWeekPage({ params }: { params: Promis
 
   const dates = weekDates(monday);
   const rows = await getStaffWeekCalendar(monday);
-  const isThisWeek = monday === mondayOf(todayStr());
+  const isThisWeek = monday === effectiveMonday();
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-extrabold tracking-tight">
+    <div className="relative left-1/2 w-screen -translate-x-1/2">
+      <div className="mx-auto max-w-[1600px] space-y-1.5 px-4 sm:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <h1 className="flex flex-wrap items-baseline gap-x-2 text-base font-extrabold tracking-tight">
             {formatShort(dates[0])} – {formatShort(dates[dates.length - 1])}
-          </h1>
-          <div className="flex flex-wrap gap-x-3 text-sm font-bold">
             {!isThisWeek && (
-              <Link href={`/calendar/staff/week/${mondayOf(todayStr())}`} className="accent-text hover:underline">
+              <Link href={`/calendar/staff/week/${effectiveMonday()}`} className="accent-text text-xs font-bold hover:underline">
                 Jump to this week
               </Link>
             )}
+          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <CalendarWhoToggle who="staff" anchorDate={monday} staffView="week" />
+            <CalendarNavLinks
+              prevHref={`/calendar/staff/week/${addDays(monday, -7)}`}
+              nextHref={`/calendar/staff/week/${addDays(monday, 7)}`}
+              prevLabel="Previous week"
+              nextLabel="Next week"
+            />
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <CalendarWhoToggle who="staff" anchorDate={monday} staffView="week" />
-          <CalendarNavLinks
-            prevHref={`/calendar/staff/week/${addDays(monday, -7)}`}
-            nextHref={`/calendar/staff/week/${addDays(monday, 7)}`}
-            prevLabel="Previous week"
-            nextLabel="Next week"
-          />
-        </div>
-      </div>
 
-      <StaffCalendarGrid dates={dates} rows={rows} dense={false} />
+        <StaffLegend />
+
+        <StaffCalendarGrid dates={dates} rows={rows} dense={false} />
+      </div>
     </div>
   );
 }

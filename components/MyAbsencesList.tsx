@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useWhoAmI } from "@/lib/whoami";
+import { formatLateDuration } from "@/lib/lateDuration";
 
 type AbsenceRow = {
   id: string;
@@ -16,7 +17,7 @@ type AbsenceRow = {
 
 function halfLabel(r: Pick<AbsenceRow, "half" | "lateMinutes">) {
   if (r.half === "ALL") return "all day";
-  if (r.half === "CUSTOM") return `${r.lateMinutes}m late`;
+  if (r.half === "CUSTOM") return `${formatLateDuration(r.lateMinutes ?? 0)} late`;
   return r.half;
 }
 

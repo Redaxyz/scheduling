@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { getDaySchedule, getFreeStaff } from "@/lib/schedule";
-import { formatLong, todayStr } from "@/lib/date";
+import { effectiveScheduleDate, formatLong } from "@/lib/date";
 import { WEEKDAY_LABELS } from "@/lib/types";
-import ScheduleBoardSwitcher from "@/components/ScheduleBoardSwitcher";
+import ModernScheduleBoard from "@/components/ModernScheduleBoard";
 import ScheduleDateNav from "@/components/ScheduleDateNav";
 
 export default async function SchedulePage({ params }: { params: Promise<{ date: string }> }) {
@@ -13,7 +13,7 @@ export default async function SchedulePage({ params }: { params: Promise<{ date:
   }
 
   const [day, freeStaff] = await Promise.all([getDaySchedule(date), getFreeStaff(date)]);
-  const isToday = date === todayStr();
+  const isToday = date === effectiveScheduleDate();
 
   return (
     <div className="space-y-6">
@@ -23,7 +23,7 @@ export default async function SchedulePage({ params }: { params: Promise<{ date:
             {day.weekday !== null ? WEEKDAY_LABELS[day.weekday] : "Weekend"} — {formatLong(date)}
           </h1>
           {!isToday && (
-            <Link href={`/schedule/${todayStr()}`} className="accent-text text-sm font-bold hover:underline">
+            <Link href={`/schedule/${effectiveScheduleDate()}`} className="accent-text text-sm font-bold hover:underline">
               Jump to today
             </Link>
           )}
@@ -36,7 +36,7 @@ export default async function SchedulePage({ params }: { params: Promise<{ date:
           No clinic scheduled on weekends.
         </p>
       ) : (
-        <ScheduleBoardSwitcher date={date} day={day} freeStaff={freeStaff} />
+        <ModernScheduleBoard date={date} day={day} freeStaff={freeStaff} />
       )}
     </div>
   );

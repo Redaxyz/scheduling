@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getStaffMonthCalendar } from "@/lib/calendar";
-import { addMonths, firstOfMonth, formatMonthLabel, monthWeekdays, todayStr } from "@/lib/date";
-import StaffCalendarGrid from "@/components/StaffCalendarGrid";
+import { addMonths, effectiveScheduleDate, firstOfMonth, formatMonthLabel, monthWeekdays } from "@/lib/date";
+import StaffCalendarGrid, { StaffLegend } from "@/components/StaffCalendarGrid";
 import CalendarWhoToggle from "@/components/CalendarWhoToggle";
 import CalendarNavLinks from "@/components/CalendarNavLinks";
 
@@ -19,33 +19,35 @@ export default async function CalendarStaffMonthPage({ params }: { params: Promi
   }
 
   const [rows, dates] = [await getStaffMonthCalendar(month), monthWeekdays(month)];
-  const isThisMonth = month === firstOfMonth(todayStr());
+  const isThisMonth = month === firstOfMonth(effectiveScheduleDate());
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-extrabold tracking-tight">{formatMonthLabel(month)}</h1>
-          <div className="flex flex-wrap gap-x-3 text-sm font-bold">
+    <div className="relative left-1/2 w-screen -translate-x-1/2">
+      <div className="mx-auto max-w-[1600px] space-y-1.5 px-4 sm:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <h1 className="flex flex-wrap items-baseline gap-x-2 text-base font-extrabold tracking-tight">
+            {formatMonthLabel(month)}
             {!isThisMonth && (
-              <Link href={`/calendar/staff/month/${firstOfMonth(todayStr())}`} className="accent-text hover:underline">
+              <Link href={`/calendar/staff/month/${firstOfMonth(effectiveScheduleDate())}`} className="accent-text text-xs font-bold hover:underline">
                 Jump to this month
               </Link>
             )}
+          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <CalendarWhoToggle who="staff" anchorDate={month} staffView="month" />
+            <CalendarNavLinks
+              prevHref={`/calendar/staff/month/${addMonths(month, -1)}`}
+              nextHref={`/calendar/staff/month/${addMonths(month, 1)}`}
+              prevLabel="Previous month"
+              nextLabel="Next month"
+            />
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <CalendarWhoToggle who="staff" anchorDate={month} staffView="month" />
-          <CalendarNavLinks
-            prevHref={`/calendar/staff/month/${addMonths(month, -1)}`}
-            nextHref={`/calendar/staff/month/${addMonths(month, 1)}`}
-            prevLabel="Previous month"
-            nextLabel="Next month"
-          />
-        </div>
-      </div>
 
-      <StaffCalendarGrid dates={dates} rows={rows} dense />
+        <StaffLegend />
+
+        <StaffCalendarGrid dates={dates} rows={rows} dense />
+      </div>
     </div>
   );
 }

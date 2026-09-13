@@ -2,7 +2,6 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useWhoAmI, type StaffOption } from "@/lib/whoami";
-import { useThemeMode } from "@/lib/theme";
 import { buildGridCurves, cellClipPath, COLS, ROWS } from "@/lib/zigzagGrid";
 
 const GROW_MS = 480;
@@ -47,11 +46,6 @@ function modernCellColor(row: number, col: number) {
 
 export default function UserPicker() {
   const { staffList, setCurrentId } = useWhoAmI();
-  // Nobody's signed in yet at this screen, so there's no `current` to check
-  // — but modern is now the default look for everyone anyway, and the raw
-  // persisted toggle (true unless a device explicitly opted out) already
-  // reflects that regardless of who's mid-pick right now.
-  const { modernEnabled: modern } = useThemeMode();
   const [phase, setPhase] = useState<Phase>("idle");
   const [picked, setPicked] = useState<StaffOption | null>(null);
   const [origin, setOrigin] = useState({ x: 0, y: 0 });
@@ -88,7 +82,7 @@ export default function UserPicker() {
   }, [staffList]);
 
   if (cells.length === 0) {
-    return <div className={`fixed inset-0 z-50 ${modern ? "bg-[#0b0f14]" : "bg-slate-100"}`} />;
+    return <div className="fixed inset-0 z-50 bg-[#0b0f14]" />;
   }
 
   const maxRadius = () => Math.hypot(window.innerWidth, window.innerHeight) * 1.05;
@@ -102,7 +96,7 @@ export default function UserPicker() {
       y: (yCenterPct / 100) * window.innerHeight,
     });
     setPicked(cell.staff);
-    setPickedColor(modern ? modernCellColor(cell.row, cell.col) : cell.staff.color);
+    setPickedColor(modernCellColor(cell.row, cell.col));
     setPhase("grow");
     grow.run(0, maxRadius(), GROW_MS, setRadius, () => {
       setPhase("hold");
@@ -113,14 +107,12 @@ export default function UserPicker() {
     });
   }
 
-  const labelClass = modern
-    ? "absolute font-black uppercase tracking-wide text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)]"
-    : "absolute font-extrabold tracking-tight text-slate-700";
-  const labelStyle = { fontSize: modern ? "clamp(0.7rem, 1.6vw, 1rem)" : "clamp(1rem, 2.4vw, 1.5rem)", whiteSpace: "nowrap" as const };
+  const labelClass = "absolute font-black uppercase tracking-wide text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)]";
+  const labelStyle = { fontSize: "clamp(0.7rem, 1.6vw, 1rem)", whiteSpace: "nowrap" as const };
 
   return (
-    <div className={`fixed inset-0 z-50 overflow-hidden select-none ${modern ? "bg-[#0b0f14]" : "bg-slate-100"}`}>
-      {modern && phase === "idle" && (
+    <div className="fixed inset-0 z-50 overflow-hidden select-none bg-[#0b0f14]">
+      {phase === "idle" && (
         <div
           className="pointer-events-none absolute left-1/2 top-6 z-10 -translate-x-1/2 text-lg font-black uppercase tracking-[0.3em] sm:text-xl"
           style={{ backgroundImage: "linear-gradient(135deg, #4fb3e8, #f5871f)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}
@@ -136,16 +128,16 @@ export default function UserPicker() {
             type="button"
             aria-label={`Continue as ${cell.staff.name}`}
             onClick={phase === "idle" ? () => pick(cell) : undefined}
-            onMouseEnter={modern ? () => setHoveredId(cell.staff.id) : undefined}
-            onMouseLeave={modern ? () => setHoveredId(null) : undefined}
+            onMouseEnter={() => setHoveredId(cell.staff.id)}
+            onMouseLeave={() => setHoveredId(null)}
             tabIndex={phase === "idle" ? 0 : -1}
             className="absolute inset-0 h-full w-full transition duration-200"
             style={{
               clipPath: cellClipPath(cell.row, cell.col, curves),
-              background: modern ? modernCellColor(cell.row, cell.col) : cell.staff.color,
+              background: modernCellColor(cell.row, cell.col),
               pointerEvents: phase === "idle" ? "auto" : "none",
-              opacity: modern && phase === "idle" && hoveredId && hoveredId !== cell.staff.id ? 0.5 : 1,
-              filter: modern && hoveredId === cell.staff.id ? "brightness(1.1)" : undefined,
+              opacity: phase === "idle" && hoveredId && hoveredId !== cell.staff.id ? 0.5 : 1,
+              filter: hoveredId === cell.staff.id ? "brightness(1.1)" : undefined,
             }}
           >
             <span

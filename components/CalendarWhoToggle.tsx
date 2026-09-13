@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { firstOfMonth, mondayOf, mondayOnOrAfter, todayStr } from "@/lib/date";
-import { useThemeMode } from "@/lib/theme";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { effectiveMonday, effectiveScheduleDate, firstOfMonth, mondayOnOrAfter } from "@/lib/date";
 
 // Matches Tailwind's `lg` breakpoint — the same width each grid's own
 // column layout switches on.
@@ -20,8 +20,75 @@ const DESKTOP_BREAKPOINT = 1024;
 //    28th) — landing on "an earlier week" every single time you switch to
 //    Week view, which is exactly the bug this fixes.
 function weekAnchorFor(anchorDate: string): string {
-  if (anchorDate === firstOfMonth(todayStr())) return mondayOf(todayStr());
+  if (anchorDate === firstOfMonth(effectiveScheduleDate())) return effectiveMonday();
   return mondayOnOrAfter(anchorDate);
+}
+
+const activeTextStyle = { color: "#334155" };
+
+// A two-option trapezoid pill with a sliding highlight behind whichever
+// segment is active, instead of the highlight just snapping between them.
+// `activeKey` updates optimistically the instant you click — synchronously,
+// before the route navigation that follows — so the slide is already under
+// way on the page you're leaving; the page you land on then mounts fresh,
+// already in its final (settled) position, same as this component always
+// has on a brand new page load.
+function SlidingPair({
+  trackClassName,
+  segClassName,
+  activeKey,
+  options,
+}: {
+  trackClassName: string;
+  segClassName: string;
+  activeKey: string;
+  options: { key: string; label: string; href?: string; onClick?: () => void }[];
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [optimisticKey, setOptimisticKey] = useState(activeKey);
+  const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null);
+
+  useEffect(() => setOptimisticKey(activeKey), [activeKey]);
+
+  useLayoutEffect(() => {
+    const active = trackRef.current?.querySelector<HTMLElement>(`[data-seg-key="${optimisticKey}"]`);
+    if (active) setIndicator({ left: active.offsetLeft, width: active.offsetWidth });
+  }, [optimisticKey]);
+
+  return (
+    <div ref={trackRef} className={`relative ${trackClassName}`}>
+      {indicator && (
+        <span
+          className="absolute inset-y-1 rounded-[4px] transition-all duration-200 ease-out"
+          style={{ left: indicator.left, width: indicator.width, background: "var(--theme-accent)" }}
+        />
+      )}
+      {options.map((opt) => {
+        const isActive = optimisticKey === opt.key;
+        const className = `relative z-10 transition-colors duration-200 ${segClassName}`;
+        const style = isActive ? activeTextStyle : undefined;
+        return opt.href ? (
+          <Link key={opt.key} href={opt.href} data-seg-key={opt.key} onClick={() => setOptimisticKey(opt.key)} className={className} style={style}>
+            <span className="skew-label">{opt.label}</span>
+          </Link>
+        ) : (
+          <button
+            key={opt.key}
+            type="button"
+            data-seg-key={opt.key}
+            onClick={() => {
+              setOptimisticKey(opt.key);
+              opt.onClick?.();
+            }}
+            className={className}
+            style={style}
+          >
+            <span className="skew-label">{opt.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 // providersView/staffView are only meaningful for the matching `who` value —
@@ -40,7 +107,6 @@ export default function CalendarWhoToggle({
   staffView?: "month" | "week";
 }) {
   const router = useRouter();
-  const { active: modern } = useThemeMode();
 
   // Both entry points default by screen width — a computer lands on the
   // full month, a phone lands on the one-week view — checked at click time
@@ -60,73 +126,36 @@ export default function CalendarWhoToggle({
     router.push(isDesktop() ? `/calendar/staff/month/${firstOfMonth(anchorDate)}` : `/calendar/staff/week/${weekAnchorFor(anchorDate)}`);
   }
 
-  const activeStyle = modern
-    ? { background: "linear-gradient(135deg, var(--cao-blue,#1878b4), var(--cao-blue-light,#4fb3e8))", color: "#fff" }
-    : { background: "var(--theme-accent)", color: "#334155" };
-  const inactiveStyle = modern ? { color: "#64748b" } : undefined;
+  // Same size for both pills — Providers/Staff and Month/Week are equally
+  // important choices, so one being visibly bigger than the other never
+  // made sense.
+  const trackClass = "skew-track accent-border border-2 p-1 text-sm font-bold";
+  const segClass = "skew-seg px-4 py-2";
 
-  const trackClass = modern
-    ? "inline-flex rounded-full bg-black/[0.04] p-0.5 text-sm font-bold"
-    : "accent-border inline-flex rounded-full border-2 p-0.5 text-sm font-bold";
-  const subTrackClass = modern
-    ? "inline-flex rounded-full bg-black/[0.04] p-0.5 text-xs font-bold"
-    : "accent-border inline-flex rounded-full border-2 p-0.5 text-xs font-bold opacity-80";
-  const segClass = `rounded-full px-3 py-1${modern ? " transition" : ""}`;
-  const subSegClass = `rounded-full px-2.5 py-1${modern ? " transition" : ""}`;
+  const subView = who === "providers" ? providersView : staffView;
+  const subBase = who === "providers" ? "/calendar/providers" : "/calendar/staff";
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <div className={trackClass}>
-        <button
-          type="button"
-          onClick={goToProviders}
-          className={segClass}
-          style={who === "providers" ? activeStyle : inactiveStyle}
-        >
-          Providers
-        </button>
-        <button type="button" onClick={goToStaff} className={segClass} style={who === "staff" ? activeStyle : inactiveStyle}>
-          Staff
-        </button>
-      </div>
+    <div className="flex flex-wrap items-center gap-3">
+      <SlidingPair
+        trackClassName={trackClass}
+        segClassName={segClass}
+        activeKey={who}
+        options={[
+          { key: "providers", label: "Providers", onClick: goToProviders },
+          { key: "staff", label: "Staff", onClick: goToStaff },
+        ]}
+      />
 
-      {who === "providers" && (
-        <div className={subTrackClass}>
-          <Link
-            href={`/calendar/providers/month/${firstOfMonth(anchorDate)}`}
-            className={subSegClass}
-            style={providersView === "month" ? activeStyle : inactiveStyle}
-          >
-            Month
-          </Link>
-          <Link
-            href={`/calendar/providers/week/${weekAnchorFor(anchorDate)}`}
-            className={subSegClass}
-            style={providersView === "week" ? activeStyle : inactiveStyle}
-          >
-            Week
-          </Link>
-        </div>
-      )}
-
-      {who === "staff" && (
-        <div className={subTrackClass}>
-          <Link
-            href={`/calendar/staff/month/${firstOfMonth(anchorDate)}`}
-            className={subSegClass}
-            style={staffView === "month" ? activeStyle : inactiveStyle}
-          >
-            Month
-          </Link>
-          <Link
-            href={`/calendar/staff/week/${weekAnchorFor(anchorDate)}`}
-            className={subSegClass}
-            style={staffView === "week" ? activeStyle : inactiveStyle}
-          >
-            Week
-          </Link>
-        </div>
-      )}
+      <SlidingPair
+        trackClassName={trackClass}
+        segClassName={segClass}
+        activeKey={subView ?? ""}
+        options={[
+          { key: "month", label: "Month", href: `${subBase}/month/${firstOfMonth(anchorDate)}` },
+          { key: "week", label: "Week", href: `${subBase}/week/${weekAnchorFor(anchorDate)}` },
+        ]}
+      />
     </div>
   );
 }

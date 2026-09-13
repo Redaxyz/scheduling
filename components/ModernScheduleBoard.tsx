@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { Fragment, useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { DaySchedule, FreeStaffMember, PositionRef, ProviderCell } from "@/lib/schedule";
 import type { SwapRequestView } from "@/lib/swap";
@@ -158,98 +158,108 @@ function OfficeHalf({
 
       {error && <p className="mb-4 rounded-xl bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400">{error}</p>}
 
-      <div className="grid grid-cols-1 gap-10 sm:grid-cols-2">
-        {HALVES.map((half) => {
-          const slot = day.halves[half][office];
-          const free = freeStaff[half];
-          const scribeEligible = free.filter((s) => s.canScribe);
-          const reassignable = day.reassignable[half];
+      <div className="relative">
+        <div className={dark ? "modern-half-divider bg-white/10" : "modern-half-divider bg-slate-200"} />
+        <div className="modern-half-grid">
+          {HALVES.map((half) => {
+            const slot = day.halves[half][office];
+            const free = freeStaff[half];
+            const scribeEligible = free.filter((s) => s.canScribe);
+            const reassignable = day.reassignable[half];
+            const prefix = half.toLowerCase();
 
-          return (
-            <div key={half}>
-              <div className={`mb-4 text-[10px] font-bold uppercase tracking-[0.2em] ${dark ? "text-white/40" : "text-slate-400"}`}>
-                {HALF_LABELS[half]}
-              </div>
-
-              {slot.providers.length === 0 ? (
-                <p className={`text-sm font-bold italic ${dark ? "text-white/30" : "text-slate-400"}`}>No provider scheduled here.</p>
-              ) : (
-                <div className="space-y-3">
-                  {slot.providers.map((cell) => (
-                    <ProviderRow
-                      key={cell.provider.id}
-                      date={date}
-                      half={half}
-                      office={office}
-                      cell={cell}
-                      scribeEligible={scribeEligible}
-                      reassignable={reassignable}
-                      run={run}
-                      currentId={currentId}
-                      isManager={isManager}
-                      dark={dark}
-                      swapRequests={swapRequests}
-                      onToggleSwap={(p) => toggleSwap(half, p)}
-                      onRespondSwap={respondSwap}
-                      onDropStaff={dropOnto(
-                        half,
-                        { role: "SCRIBE", office, providerId: cell.provider.id },
-                        cell.scribe
-                          ? {
-                              office,
-                              half,
-                              role: "SCRIBE",
-                              providerId: cell.provider.id,
-                              staffId: cell.scribe.staffId,
-                              assignmentId: cell.scribe.assignmentId,
-                            }
-                          : null
-                      )}
-                    />
-                  ))}
+            return (
+              <Fragment key={half}>
+                <div data-cell={`${prefix}-label`} className={`text-[10px] font-bold uppercase tracking-[0.2em] ${dark ? "text-white/40" : "text-slate-400"}`}>
+                  {HALF_LABELS[half]}
                 </div>
-              )}
 
-              <RoleSection
-                title="Rooming"
-                role="ROOMING"
-                date={date}
-                half={half}
-                office={office}
-                cells={slot.rooming}
-                free={free}
-                reassignable={reassignable}
-                run={run}
-                currentId={currentId}
-                isManager={isManager}
-                dark={dark}
-                swapRequests={swapRequests}
-                onToggleSwap={(p) => toggleSwap(half, p)}
-                onRespondSwap={respondSwap}
-                onDropStaff={dropOnto(half, { role: "ROOMING", office, providerId: null })}
-              />
+                <div data-cell={`${prefix}-providers`}>
+                  {slot.providers.length === 0 ? (
+                    <p className={`text-sm font-bold italic ${dark ? "text-white/30" : "text-slate-400"}`}>No provider scheduled here.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {slot.providers.map((cell) => (
+                        <ProviderRow
+                          key={cell.provider.id}
+                          date={date}
+                          half={half}
+                          office={office}
+                          cell={cell}
+                          scribeEligible={scribeEligible}
+                          reassignable={reassignable}
+                          run={run}
+                          currentId={currentId}
+                          isManager={isManager}
+                          dark={dark}
+                          swapRequests={swapRequests}
+                          onToggleSwap={(p) => toggleSwap(half, p)}
+                          onRespondSwap={respondSwap}
+                          onDropStaff={dropOnto(
+                            half,
+                            { role: "SCRIBE", office, providerId: cell.provider.id },
+                            cell.scribe
+                              ? {
+                                  office,
+                                  half,
+                                  role: "SCRIBE",
+                                  providerId: cell.provider.id,
+                                  staffId: cell.scribe.staffId,
+                                  assignmentId: cell.scribe.assignmentId,
+                                }
+                              : null
+                          )}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-              <RoleSection
-                title="X-ray"
-                role="XRAY"
-                date={date}
-                half={half}
-                office={office}
-                cells={slot.xray}
-                free={slot.xrayEligible}
-                reassignable={reassignable}
-                run={run}
-                currentId={currentId}
-                isManager={isManager}
-                dark={dark}
-                swapRequests={swapRequests}
-                onToggleSwap={(p) => toggleSwap(half, p)}
-                onRespondSwap={respondSwap}
-                onDropStaff={dropOnto(half, { role: "XRAY", office, providerId: null })}
-              />
-            </div>
-          );
-        })}
+                <div data-cell={`${prefix}-rooming`}>
+                  <RoleSection
+                    title="Rooming"
+                    role="ROOMING"
+                    date={date}
+                    half={half}
+                    office={office}
+                    cells={slot.rooming}
+                    free={free}
+                    reassignable={reassignable}
+                    run={run}
+                    currentId={currentId}
+                    isManager={isManager}
+                    dark={dark}
+                    swapRequests={swapRequests}
+                    onToggleSwap={(p) => toggleSwap(half, p)}
+                    onRespondSwap={respondSwap}
+                    onDropStaff={dropOnto(half, { role: "ROOMING", office, providerId: null })}
+                  />
+                </div>
+
+                <div data-cell={`${prefix}-xray`}>
+                  <RoleSection
+                    title="X-ray"
+                    role="XRAY"
+                    date={date}
+                    half={half}
+                    office={office}
+                    cells={slot.xray}
+                    free={slot.xrayEligible}
+                    reassignable={reassignable}
+                    run={run}
+                    currentId={currentId}
+                    isManager={isManager}
+                    dark={dark}
+                    swapRequests={swapRequests}
+                    onToggleSwap={(p) => toggleSwap(half, p)}
+                    onRespondSwap={respondSwap}
+                    onDropStaff={dropOnto(half, { role: "XRAY", office, providerId: null })}
+                  />
+                </div>
+              </Fragment>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -292,7 +302,7 @@ function ProviderRow({
       ? run(() => postJSON(`/api/assignments/${cell.scribe!.assignmentId}`, "DELETE"))
       : run(() => postJSON("/api/auto-override", "POST", { staffId: cell.scribe!.staffId, date, half }));
 
-  const hoverClass = dark ? "ring-2 ring-[var(--cao-blue-light,#4fb3e8)]" : "ring-2 ring-[var(--cao-blue,#1878b4)]";
+  const hoverClass = "ring-2 ring-[var(--theme-accent)]";
 
   return (
     <DropZone active={isManager} onDrop={onDropStaff} hoverClassName={hoverClass} className={`flex flex-wrap items-center gap-2 py-1 ${dark ? "border-b border-white/10" : "border-b border-slate-100"}`}>
@@ -395,13 +405,16 @@ function RoleSection({
   onRespondSwap: (requestId: string, accept: boolean) => void;
   onDropStaff: (source: PositionRef) => void;
 }) {
-  const hoverClass = dark ? "ring-2 ring-[var(--cao-blue-light,#4fb3e8)]" : "ring-2 ring-[var(--cao-blue,#1878b4)]";
+  const hoverClass = "ring-2 ring-[var(--theme-accent)]";
   const addBtnClass = `rounded-full px-3 py-1 text-[11px] font-bold transition active:scale-95 ${
     dark ? "bg-white/10 text-white hover:bg-white/20" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
   }`;
 
+  // No top margin here — each RoleSection is its own grid cell now (see
+  // .modern-half-grid in globals.css), so the grid's row-gap handles the
+  // spacing above it instead of a margin baked into the section itself.
   return (
-    <div className="mt-5">
+    <div>
       <div className={`mb-2 text-[10px] font-bold uppercase tracking-[0.2em] ${dark ? "text-white/30" : "text-slate-400"}`}>{title}</div>
       <DropZone active={isManager} onDrop={onDropStaff} hoverClassName={hoverClass} className="min-h-8 rounded-lg p-1 -m-1">
         <div className="flex flex-wrap items-center gap-1.5">
