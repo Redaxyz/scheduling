@@ -9,6 +9,10 @@ import MyTemplateEditor from "@/components/MyTemplateEditor";
 import CalendarNavLinks from "@/components/CalendarNavLinks";
 import MyScheduleHeading from "@/components/MyScheduleHeading";
 
+// Reads live assignment/absence data on every load — see the note on
+// app/schedule/[date]/page.tsx.
+export const dynamic = "force-dynamic";
+
 export default async function MySchedulePage({ params }: { params: Promise<{ monday: string }> }) {
   const { monday: mondayParam } = await params;
 

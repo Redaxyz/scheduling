@@ -159,7 +159,7 @@ const STAFF: {
   {
     name: "JB",
     kind: "GENERAL",
-    canScribe: false,
+    canScribe: true,
     color: "hsl(185, 45%, 81%)",
     homeOffice: "BETHESDA",
     dedicatedProviderInitials: null,

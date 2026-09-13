@@ -5,6 +5,12 @@ import { WEEKDAY_LABELS } from "@/lib/types";
 import ModernScheduleBoard from "@/components/ModernScheduleBoard";
 import ScheduleDateNav from "@/components/ScheduleDateNav";
 
+// Reads live assignment/absence data on every load — without this, Next can
+// treat the page as static and keep serving a snapshot from before someone's
+// latest change (e.g. a just-created substitute scribe still showing as
+// unassigned).
+export const dynamic = "force-dynamic";
+
 export default async function SchedulePage({ params }: { params: Promise<{ date: string }> }) {
   const { date } = await params;
 

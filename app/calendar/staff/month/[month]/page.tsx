@@ -6,6 +6,10 @@ import StaffCalendarGrid, { StaffLegend } from "@/components/StaffCalendarGrid";
 import CalendarWhoToggle from "@/components/CalendarWhoToggle";
 import CalendarNavLinks from "@/components/CalendarNavLinks";
 
+// Reads live assignment/absence data on every load — see the note on
+// app/schedule/[date]/page.tsx.
+export const dynamic = "force-dynamic";
+
 export default async function CalendarStaffMonthPage({ params }: { params: Promise<{ month: string }> }) {
   const { month: monthParam } = await params;
 
