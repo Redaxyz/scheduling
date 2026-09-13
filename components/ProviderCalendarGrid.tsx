@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ProviderCalendarRow, ProviderHalfCell } from "@/lib/calendar";
-import { mondayOf, todayStr, weekdayIndex } from "@/lib/date";
+import { effectiveMonday, effectiveScheduleDate, mondayOf, weekdayIndex } from "@/lib/date";
 import { federalHolidayName, HOLIDAY_COLOR } from "@/lib/holidays";
 import { getBottomNavHeight } from "@/lib/bottomNav";
 import { HALVES, HALF_LABELS, OFFICE_LABELS, type Half, type Office } from "@/lib/types";
@@ -105,8 +105,12 @@ export default function ProviderCalendarGrid({
   const [, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
-  const today = todayStr();
-  const currentWeekMonday = mondayOf(today);
+  // Same "what day does this actually mean right now" rule used everywhere
+  // else in the app (rolls to the next business day after 5pm, and treats
+  // the whole weekend as Monday) — not the literal calendar day, so the
+  // marker lines up with whatever the Calendar tab already defaults to.
+  const today = effectiveScheduleDate();
+  const currentWeekMonday = effectiveMonday();
 
   // Rows grow to actually use whatever vertical space the window has
   // instead of sitting fixed-size with dead space below on a tall screen —

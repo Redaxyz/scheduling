@@ -322,24 +322,20 @@ function ProviderRow({
             substitute={cell.scribe.substitute}
             draggable={isManager}
             position={{ office, half, role: "SCRIBE", providerId: cell.provider.id, staffId: cell.scribe.staffId, assignmentId: cell.scribe.assignmentId }}
-            onRemove={isManager && canRemove ? removeScribe : undefined}
+            onRemove={canRemove ? removeScribe : undefined}
+            leading={
+              !isManager && (
+                <SwapControl
+                  position={{ role: "SCRIBE", providerId: cell.provider.id, staffId: cell.scribe.staffId }}
+                  positionName={cell.scribe.name}
+                  currentId={currentId}
+                  swapRequests={swapRequests}
+                  onToggleSwap={onToggleSwap}
+                  onRespondSwap={onRespondSwap}
+                />
+              )
+            }
           />
-          {!isManager && (
-            <SwapControl
-              position={{ role: "SCRIBE", providerId: cell.provider.id, staffId: cell.scribe.staffId }}
-              positionName={cell.scribe.name}
-              currentId={currentId}
-              dark={dark}
-              swapRequests={swapRequests}
-              onToggleSwap={onToggleSwap}
-              onRespondSwap={onRespondSwap}
-            />
-          )}
-          {canRemove && !isManager && (
-            <button onClick={removeScribe} className="text-[10px] font-bold text-red-500 opacity-70 hover:opacity-100">
-              remove
-            </button>
-          )}
         </span>
       ) : (
         <span className="flex flex-wrap items-center gap-2">
@@ -393,7 +389,16 @@ function RoleSection({
   date: string;
   half: Half;
   office: Office;
-  cells: { id: string; name: string; color: string; staffId: string; providerName: string | null; auto?: boolean; lateMinutes?: number | null }[];
+  cells: {
+    id: string;
+    name: string;
+    color: string;
+    staffId: string;
+    providerName: string | null;
+    auto?: boolean;
+    lateMinutes?: number | null;
+    addableByAnyone?: boolean;
+  }[];
   free: FreeStaffMember[];
   reassignable: { id: string; name: string }[];
   run: (action: () => Promise<unknown>) => Promise<void>;
@@ -419,7 +424,7 @@ function RoleSection({
       <DropZone active={isManager} onDrop={onDropStaff} hoverClassName={hoverClass} className="min-h-8 rounded-lg p-1 -m-1">
         <div className="flex flex-wrap items-center gap-1.5">
           {cells.map((c) => {
-            const canRemove = isManager || c.staffId === currentId;
+            const canRemove = isManager || c.staffId === currentId || c.addableByAnyone;
             const doRemove = () =>
               c.auto
                 ? run(() => postJSON("/api/auto-override", "POST", { staffId: c.staffId, date, half }))
@@ -432,24 +437,20 @@ function RoleSection({
                   lateMinutes={c.lateMinutes}
                   draggable={isManager}
                   position={{ office, half, role, providerId: null, staffId: c.staffId, assignmentId: c.auto ? null : c.id }}
-                  onRemove={isManager && canRemove ? doRemove : undefined}
+                  onRemove={canRemove ? doRemove : undefined}
+                  leading={
+                    !isManager && (
+                      <SwapControl
+                        position={{ role, providerId: null, staffId: c.staffId }}
+                        positionName={c.name}
+                        currentId={currentId}
+                        swapRequests={swapRequests}
+                        onToggleSwap={onToggleSwap}
+                        onRespondSwap={onRespondSwap}
+                      />
+                    )
+                  }
                 />
-                {!isManager && (
-                  <SwapControl
-                    position={{ role, providerId: null, staffId: c.staffId }}
-                    positionName={c.name}
-                    currentId={currentId}
-                    dark={dark}
-                    swapRequests={swapRequests}
-                    onToggleSwap={onToggleSwap}
-                    onRespondSwap={onRespondSwap}
-                  />
-                )}
-                {canRemove && !isManager && (
-                  <button onClick={doRemove} className="text-[10px] font-bold text-red-500 opacity-70 hover:opacity-100">
-                    remove
-                  </button>
-                )}
               </span>
             );
           })}

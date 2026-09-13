@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { StaffCalendarRow, StaffDayStatus } from "@/lib/calendar";
-import { mondayOf, nearestBusinessDayOnOrAfter, todayStr, weekdayIndex } from "@/lib/date";
+import { effectiveMonday, effectiveScheduleDate, mondayOf, nearestBusinessDayOnOrAfter, todayStr, weekdayIndex } from "@/lib/date";
 import { federalHolidayName, HOLIDAY_COLOR } from "@/lib/holidays";
 import { getBottomNavHeight } from "@/lib/bottomNav";
 import { useWhoAmI } from "@/lib/whoami";
@@ -91,10 +91,12 @@ export default function StaffCalendarGrid({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [lateMinutes, setLateMinutes] = useState(String(LATE_MINUTE_OPTIONS[1]));
-  // Computed once per render, not per date — cheap, and this only needs to
-  // be right to the day.
-  const today = todayStr();
-  const currentWeekMonday = mondayOf(today);
+  // Same "what day does this actually mean right now" rule used everywhere
+  // else in the app (rolls to the next business day after 5pm, and treats
+  // the whole weekend as Monday) — not the literal calendar day, so the
+  // marker lines up with whatever the Calendar tab already defaults to.
+  const today = effectiveScheduleDate();
+  const currentWeekMonday = effectiveMonday();
   const [markingLate, setMarkingLate] = useState(false);
   const [showAnotherDay, setShowAnotherDay] = useState(false);
   const [anotherDate, setAnotherDate] = useState(todayStr());

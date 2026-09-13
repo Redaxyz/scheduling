@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type DragEvent } from "react";
+import { useState, type DragEvent, type ReactNode } from "react";
 import type { PositionRef } from "@/lib/schedule";
 import type { SwapRequestView } from "@/lib/swap";
 import { type Half, type Office, type Role } from "@/lib/types";
@@ -104,6 +104,7 @@ export function Pill({
   draggable,
   position,
   onRemove,
+  leading,
   size = "sm",
 }: {
   name: string;
@@ -113,6 +114,9 @@ export function Pill({
   draggable?: boolean;
   position?: PositionRef;
   onRemove?: () => void;
+  // Rendered before the name — the swap-request icon/status lives here now,
+  // inside the pill, instead of as a separate element next to it.
+  leading?: ReactNode;
   size?: "sm" | "md";
 }) {
   function onDragStart(e: DragEvent) {
@@ -129,10 +133,13 @@ export function Pill({
       onDragStart={onDragStart}
       title={draggable ? `Drag ${name} to move them` : name}
       className={`inline-flex max-w-full items-center gap-1 truncate rounded-full font-bold text-slate-700 ${sizeClass} ${
-        onRemove ? "pl-2.5 pr-0.5" : "px-2.5"
-      } ${draggable ? "cursor-grab active:cursor-grabbing" : ""} ${substitute ? "ring-2 ring-amber-500 ring-offset-1" : ""}`}
+        leading ? "pl-1" : "pl-2.5"
+      } ${onRemove ? "pr-0.5" : "pr-2.5"} ${draggable ? "cursor-grab active:cursor-grabbing" : ""} ${
+        substitute ? "ring-2 ring-amber-500 ring-offset-1" : ""
+      }`}
       style={{ background: color }}
     >
+      {leading}
       <span className="truncate">{name}</span>
       {lateMinutes ? <span className="shrink-0 opacity-70">{lateTag(lateMinutes)}</span> : null}
       {onRemove && (
@@ -264,17 +271,19 @@ export function TakeRoleButton({
   );
 }
 
-// The two-arrows swap control shown next to a position's remove button.
-// Clicking it on your own position broadcasts that you're open to swap it
-// (visible to everyone, click again to retract); clicking it on someone
-// else's position sends a direct proposal that only they can see and
-// accept/deny — accepting trades your current position for theirs. Hidden
-// entirely for managers, who can just drag/remove people directly instead.
+// The two-arrows swap control shown inline inside a position's Pill, to the
+// left of the name. Clicking it on your own position broadcasts that you're
+// open to swap it (visible to everyone, click again to retract); clicking it
+// on someone else's position sends a direct proposal that only they can see
+// and accept/deny — accepting trades your current position for theirs.
+// Hidden entirely for managers, who can just drag/remove people directly
+// instead. Colors are always slate-based (not dark/light aware) since this
+// now always sits on top of a pill's own light pastel background, never
+// directly on the page.
 export function SwapControl({
   position,
   positionName,
   currentId,
-  dark,
   swapRequests,
   onToggleSwap,
   onRespondSwap,
@@ -282,7 +291,6 @@ export function SwapControl({
   position: { role: Role; providerId: string | null; staffId: string };
   positionName: string;
   currentId: string | null;
-  dark?: boolean;
   swapRequests: SwapRequestView[];
   onToggleSwap: (position: { role: Role; providerId: string | null; staffId: string }) => void;
   onRespondSwap: (requestId: string, accept: boolean) => void;
@@ -299,21 +307,20 @@ export function SwapControl({
 
   if (incomingToMe) {
     return (
-      <span className="inline-flex items-center gap-1 whitespace-nowrap">
-        <span className={`text-[10px] font-bold ${dark ? "text-white" : "accent-text"}`}>{incomingToMe.requestedByStaffName} wants to swap</span>
+      <span className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap" title={`${incomingToMe.requestedByStaffName} wants to swap`}>
         <button
           onClick={() => onRespondSwap(incomingToMe.id, true)}
-          aria-label="Accept swap"
+          aria-label={`Accept swap with ${incomingToMe.requestedByStaffName}`}
           title="Accept swap"
-          className="rounded-full px-1 text-xs font-extrabold text-emerald-600 hover:opacity-70"
+          className="rounded-full text-xs font-extrabold text-emerald-700 hover:opacity-70"
         >
           ✓
         </button>
         <button
           onClick={() => onRespondSwap(incomingToMe.id, false)}
-          aria-label="Deny swap"
+          aria-label={`Deny swap with ${incomingToMe.requestedByStaffName}`}
           title="Deny swap"
-          className="rounded-full px-1 text-xs font-extrabold text-red-500 hover:opacity-70"
+          className="rounded-full text-xs font-extrabold text-red-700 hover:opacity-70"
         >
           ✕
         </button>
@@ -321,13 +328,10 @@ export function SwapControl({
     );
   }
 
-  let tag: string | null = null;
   let active = false;
   if (myOutgoing) {
-    tag = "swap pending";
     active = true;
   } else if (broadcast) {
-    tag = "open to swap";
     active = isOwner;
   }
 
@@ -340,20 +344,15 @@ export function SwapControl({
       : `Propose a swap with ${positionName}`;
 
   return (
-    <span className="inline-flex items-center gap-1 whitespace-nowrap">
-      {tag && (
-        <span className={`text-[9px] font-bold uppercase tracking-wide ${dark ? "text-white/80" : "accent-text opacity-80"}`}>{tag}</span>
-      )}
-      <button
-        onClick={() => onToggleSwap(position)}
-        aria-label={label}
-        title={label}
-        className={`rounded-full p-0.5 transition ${
-          active ? (dark ? "text-white" : "accent-text opacity-100") : dark ? "text-white/50 hover:text-white/80" : "opacity-40 hover:opacity-80"
-        }`}
-      >
-        <SwapIcon className="h-3.5 w-3.5" />
-      </button>
-    </span>
+    <button
+      onClick={() => onToggleSwap(position)}
+      aria-label={label}
+      title={label}
+      className={`flex shrink-0 items-center rounded-full p-0.5 transition ${
+        active ? "text-slate-900" : "text-slate-700/50 hover:text-slate-700/80"
+      }`}
+    >
+      <SwapIcon className="h-3.5 w-3.5" />
+    </button>
   );
 }

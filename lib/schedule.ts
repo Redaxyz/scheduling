@@ -27,6 +27,10 @@ export type AssignmentCell = {
   // manager reassignment until removed; false for generic/ad-hoc rooming,
   // which stays freely reassignable (see `reassignable` on DaySchedule).
   hardCommitment: boolean;
+  // Mirrors Staff.addableByAnyone — a floating backup (e.g. Lester) who
+  // doesn't use the app to manage their own spot, so anyone (not just a
+  // manager or the person themself) can pull them out of a slot too.
+  addableByAnyone: boolean;
 };
 
 export type HalfSlot = {
@@ -268,6 +272,12 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
   const isStaffAbsent = (staffId: string, half: Half) =>
     staffAbsences.some((a) => a.staffId === staffId && absenceMatches(half, a.half));
   const isStaffAssigned = (staffId: string, half: Half) => assignments.some((a) => a.staffId === staffId && a.half === half);
+  // A backup x-ray assignment doesn't use up the person's whole half the way
+  // any other assignment would — Mark/Charlie's default rooming duty stays
+  // filled underneath them while they're covering x-ray for an absent
+  // primary, instead of quietly going unstaffed for that half.
+  const isAssignedToNonXray = (staffId: string, half: Half) =>
+    assignments.some((a) => a.staffId === staffId && a.half === half && a.role !== "XRAY");
   // Staff who opted OUT of one of their own computed defaults for this half
   // (see AutoOverride) — they're treated as not-defaulted, free to self-place.
   const isOverridden = (staffId: string, half: Half) => autoOverrides.some((o) => o.staffId === staffId && o.half === half);
@@ -396,6 +406,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
         lateMinutes: lateStaffMinutes(a.staffId, half),
         auto: false,
         hardCommitment: a.role === "XRAY",
+        addableByAnyone: a.staff.addableByAnyone,
       });
 
       // Computed default presence: a dedicated scribe falling back to this
@@ -424,6 +435,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
               lateMinutes: lateStaffMinutes(s.id, half),
               auto: true,
               hardCommitment: false,
+              addableByAnyone: s.addableByAnyone,
             });
           }
         }
@@ -440,7 +452,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
             !optedInStaffIds.has(s.id) &&
             s.defaultRoomingOffice === office &&
             !isStaffAbsent(s.id, half) &&
-            !isStaffAssigned(s.id, half) &&
+            !isAssignedToNonXray(s.id, half) &&
             !isOverridden(s.id, half)
         )
         .map((s) => ({
@@ -454,6 +466,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
           lateMinutes: lateStaffMinutes(s.id, half),
           auto: true,
           hardCommitment: true,
+          addableByAnyone: s.addableByAnyone,
         }));
 
       // A staff member's own weekly template putting them at this office for
@@ -478,6 +491,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
               lateMinutes: lateStaffMinutes(s.id, half),
               auto: true,
               hardCommitment: true,
+              addableByAnyone: s.addableByAnyone,
             },
           ];
         });
@@ -502,6 +516,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
                 lateMinutes: lateStaffMinutes(defaultXrayStaff.id, half),
                 auto: true,
                 hardCommitment: true,
+                addableByAnyone: defaultXrayStaff.addableByAnyone,
               },
             ]
           : [];
