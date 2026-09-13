@@ -48,6 +48,14 @@ export function WhoAmIProvider({ children }: { children: ReactNode }) {
 
   const current = staffList.find((s) => s.id === currentId) ?? null;
 
+  // Once the real roster is in, a stored id that doesn't match anyone in it
+  // (staff data reset, or an old id from before a rename/reseed) is a
+  // zombie — drop it so localStorage doesn't keep insisting someone's
+  // signed in when nothing here recognizes them.
+  useEffect(() => {
+    if (staffList.length > 0 && currentId && !current) setCurrentId(null);
+  }, [staffList, currentId, current]);
+
   return <Ctx.Provider value={{ staffList, currentId, setCurrentId, current, ready }}>{children}</Ctx.Provider>;
 }
 
