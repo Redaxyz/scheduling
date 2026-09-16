@@ -112,13 +112,12 @@ type XrayBackupStaffRow = {
 
 // Who's eligible to self-add as X-ray for `office`+`half` right now: the
 // office's own default tech, if they're free but not currently placed there
-// (e.g. they changed away and want back in); or anyone certified as a
-// backup (e.g. Charlie/Mark, or a floating backup like Lester) — certified
-// backups are always eligible, not just when their primary is out, though
-// Cindy/Shelby stay the standing default techs either way (see
-// defaultXrayOffice/autoXrayEntries, untouched by this). Nobody is
-// office-locked — a backup can help at either office. Nobody here who's
-// themselves absent/already assigned.
+// (e.g. they changed away and want back in); either default tech at the
+// OTHER office too, freely, not just when the other primary is out — Cindy
+// and Shelby aren't location-locked to their own office; or anyone
+// certified as a backup (e.g. Charlie/Mark, or a floating backup like
+// Lester) — certified backups are always eligible, not just when their
+// primary is out. Nobody here who's themselves absent/already assigned.
 function computeXrayEligible(
   office: Office,
   half: Half,
@@ -141,6 +140,20 @@ function computeXrayEligible(
         homeOffice: (s.homeOffice as Office | null) ?? null,
         dedicatedProviderName: null,
         reason: "Your usual spot",
+        addableByAnyone: s.addableByAnyone,
+      });
+      continue;
+    }
+
+    if (s.defaultXrayOffice && s.defaultXrayOffice !== office) {
+      result.push({
+        id: s.id,
+        name: s.name,
+        kind: s.kind,
+        canScribe: s.canScribe,
+        homeOffice: (s.homeOffice as Office | null) ?? null,
+        dedicatedProviderName: null,
+        reason: "Certified x-ray tech",
         addableByAnyone: s.addableByAnyone,
       });
       continue;
