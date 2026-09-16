@@ -30,7 +30,7 @@ export default async function MySchedulePage({ params }: { params: Promise<{ mon
 
   return (
     <div className="space-y-2">
-      <AutoRefresh />
+      <AutoRefresh stale={{ kind: "week", period: monday }} />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <MyScheduleHeading />

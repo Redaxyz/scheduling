@@ -63,7 +63,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
 
   return (
     <div className="relative left-1/2 w-screen -translate-x-1/2">
-      <AutoRefresh intervalMs={20000} />
+      <AutoRefresh intervalMs={20000} stale={{ kind: "day", period: date }} />
       <div className="flex flex-col lg:flex-row lg:items-stretch">
         {OFFICES.map((office) => (
           <OfficeHalf
