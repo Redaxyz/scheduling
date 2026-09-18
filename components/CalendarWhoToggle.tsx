@@ -116,14 +116,22 @@ export default function CalendarWhoToggle({
     return typeof window !== "undefined" && window.innerWidth >= DESKTOP_BREAKPOINT;
   }
 
+  const subView = who === "providers" ? providersView : staffView;
+  const subBase = who === "providers" ? "/calendar/providers" : "/calendar/staff";
+
+  // Switching between Providers/Staff keeps whatever granularity (month or
+  // week) you're already looking at — only a brand-new visit (this toggle
+  // not rendered yet, so no subView to read) falls back to guessing from
+  // screen width. The footer's own Schedule tab link is what actually resets
+  // to staff+month; this toggle should never second-guess it.
+  const useWeek = subView === "week" || (subView === undefined && !isDesktop());
+
   function goToProviders() {
-    router.push(
-      isDesktop() ? `/calendar/providers/month/${firstOfMonth(anchorDate)}` : `/calendar/providers/week/${weekAnchorFor(anchorDate)}`
-    );
+    router.push(useWeek ? `/calendar/providers/week/${weekAnchorFor(anchorDate)}` : `/calendar/providers/month/${firstOfMonth(anchorDate)}`);
   }
 
   function goToStaff() {
-    router.push(isDesktop() ? `/calendar/staff/month/${firstOfMonth(anchorDate)}` : `/calendar/staff/week/${weekAnchorFor(anchorDate)}`);
+    router.push(useWeek ? `/calendar/staff/week/${weekAnchorFor(anchorDate)}` : `/calendar/staff/month/${firstOfMonth(anchorDate)}`);
   }
 
   // Same size for both pills — Providers/Staff and Month/Week are equally
@@ -131,9 +139,6 @@ export default function CalendarWhoToggle({
   // made sense.
   const trackClass = "skew-track accent-border border-2 p-1 text-sm font-bold";
   const segClass = "skew-seg px-4 py-2";
-
-  const subView = who === "providers" ? providersView : staffView;
-  const subBase = who === "providers" ? "/calendar/providers" : "/calendar/staff";
 
   return (
     <div className="flex flex-wrap items-center gap-3">
