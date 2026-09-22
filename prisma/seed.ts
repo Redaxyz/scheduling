@@ -147,7 +147,7 @@ const STAFF: {
   //   Row1: Anna, Emily, Emma       Row2: Hope, Jen, Reda
   //   Row3: Brian PA-C, Joanna, Jessica PA-C
   //   Row4: Cindy, Charlie, JB      Row5: Shelby, Mark, Jenish
-  { name: "Reda", kind: "SCRIBE", canScribe: true, color: "hsl(0, 62%, 85%)", homeOffice: null, dedicatedProviderInitials: "C", pinnedGridIndex: 11 },
+  { name: "Reda", kind: "SCRIBE", canScribe: true, color: "hsl(0, 62%, 85%)", homeOffice: null, dedicatedProviderInitials: "C", isManager: true, pinnedGridIndex: 11 },
   { name: "Emily", kind: "SCRIBE", canScribe: true, color: "hsl(30, 62%, 83%)", homeOffice: null, dedicatedProviderInitials: "R", pinnedGridIndex: 5 },
   { name: "Hope", kind: "SCRIBE", canScribe: true, color: "hsl(50, 58%, 80%)", homeOffice: null, dedicatedProviderInitials: "Fe", pinnedGridIndex: 1 },
   { name: "Anna", kind: "SCRIBE", canScribe: true, color: "hsl(80, 45%, 79%)", homeOffice: null, dedicatedProviderInitials: "Mc", pinnedGridIndex: 0 },
