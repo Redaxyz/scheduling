@@ -335,24 +335,57 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
     return null;
   };
 
+  // The legacy dedicatedProviderId fallback — still checked for opted-in
+  // staff too, since a generic Rooming/X-ray template slot is a soft
+  // "nothing better to do" default, not a hard commitment that should leave
+  // their own doctor without a scribe. Only backs off when their template
+  // has them explicitly scribing someone else this half, or marks them off
+  // duty entirely (no row) — either genuinely outranks the old default.
+  const resolveDedicatedScribe = (providerId: string, half: Half) => {
+    const dedicated = staff.find((st) => st.dedicatedProviderId === providerId);
+    if (!dedicated) return null;
+    if (isStaffAbsent(dedicated.id, half) || isOverridden(dedicated.id, half) || isStaffAssigned(dedicated.id, half)) return null;
+    if (optedInStaffIds.has(dedicated.id)) {
+      const slot = templateSlotFor(dedicated.id, half);
+      if (!slot || slot.role === "SCRIBE") return null;
+    }
+    return dedicated;
+  };
+
   const halves = {} as Record<Half, Record<Office, HalfSlot>>;
   const unassigned = {} as Record<Half, { id: string; name: string }[]>;
   const reassignable = {} as Record<Half, { id: string; name: string }[]>;
 
   for (const half of HALVES) {
     halves[half] = {} as Record<Office, HalfSlot>;
+
+    // Who this half's dedicated-scribe fallback (see resolveDedicatedScribe)
+    // will actually claim, across both offices — computed up front so the
+    // opted-in staff's own generic Rooming/X-ray template entries (below)
+    // can skip anyone about to be placed as a scribe instead, rather than
+    // double-booking them in both places at once.
+    const dedicatedScribeClaimedIds = new Set<string>();
+    for (const office of OFFICES) {
+      for (const s of scheduleSlots) {
+        if (s.office !== office || s.half !== half || isProviderAbsent(s.providerId, half)) continue;
+        const explicitSub = assignments.some((a) => a.role === "SCRIBE" && a.providerId === s.providerId && a.half === half);
+        if (explicitSub || resolveTemplateScribe(s.providerId, half)) continue;
+        const dedicated = resolveDedicatedScribe(s.providerId, half);
+        if (dedicated) dedicatedScribeClaimedIds.add(dedicated.id);
+      }
+    }
+
     for (const office of OFFICES) {
       const activeSlots = scheduleSlots.filter(
         (s) => s.office === office && s.half === half && !isProviderAbsent(s.providerId, half)
       );
 
       const providers: ProviderCell[] = activeSlots.map((s) => {
-        const dedicated = staff.find((st) => st.dedicatedProviderId === s.providerId && !optedInStaffIds.has(st.id));
         const explicitSub = assignments.find(
           (a) => a.role === "SCRIBE" && a.providerId === s.providerId && a.half === half
         );
-        const dedicatedAbsent = dedicated ? isStaffAbsent(dedicated.id, half) : true;
         const templateScribe = resolveTemplateScribe(s.providerId, half);
+        const dedicated = explicitSub || templateScribe ? null : resolveDedicatedScribe(s.providerId, half);
 
         let scribe: ProviderCell["scribe"] = null;
         if (explicitSub) {
@@ -373,7 +406,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
             assignmentId: null,
             lateMinutes: lateStaffMinutes(templateScribe.staffId, half),
           };
-        } else if (dedicated && !dedicatedAbsent && !isOverridden(dedicated.id, half) && !isStaffAssigned(dedicated.id, half)) {
+        } else if (dedicated) {
           scribe = {
             staffId: dedicated.id,
             name: dedicated.name,
@@ -487,8 +520,18 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
       // replacement for defaultRoomingOffice/defaultXrayOffice, checked only
       // for opted-in staff (see StaffScheduleSlot). Both count as a hard
       // commitment, same as the legacy standing defaults they replace.
+      // Skips anyone the dedicated-scribe fallback already claimed this half
+      // (see dedicatedScribeClaimedIds) — their own doctor needing a scribe
+      // outranks their generic Rooming/X-ray default.
       const autoTemplateEntries: AssignmentCell[] = staff
-        .filter((s) => optedInStaffIds.has(s.id) && !isStaffAbsent(s.id, half) && !isStaffAssigned(s.id, half) && !isOverridden(s.id, half))
+        .filter(
+          (s) =>
+            optedInStaffIds.has(s.id) &&
+            !isStaffAbsent(s.id, half) &&
+            !isStaffAssigned(s.id, half) &&
+            !isOverridden(s.id, half) &&
+            !dedicatedScribeClaimedIds.has(s.id)
+        )
         .flatMap((s) => {
           const slot = templateSlotFor(s.id, half);
           if (!slot || slot.office !== office || (slot.role !== "ROOMING" && slot.role !== "XRAY")) return [];
