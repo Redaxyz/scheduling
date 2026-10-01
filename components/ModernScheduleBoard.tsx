@@ -1,13 +1,15 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { Fragment, useCallback, useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { DaySchedule, FreeStaffMember, PositionRef, ProviderCell } from "@/lib/schedule";
 import type { SwapRequestView } from "@/lib/swap";
-import { HALVES, HALF_LABELS, OFFICES, OFFICE_LABELS, type Half, type Office, type Role } from "@/lib/types";
+import { effectiveScheduleDate, formatLong } from "@/lib/date";
+import { HALVES, HALF_LABELS, OFFICES, OFFICE_LABELS, WEEKDAY_LABELS, type Half, type Office, type Role } from "@/lib/types";
 import { useWhoAmI } from "@/lib/whoami";
-import { getBottomNavHeight } from "@/lib/bottomNav";
 import AutoRefresh from "@/components/AutoRefresh";
+import ScheduleDateNav from "@/components/ScheduleDateNav";
 import { DropZone, Pill, SwapControl, TakeRoleButton, lateTag, moveStaff, postJSON, type DropTarget } from "@/components/scheduleShared";
 
 const SWAP_POLL_MS = 8000;
@@ -30,30 +32,6 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
   const currentId = current?.id ?? null;
   const isManager = current?.isManager ?? false;
   const [swapRequests, setSwapRequests] = useState<SwapRequestView[]>([]);
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const [minHeight, setMinHeight] = useState<number | null>(null);
-
-  // The office split should read as "the rest of the page", not just wrap
-  // its own content — otherwise a light day leaves a chunk of plain page
-  // background below it instead of white/black running all the way down to
-  // the floating bottom nav. Measured (not guessed) so it adapts to
-  // whatever the header above it and the nav below it actually take up.
-  useEffect(() => {
-    function compute() {
-      if (!wrapRef.current) return;
-      const top = wrapRef.current.getBoundingClientRect().top;
-      setMinHeight(window.innerHeight - top - getBottomNavHeight());
-    }
-    compute();
-    const bottomNav = document.getElementById("bottom-nav");
-    const ro = bottomNav ? new ResizeObserver(compute) : null;
-    ro?.observe(bottomNav!);
-    window.addEventListener("resize", compute);
-    return () => {
-      ro?.disconnect();
-      window.removeEventListener("resize", compute);
-    };
-  }, []);
 
   const loadSwapRequests = useCallback(() => {
     const params = new URLSearchParams({ date });
@@ -86,10 +64,38 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
   // undone again at the lg breakpoint where the two sit side by side anyway.
   const mobileFirst: Office = current?.homeOffice === "GERMANTOWN" ? "GERMANTOWN" : "BETHESDA";
 
+  const weekdayLabel = day.weekday !== null ? WEEKDAY_LABELS[day.weekday] : "Weekend";
+  const isToday = date === effectiveScheduleDate();
+
   return (
-    <div ref={wrapRef} className="relative left-1/2 w-screen -translate-x-1/2">
+    // -mt-4/-mb-28 cancel <main>'s own py-4/pb-28 (see app/layout.tsx) so
+    // this reaches the true top and bottom of the viewport instead of
+    // stopping at the edge of that padding — min-h-dvh (not a JS
+    // measurement) is what makes the split run the full screen height even
+    // on a short day, growing further on its own if content needs more.
+    <div className="relative left-1/2 -mt-4 -mb-28 min-h-dvh w-screen -translate-x-1/2">
       <AutoRefresh intervalMs={20000} stale={{ kind: "day", period: date }} />
-      <div className="flex flex-col lg:flex-row lg:items-stretch" style={minHeight != null ? { minHeight } : undefined}>
+
+      {/* Floats over the split instead of sitting in its own bar above it —
+          title stays on the left (over Bethesda/white), date-nav on the
+          right (over Germantown/black, so it needs light-friendly text). */}
+      <div className="absolute inset-x-0 top-0 z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-4 sm:px-10">
+        <div>
+          <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
+            {weekdayLabel} — {formatLong(date)}
+          </h1>
+          {!isToday && (
+            <Link href={`/schedule/${effectiveScheduleDate()}`} className="accent-text text-sm font-bold hover:underline">
+              Jump to today
+            </Link>
+          )}
+        </div>
+        <div className="text-white">
+          <ScheduleDateNav date={date} />
+        </div>
+      </div>
+
+      <div className="flex min-h-dvh flex-col lg:flex-row lg:items-stretch">
         {OFFICES.map((office) => (
           <OfficeHalf
             key={office}
@@ -105,11 +111,13 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
           />
         ))}
       </div>
+
       {unassignedLine.length > 0 && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-6">
-          <div className="pointer-events-auto rounded-full bg-white/90 px-4 py-1.5 text-center text-[11px] font-bold uppercase tracking-widest text-slate-500 shadow-lg backdrop-blur">
-            Not assigned yet: {unassignedLine.join(", ")}
-          </div>
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 flex items-center justify-between gap-3 px-6 sm:px-10">
+          <span className="pointer-events-auto text-[11px] font-bold uppercase tracking-widest text-slate-900/70">Not assigned yet</span>
+          <span className="pointer-events-auto text-right text-[11px] font-bold uppercase tracking-widest text-white/80">
+            {unassignedLine.join(", ")}
+          </span>
         </div>
       )}
     </div>
@@ -175,7 +183,9 @@ function OfficeHalf({
   }
 
   return (
-    <div className={`flex-1 px-6 py-8 sm:px-10 sm:py-12 ${mobileOrderClass} ${dark ? "bg-[#0b0f14] text-white" : "bg-white text-slate-900"}`}>
+    <div
+      className={`flex-1 px-6 pb-24 pt-20 sm:px-10 sm:pb-28 sm:pt-24 ${mobileOrderClass} ${dark ? "bg-[#0b0f14] text-white" : "bg-white text-slate-900"}`}
+    >
       <div className={`mb-8 flex items-baseline justify-between border-b pb-4 ${dark ? "border-white/10" : "border-slate-200"}`}>
         <h2 className="text-2xl font-black uppercase tracking-tight sm:text-3xl">{OFFICE_LABELS[office]}</h2>
         <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${dark ? "text-white/30" : "text-slate-400"}`}>

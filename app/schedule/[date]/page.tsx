@@ -1,9 +1,5 @@
-import Link from "next/link";
 import { getDaySchedule, getFreeStaff } from "@/lib/schedule";
-import { effectiveScheduleDate, formatLong } from "@/lib/date";
-import { WEEKDAY_LABELS } from "@/lib/types";
 import ModernScheduleBoard from "@/components/ModernScheduleBoard";
-import ScheduleDateNav from "@/components/ScheduleDateNav";
 
 // Reads live assignment/absence data on every load — without this, Next can
 // treat the page as static and keep serving a snapshot from before someone's
@@ -19,31 +15,15 @@ export default async function SchedulePage({ params }: { params: Promise<{ date:
   }
 
   const [day, freeStaff] = await Promise.all([getDaySchedule(date), getFreeStaff(date)]);
-  const isToday = date === effectiveScheduleDate();
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-extrabold tracking-tight">
-            {day.weekday !== null ? WEEKDAY_LABELS[day.weekday] : "Weekend"} — {formatLong(date)}
-          </h1>
-          {!isToday && (
-            <Link href={`/schedule/${effectiveScheduleDate()}`} className="accent-text text-sm font-bold hover:underline">
-              Jump to today
-            </Link>
-          )}
-        </div>
-        <ScheduleDateNav date={date} />
-      </div>
-
-      {day.weekday === null ? (
-        <p className="accent-border-soft rounded-2xl border-2 p-4 font-bold opacity-50">
-          No clinic scheduled on weekends.
-        </p>
-      ) : (
-        <ModernScheduleBoard date={date} day={day} freeStaff={freeStaff} />
-      )}
-    </div>
-  );
+  // The title/date-nav row lives inside ModernScheduleBoard itself now —
+  // it floats over the edge-to-edge Bethesda/Germantown split rather than
+  // sitting above it in a separate bar, so the split can reach the true top
+  // of the screen.
+  if (day.weekday === null) {
+    return (
+      <p className="accent-border-soft rounded-2xl border-2 p-4 font-bold opacity-50">No clinic scheduled on weekends.</p>
+    );
+  }
+  return <ModernScheduleBoard date={date} day={day} freeStaff={freeStaff} />;
 }
