@@ -68,10 +68,11 @@ export function isFederalHoliday(dateStr: string): boolean {
 // status, just a visual "nobody's expected today" marker.
 export const HOLIDAY_COLOR = "#c4b5fd";
 
-// Same washed-out family, but green — a holiday the clinic actually works
-// (see HolidayOverride/api/holiday-overrides), toggled by clicking the
-// date header in the Staff/Provider calendar grids.
-export const WORKING_HOLIDAY_COLOR = "#86efac";
+// Matches the staff grid's own "Present" green exactly, rather than
+// introducing a separate (and much more saturated/neon) green — a holiday
+// the clinic actually works (see HolidayOverride/api/holiday-overrides),
+// toggled by clicking the date header in the Staff/Provider calendar grids.
+export const WORKING_HOLIDAY_COLOR = "#579669";
 
 // Which federal holidays within `dates` the clinic actually works, as a
 // Set for O(1) lookup — queried once per calendar page load and passed down
