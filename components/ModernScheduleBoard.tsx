@@ -113,11 +113,18 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
       </div>
 
       {unassignedLine.length > 0 && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-4 flex items-center justify-between gap-3 px-6 sm:px-10">
-          <span className="pointer-events-auto text-[11px] font-bold uppercase tracking-widest text-slate-900/70">Not assigned yet</span>
-          <span className="pointer-events-auto text-right text-[11px] font-bold uppercase tracking-widest text-white/80">
-            {unassignedLine.join(", ")}
-          </span>
+        // Each half is exactly 50% wide so the label and the names meet
+        // right at the Bethesda/Germantown seam instead of sitting out at
+        // the screen's outer edges.
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 flex">
+          <div className="flex w-1/2 justify-end pr-3 sm:pr-4">
+            <span className="pointer-events-auto text-[11px] font-bold uppercase tracking-widest text-slate-900/70">Not assigned yet</span>
+          </div>
+          <div className="flex w-1/2 justify-start pl-3 sm:pl-4">
+            <span className="pointer-events-auto text-[11px] font-bold uppercase tracking-widest text-white/80">
+              {unassignedLine.join(", ")}
+            </span>
+          </div>
         </div>
       )}
     </div>
