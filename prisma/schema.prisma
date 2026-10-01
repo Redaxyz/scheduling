@@ -306,3 +306,14 @@ model Assignment {
 
   @@unique([staffId, date, half])
 }
+
+// A specific federal holiday date (see lib/holidays.ts) the clinic actually
+// works, despite the calendar grids normally recoloring every holiday the
+// same washed-out purple. Presence of a row means "we're open this one" —
+// purely a display override for the Staff/Provider calendar grids; the
+// underlying schedule/template logic already treats every holiday as a
+// normal weekday regardless, so toggling this never changes anyone's
+// actual placement.
+model HolidayOverride {
+  date String @id
+}

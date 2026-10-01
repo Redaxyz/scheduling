@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getStaffMonthCalendar } from "@/lib/calendar";
 import { addMonths, effectiveScheduleDate, firstOfMonth, formatMonthLabel, monthWeekdays } from "@/lib/date";
+import { getWorkingHolidays } from "@/lib/holidays";
 import StaffCalendarGrid, { StaffLegend } from "@/components/StaffCalendarGrid";
 import CalendarWhoToggle from "@/components/CalendarWhoToggle";
 import CalendarNavLinks from "@/components/CalendarNavLinks";
@@ -22,7 +23,8 @@ export default async function CalendarStaffMonthPage({ params }: { params: Promi
     redirect(`/calendar/staff/month/${month}`);
   }
 
-  const [rows, dates] = [await getStaffMonthCalendar(month), monthWeekdays(month)];
+  const dates = monthWeekdays(month);
+  const [rows, workingHolidays] = await Promise.all([getStaffMonthCalendar(month), getWorkingHolidays(dates)]);
   const isThisMonth = month === firstOfMonth(effectiveScheduleDate());
 
   return (
@@ -50,7 +52,7 @@ export default async function CalendarStaffMonthPage({ params }: { params: Promi
 
         <StaffLegend />
 
-        <StaffCalendarGrid dates={dates} rows={rows} dense />
+        <StaffCalendarGrid dates={dates} rows={rows} dense workingHolidays={[...workingHolidays]} />
       </div>
     </div>
   );

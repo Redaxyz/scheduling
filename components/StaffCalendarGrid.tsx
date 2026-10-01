@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { StaffCalendarRow, StaffDayStatus } from "@/lib/calendar";
 import { effectiveMonday, effectiveScheduleDate, mondayOf, nearestBusinessDayOnOrAfter, todayStr, weekdayIndex } from "@/lib/date";
-import { federalHolidayName, HOLIDAY_COLOR } from "@/lib/holidays";
+import { federalHolidayName, HOLIDAY_COLOR, WORKING_HOLIDAY_COLOR } from "@/lib/holidays";
 import { getBottomNavHeight } from "@/lib/bottomNav";
 import { useWhoAmI } from "@/lib/whoami";
 import { formatLateDuration } from "@/lib/lateDuration";
@@ -46,6 +46,9 @@ export function StaffLegend() {
       <span className="flex items-center gap-1">
         <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: HOLIDAY_COLOR }} /> Holiday
       </span>
+      <span className="flex items-center gap-1">
+        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: WORKING_HOLIDAY_COLOR }} /> Holiday, open (tap date to toggle)
+      </span>
       {current && (
         <span className="hidden opacity-70 lg:inline">
           tap your row to toggle{current.isManager ? " (or anyone's)" : ""}
@@ -80,13 +83,40 @@ export default function StaffCalendarGrid({
   dates,
   rows,
   dense = true,
+  workingHolidays: workingHolidaysProp = [],
 }: {
   dates: string[];
   rows: StaffCalendarRow[];
   dense?: boolean;
+  // Federal holiday dates (within `dates`) the clinic actually works —
+  // clicking a holiday's date header toggles it, see api/holiday-overrides.
+  workingHolidays?: string[];
 }) {
   const { current } = useWhoAmI();
   const router = useRouter();
+  const [workingHolidays, setWorkingHolidays] = useState(new Set(workingHolidaysProp));
+  const [togglingHoliday, setTogglingHoliday] = useState<string | null>(null);
+
+  async function toggleHoliday(date: string) {
+    setTogglingHoliday(date);
+    try {
+      const res = await fetch("/api/holiday-overrides", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date }),
+      });
+      if (!res.ok) return;
+      const { working } = await res.json();
+      setWorkingHolidays((prev) => {
+        const next = new Set(prev);
+        if (working) next.add(date);
+        else next.delete(date);
+        return next;
+      });
+    } finally {
+      setTogglingHoliday(null);
+    }
+  }
   const [, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
@@ -391,16 +421,27 @@ export default function StaffCalendarGrid({
                     const day = Number(date.slice(-2));
                     const wd = weekdayIndex(date)!;
                     const holiday = federalHolidayName(date);
+                    const isWorkingHoliday = Boolean(holiday) && workingHolidays.has(date);
+                    const holidayColor = isWorkingHoliday ? WORKING_HOLIDAY_COLOR : HOLIDAY_COLOR;
                     const isToday = date === today;
                     const inCurrentWeek = mondayOf(date) === currentWeekMonday;
                     return (
                       <th
                         key={date}
-                        className={`accent-border-soft border-b-2 text-center font-bold ${holiday ? "" : "opacity-50"} ${dense ? "px-1 py-1 text-[10px]" : "px-1 py-1 text-sm"} ${
+                        onClick={holiday ? () => toggleHoliday(date) : undefined}
+                        className={`accent-border-soft border-b-2 text-center font-bold ${holiday ? "" : "opacity-50"} ${
+                          holiday ? "cursor-pointer" : ""
+                        } ${togglingHoliday === date ? "opacity-40" : ""} ${dense ? "px-1 py-1 text-[10px]" : "px-1 py-1 text-sm"} ${
                           inCurrentWeek ? "cal-current-week" : ""
                         } ${isToday ? "cal-today-header" : ""}`}
-                        style={holiday ? { color: HOLIDAY_COLOR } : undefined}
-                        title={holiday ?? (isToday ? "Today" : undefined)}
+                        style={holiday ? { color: holidayColor } : undefined}
+                        title={
+                          holiday
+                            ? `${holiday} — ${isWorkingHoliday ? "clinic open; tap to mark as off" : "clinic closed; tap to mark as a working day"}`
+                            : isToday
+                              ? "Today"
+                              : undefined
+                        }
                       >
                         <div className="h-[10px] text-[8px] normal-case leading-[10px] opacity-80">{holiday ? "holiday" : " "}</div>
                         <div>{WEEKDAY_LETTERS[wd]}</div>
@@ -434,7 +475,7 @@ export default function StaffCalendarGrid({
                         const cell = row.days[date];
                         const key = `${row.staffId}:${date}`;
                         const holiday = federalHolidayName(date);
-                        const fill = holiday ? HOLIDAY_COLOR : STATUS_COLOR[cell.status];
+                        const fill = holiday ? (workingHolidays.has(date) ? WORKING_HOLIDAY_COLOR : HOLIDAY_COLOR) : STATUS_COLOR[cell.status];
                         const durationText = !holiday && cell.status === "PARTIAL" && cell.lateMinutes ? formatLateDuration(cell.lateMinutes) : null;
                         const label = `${row.name} — ${date}: ${holiday ?? (durationText ? `${STATUS_LABEL[cell.status]} (${durationText})` : STATUS_LABEL[cell.status])}`;
                         const inCurrentWeek = mondayOf(date) === currentWeekMonday;

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getProviderMonthCalendar } from "@/lib/calendar";
 import { addMonths, effectiveScheduleDate, firstOfMonth, formatMonthLabel, monthWeekdays } from "@/lib/date";
+import { getWorkingHolidays } from "@/lib/holidays";
 import ProviderCalendarGrid, { ProviderLegend } from "@/components/ProviderCalendarGrid";
 import CalendarWhoToggle from "@/components/CalendarWhoToggle";
 import CalendarNavLinks from "@/components/CalendarNavLinks";
@@ -22,7 +23,8 @@ export default async function CalendarProvidersMonthPage({ params }: { params: P
     redirect(`/calendar/providers/month/${month}`);
   }
 
-  const [rows, dates] = [await getProviderMonthCalendar(month), monthWeekdays(month)];
+  const dates = monthWeekdays(month);
+  const [rows, workingHolidays] = await Promise.all([getProviderMonthCalendar(month), getWorkingHolidays(dates)]);
   const isThisMonth = month === firstOfMonth(effectiveScheduleDate());
 
   return (
@@ -53,7 +55,7 @@ export default async function CalendarProvidersMonthPage({ params }: { params: P
 
         <ProviderLegend />
 
-        <ProviderCalendarGrid dates={dates} rows={rows} dense />
+        <ProviderCalendarGrid dates={dates} rows={rows} dense workingHolidays={[...workingHolidays]} />
       </div>
     </div>
   );

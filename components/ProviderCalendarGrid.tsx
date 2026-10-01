@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ProviderCalendarRow, ProviderHalfCell } from "@/lib/calendar";
 import { effectiveMonday, effectiveScheduleDate, mondayOf, weekdayIndex } from "@/lib/date";
-import { federalHolidayName, HOLIDAY_COLOR } from "@/lib/holidays";
+import { federalHolidayName, HOLIDAY_COLOR, WORKING_HOLIDAY_COLOR } from "@/lib/holidays";
 import { getBottomNavHeight } from "@/lib/bottomNav";
 import { HALVES, HALF_LABELS, OFFICE_LABELS, type Half, type Office } from "@/lib/types";
 import { useWhoAmI } from "@/lib/whoami";
@@ -25,20 +25,21 @@ const NEXT_STATUS = { PRESENT: "ABSENT", ABSENT: "SURGERY", SURGERY: "PRESENT" }
 const OFFICE_LETTER: Record<Office, string> = { BETHESDA: "B", GERMANTOWN: "G" };
 
 // A holiday wins over everything else — office, absence, even a usual
-// surgery day — so a holiday column reads as one uniform "nobody's here"
-// color at a glance instead of a mix of red/blue/office depending on what
-// each provider's template happened to say for that weekday.
-function cellColor(cell: ProviderHalfCell, holiday: boolean): string {
-  if (holiday) return HOLIDAY_COLOR;
+// surgery day — so a holiday column reads as one uniform color at a glance
+// instead of a mix of red/blue/office depending on what each provider's
+// template happened to say for that weekday. `holidayColor` is null for a
+// normal day, otherwise HOLIDAY_COLOR or (toggled open) WORKING_HOLIDAY_COLOR.
+function cellColor(cell: ProviderHalfCell, holidayColor: string | null): string {
+  if (holidayColor) return holidayColor;
   if (cell.status === "ABSENT") return OFF_COLOR;
   if (cell.status === "SURGERY") return SURGERY_COLOR;
   return cell.office ? OFFICE_COLOR[cell.office] : OFF_DUTY_COLOR;
 }
 
-// White-on-Bethesda (and the washed-out holiday purple) are the fills light
-// enough to need dark text instead of white.
-function cellTextClass(cell: ProviderHalfCell, holiday: boolean): string {
-  if (holiday) return "text-slate-700";
+// White-on-Bethesda (and the washed-out holiday purple/green) are the fills
+// light enough to need dark text instead of white.
+function cellTextClass(cell: ProviderHalfCell, holidayColor: string | null): string {
+  if (holidayColor) return "text-slate-700";
   return cell.status === "PRESENT" && cell.office === "BETHESDA" ? "text-slate-700" : "text-white/90";
 }
 
@@ -68,6 +69,9 @@ export function ProviderLegend() {
       <span className="flex items-center gap-1">
         <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: HOLIDAY_COLOR }} /> Holiday
       </span>
+      <span className="flex items-center gap-1">
+        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: WORKING_HOLIDAY_COLOR }} /> Holiday, open (tap date to toggle)
+      </span>
       {current && <span className="hidden opacity-70 lg:inline">tap AM/PM to cycle office → absent → surgery</span>}
     </div>
   );
@@ -95,15 +99,42 @@ export default function ProviderCalendarGrid({
   dates,
   rows,
   dense = true,
+  workingHolidays: workingHolidaysProp = [],
 }: {
   dates: string[];
   rows: ProviderCalendarRow[];
   dense?: boolean;
+  // Federal holiday dates (within `dates`) the clinic actually works —
+  // clicking a holiday's date header toggles it, see api/holiday-overrides.
+  workingHolidays?: string[];
 }) {
   const { current } = useWhoAmI();
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [workingHolidays, setWorkingHolidays] = useState(new Set(workingHolidaysProp));
+  const [togglingHoliday, setTogglingHoliday] = useState<string | null>(null);
+
+  async function toggleHoliday(date: string) {
+    setTogglingHoliday(date);
+    try {
+      const res = await fetch("/api/holiday-overrides", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date }),
+      });
+      if (!res.ok) return;
+      const { working } = await res.json();
+      setWorkingHolidays((prev) => {
+        const next = new Set(prev);
+        if (working) next.add(date);
+        else next.delete(date);
+        return next;
+      });
+    } finally {
+      setTogglingHoliday(null);
+    }
+  }
   const [pending, setPending] = useState<string | null>(null);
   // Same "what day does this actually mean right now" rule used everywhere
   // else in the app (rolls to the next business day after 5pm, and treats
@@ -202,17 +233,28 @@ export default function ProviderCalendarGrid({
               const day = Number(date.slice(-2));
               const wd = weekdayIndex(date)!;
               const holiday = federalHolidayName(date);
+              const isWorkingHoliday = Boolean(holiday) && workingHolidays.has(date);
+              const holidayColor = isWorkingHoliday ? WORKING_HOLIDAY_COLOR : HOLIDAY_COLOR;
               const isToday = date === today;
               const inCurrentWeek = mondayOf(date) === currentWeekMonday;
               return (
                 <th
                   key={date}
                   colSpan={2}
-                  className={`accent-border-soft border-b-2 border-l-2 text-center font-bold ${holiday ? "" : "opacity-50"} ${dense ? "px-1 py-1 text-[10px]" : "px-1 py-1.5 text-sm"} ${
+                  onClick={holiday ? () => toggleHoliday(date) : undefined}
+                  className={`accent-border-soft border-b-2 border-l-2 text-center font-bold ${holiday ? "" : "opacity-50"} ${
+                    holiday ? "cursor-pointer" : ""
+                  } ${togglingHoliday === date ? "opacity-40" : ""} ${dense ? "px-1 py-1 text-[10px]" : "px-1 py-1.5 text-sm"} ${
                     inCurrentWeek ? "cal-current-week" : ""
                   } ${isToday ? "cal-today-header" : ""}`}
-                  style={holiday ? { color: HOLIDAY_COLOR } : undefined}
-                  title={holiday ?? (isToday ? "Today" : undefined)}
+                  style={holiday ? { color: holidayColor } : undefined}
+                  title={
+                    holiday
+                      ? `${holiday} — ${isWorkingHoliday ? "clinic open; tap to mark as off" : "clinic closed; tap to mark as a working day"}`
+                      : isToday
+                        ? "Today"
+                        : undefined
+                  }
                 >
                   <div className="h-[10px] text-[8px] normal-case leading-[10px] opacity-80">{holiday ? "holiday" : " "}</div>
                   <div>{WEEKDAY_LETTERS[wd]}</div>
@@ -247,6 +289,7 @@ export default function ProviderCalendarGrid({
                   const key = `${row.providerId}:${date}:${half}`;
                   const officeName = cell.office ? OFFICE_LABELS[cell.office] : null;
                   const holiday = federalHolidayName(date);
+                  const holidayColor = holiday ? (workingHolidays.has(date) ? WORKING_HOLIDAY_COLOR : HOLIDAY_COLOR) : null;
                   const inCurrentWeek = mondayOf(date) === currentWeekMonday;
                   const label = holiday
                     ? `${row.name} — ${date} ${HALF_LABELS[half]}: ${holiday}`
@@ -265,10 +308,10 @@ export default function ProviderCalendarGrid({
                         aria-label={`${label} (tap to toggle)`}
                         title={`${label} (tap to toggle)`}
                         className="relative block w-full rounded-lg border border-slate-900/10 transition active:scale-95 disabled:opacity-40"
-                        style={{ background: cellColor(cell, Boolean(holiday)), boxShadow: cell.fromTemplate ? "inset 0 0 0 2px rgba(255,255,255,0.6)" : undefined }}
+                        style={{ background: cellColor(cell, holidayColor), boxShadow: cell.fromTemplate ? "inset 0 0 0 2px rgba(255,255,255,0.6)" : undefined }}
                       >
                         <span
-                          className={`flex w-full items-center justify-center font-extrabold ${cellTextClass(cell, Boolean(holiday))} ${dense ? "text-[9px]" : "text-xs"}`}
+                          className={`flex w-full items-center justify-center font-extrabold ${cellTextClass(cell, holidayColor)} ${dense ? "text-[9px]" : "text-xs"}`}
                           style={{ height: dynamicRowHeight }}
                         >
                           {cell.status === "PRESENT" && cell.office && !holiday ? OFFICE_LETTER[cell.office] : ""}

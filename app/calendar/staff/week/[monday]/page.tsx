@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getStaffWeekCalendar } from "@/lib/calendar";
 import { addDays, effectiveMonday, formatShort, mondayOf, weekDates } from "@/lib/date";
+import { getWorkingHolidays } from "@/lib/holidays";
 import StaffCalendarGrid, { StaffLegend } from "@/components/StaffCalendarGrid";
 import CalendarWhoToggle from "@/components/CalendarWhoToggle";
 import CalendarNavLinks from "@/components/CalendarNavLinks";
@@ -23,7 +24,7 @@ export default async function CalendarStaffWeekPage({ params }: { params: Promis
   }
 
   const dates = weekDates(monday);
-  const rows = await getStaffWeekCalendar(monday);
+  const [rows, workingHolidays] = await Promise.all([getStaffWeekCalendar(monday), getWorkingHolidays(dates)]);
   const isThisWeek = monday === effectiveMonday();
 
   return (
@@ -51,7 +52,7 @@ export default async function CalendarStaffWeekPage({ params }: { params: Promis
 
         <StaffLegend />
 
-        <StaffCalendarGrid dates={dates} rows={rows} dense={false} />
+        <StaffCalendarGrid dates={dates} rows={rows} dense={false} workingHolidays={[...workingHolidays]} />
       </div>
     </div>
   );

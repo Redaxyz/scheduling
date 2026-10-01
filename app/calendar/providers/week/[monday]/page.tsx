@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getProviderWeekCalendar } from "@/lib/calendar";
 import { addDays, effectiveMonday, formatShort, mondayOf, weekDates } from "@/lib/date";
+import { getWorkingHolidays } from "@/lib/holidays";
 import ProviderCalendarGrid, { ProviderLegend } from "@/components/ProviderCalendarGrid";
 import CalendarWhoToggle from "@/components/CalendarWhoToggle";
 import CalendarNavLinks from "@/components/CalendarNavLinks";
@@ -23,7 +24,7 @@ export default async function CalendarProvidersWeekPage({ params }: { params: Pr
   }
 
   const dates = weekDates(monday);
-  const rows = await getProviderWeekCalendar(monday);
+  const [rows, workingHolidays] = await Promise.all([getProviderWeekCalendar(monday), getWorkingHolidays(dates)]);
   const isThisWeek = monday === effectiveMonday();
 
   return (
@@ -54,7 +55,7 @@ export default async function CalendarProvidersWeekPage({ params }: { params: Pr
 
         <ProviderLegend />
 
-        <ProviderCalendarGrid dates={dates} rows={rows} dense={false} />
+        <ProviderCalendarGrid dates={dates} rows={rows} dense={false} workingHolidays={[...workingHolidays]} />
       </div>
     </div>
   );
