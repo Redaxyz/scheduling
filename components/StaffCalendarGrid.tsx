@@ -275,14 +275,22 @@ export default function StaffCalendarGrid({
       const bottomNavHeight = getBottomNavHeight();
       const headerHeight = theadRef.current?.getBoundingClientRect().height ?? 0;
       const isDesktopLayout = window.innerWidth >= DESKTOP_BREAKPOINT;
-      const trailingHeight = isDesktopLayout ? 0 : (trailingRef.current?.getBoundingClientRect().height ?? 0);
+      // Deliberately NOT subtracting the trailing sidebar's height here even
+      // when it's stacked below the grid on mobile — doing so used to make
+      // row height jump sharply the instant the viewport crossed the
+      // desktop breakpoint (trailingHeight going from 0 to its full
+      // measured height in one step), which read as rows suddenly going
+      // paper-thin on a narrower window. Row height now depends only on
+      // vertical space, never on width; the stacked sidebar just pushes the
+      // page to scroll a bit further on mobile instead.
+      //
       // A much bigger safety margin than a single-row measurement needs,
       // plus the same proportional shrink used for the Me tab's
       // FullHeightFrame (heightScale) — real screens still left the last
       // row peeking out from under the footer with just a fixed buffer, so
       // this trades a little unused space at the bottom for a hard
       // guarantee nothing ever sits under the nav.
-      const available = (window.innerHeight - top - bottomNavHeight - headerHeight - trailingHeight - 66) * 0.94;
+      const available = (window.innerHeight - top - bottomNavHeight - headerHeight - 66) * 0.94;
 
       // The sidebar spans the same vertical range as the grid+header
       // together (it has no header row of its own to subtract), only on
