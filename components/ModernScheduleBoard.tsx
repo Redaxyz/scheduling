@@ -76,10 +76,26 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
     <div className="relative left-1/2 -mt-4 -mb-28 min-h-dvh w-screen -translate-x-1/2">
       <AutoRefresh intervalMs={20000} stale={{ kind: "day", period: date }} />
 
+      {/* A separate full-height background layer behind everything, split
+          the same way as the content — so the white/black still runs the
+          full screen even though the actual content above (including the
+          "not assigned" line) now sits at its own natural height near the
+          top instead of being stretched or pinned to the very bottom. */}
+      <div className="absolute inset-0 z-0 flex flex-col lg:flex-row">
+        {OFFICES.map((office) => (
+          <div
+            key={office}
+            className={`flex-1 ${office === mobileFirst ? "order-1 lg:order-none" : "order-2 lg:order-none"} ${
+              office === "GERMANTOWN" ? "bg-[#0b0f14]" : "bg-white"
+            }`}
+          />
+        ))}
+      </div>
+
       {/* Floats over the split instead of sitting in its own bar above it —
           title stays on the left (over Bethesda/white), date-nav on the
           right (over Germantown/black, so it needs light-friendly text). */}
-      <div className="absolute inset-x-0 top-0 z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-4 sm:px-10">
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-4 sm:px-10">
         <div>
           <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
             {weekdayLabel} — {formatLong(date)}
@@ -95,7 +111,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
         </div>
       </div>
 
-      <div className="flex min-h-dvh flex-col lg:flex-row lg:items-stretch">
+      <div className="relative z-10 flex flex-col lg:flex-row lg:items-stretch">
         {OFFICES.map((office) => (
           <OfficeHalf
             key={office}
@@ -113,17 +129,15 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
       </div>
 
       {unassignedLine.length > 0 && (
-        // Each half is exactly 50% wide so the label and the names meet
-        // right at the Bethesda/Germantown seam instead of sitting out at
-        // the screen's outer edges.
-        <div className="pointer-events-none absolute inset-x-0 bottom-4 flex">
+        // Right below the content (the x-ray row), not pinned to the
+        // bottom of the full-height background — each half is exactly 50%
+        // wide so the label and the names meet right at the seam.
+        <div className="relative z-10 flex pb-6">
           <div className="flex w-1/2 justify-end pr-3 sm:pr-4">
-            <span className="pointer-events-auto text-[11px] font-bold uppercase tracking-widest text-slate-900/70">Not assigned yet</span>
+            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-900/70">Not assigned yet</span>
           </div>
           <div className="flex w-1/2 justify-start pl-3 sm:pl-4">
-            <span className="pointer-events-auto text-[11px] font-bold uppercase tracking-widest text-white/80">
-              {unassignedLine.join(", ")}
-            </span>
+            <span className="text-[11px] font-bold uppercase tracking-widest text-white/80">{unassignedLine.join(", ")}</span>
           </div>
         </div>
       )}
@@ -191,7 +205,7 @@ function OfficeHalf({
 
   return (
     <div
-      className={`flex-1 px-6 pb-24 pt-20 sm:px-10 sm:pb-28 sm:pt-24 ${mobileOrderClass} ${dark ? "bg-[#0b0f14] text-white" : "bg-white text-slate-900"}`}
+      className={`flex-1 px-6 pb-8 pt-20 sm:px-10 sm:pb-12 sm:pt-24 ${mobileOrderClass} ${dark ? "bg-[#0b0f14] text-white" : "bg-white text-slate-900"}`}
     >
       <div className={`mb-8 flex items-baseline justify-between border-b pb-4 ${dark ? "border-white/10" : "border-slate-200"}`}>
         <h2 className="text-2xl font-black uppercase tracking-tight sm:text-3xl">{OFFICE_LABELS[office]}</h2>
