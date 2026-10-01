@@ -1,11 +1,12 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState, useTransition } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { DaySchedule, FreeStaffMember, PositionRef, ProviderCell } from "@/lib/schedule";
 import type { SwapRequestView } from "@/lib/swap";
 import { HALVES, HALF_LABELS, OFFICES, OFFICE_LABELS, type Half, type Office, type Role } from "@/lib/types";
 import { useWhoAmI } from "@/lib/whoami";
+import { getBottomNavHeight } from "@/lib/bottomNav";
 import AutoRefresh from "@/components/AutoRefresh";
 import { DropZone, Pill, SwapControl, TakeRoleButton, lateTag, moveStaff, postJSON, type DropTarget } from "@/components/scheduleShared";
 
@@ -29,6 +30,30 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
   const currentId = current?.id ?? null;
   const isManager = current?.isManager ?? false;
   const [swapRequests, setSwapRequests] = useState<SwapRequestView[]>([]);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [minHeight, setMinHeight] = useState<number | null>(null);
+
+  // The office split should read as "the rest of the page", not just wrap
+  // its own content — otherwise a light day leaves a chunk of plain page
+  // background below it instead of white/black running all the way down to
+  // the floating bottom nav. Measured (not guessed) so it adapts to
+  // whatever the header above it and the nav below it actually take up.
+  useEffect(() => {
+    function compute() {
+      if (!wrapRef.current) return;
+      const top = wrapRef.current.getBoundingClientRect().top;
+      setMinHeight(window.innerHeight - top - getBottomNavHeight());
+    }
+    compute();
+    const bottomNav = document.getElementById("bottom-nav");
+    const ro = bottomNav ? new ResizeObserver(compute) : null;
+    ro?.observe(bottomNav!);
+    window.addEventListener("resize", compute);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", compute);
+    };
+  }, []);
 
   const loadSwapRequests = useCallback(() => {
     const params = new URLSearchParams({ date });
@@ -62,9 +87,9 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
   const mobileFirst: Office = current?.homeOffice === "GERMANTOWN" ? "GERMANTOWN" : "BETHESDA";
 
   return (
-    <div className="relative left-1/2 w-screen -translate-x-1/2">
+    <div ref={wrapRef} className="relative left-1/2 w-screen -translate-x-1/2">
       <AutoRefresh intervalMs={20000} stale={{ kind: "day", period: date }} />
-      <div className="flex flex-col lg:flex-row lg:items-stretch">
+      <div className="flex flex-col lg:flex-row lg:items-stretch" style={minHeight != null ? { minHeight } : undefined}>
         {OFFICES.map((office) => (
           <OfficeHalf
             key={office}
@@ -81,8 +106,10 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
         ))}
       </div>
       {unassignedLine.length > 0 && (
-        <div className="mx-auto max-w-6xl px-6 py-4 text-center text-xs font-bold uppercase tracking-widest opacity-40 sm:px-10">
-          Not assigned yet: {unassignedLine.join(", ")}
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-6">
+          <div className="pointer-events-auto rounded-full bg-white/90 px-4 py-1.5 text-center text-[11px] font-bold uppercase tracking-widest text-slate-500 shadow-lg backdrop-blur">
+            Not assigned yet: {unassignedLine.join(", ")}
+          </div>
         </div>
       )}
     </div>
