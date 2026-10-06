@@ -93,11 +93,13 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
       </div>
 
       {/* Floats over the split instead of sitting in its own bar above it —
-          title stays on the left (over Bethesda/white), date-nav on the
-          right (over Germantown/black, so it needs light-friendly text). */}
+          on desktop the title is over Bethesda/white (left) and the date-nav
+          over Germantown/black (right). On a phone the offices stack, so
+          both sit over whichever office is on top — white for Bethesda,
+          black for Germantown — and their text color follows that. */}
       <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-4 sm:px-10">
         <div>
-          <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
+          <h1 className={`text-xl font-extrabold tracking-tight ${mobileFirst === "GERMANTOWN" ? "text-white lg:text-slate-900" : "text-slate-900"}`}>
             {weekdayLabel} — {formatLong(date)}
           </h1>
           {!isToday && (
@@ -106,7 +108,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
             </Link>
           )}
         </div>
-        <div className="text-white">
+        <div className={mobileFirst === "GERMANTOWN" ? "text-white" : "text-slate-900 lg:text-white"}>
           <ScheduleDateNav date={date} />
         </div>
       </div>
