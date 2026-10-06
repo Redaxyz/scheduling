@@ -7,7 +7,7 @@ import { effectiveMonday, effectiveScheduleDate, mondayOf, nearestBusinessDayOnO
 import { federalHolidayName, HOLIDAY_COLOR, WORKING_HOLIDAY_COLOR } from "@/lib/holidays";
 import { getBottomNavHeight } from "@/lib/bottomNav";
 import { useWhoAmI } from "@/lib/whoami";
-import { arriveNote, leaveNote } from "@/lib/timing";
+import { arriveNote, clockHalf, leaveNote } from "@/lib/timing";
 import MyAbsencesList from "@/components/MyAbsencesList";
 
 const STATUS_COLOR: Record<StaffDayStatus, string> = {
@@ -454,16 +454,35 @@ export default function StaffCalendarGrid({
                         const holiday = federalHolidayName(date);
                         const holidayColor = holiday ? (workingHolidays.has(date) ? WORKING_HOLIDAY_COLOR : HOLIDAY_COLOR) : null;
                         const inCurrentWeek = mondayOf(date) === currentWeekMonday;
-                        const arrive = !holiday && !cell.amOut ? arriveNote(cell.arriveAt, cell.lateMinutes) : null;
-                        const leave = !holiday && !cell.pmOut ? leaveNote(cell.leaveAt) : null;
-                        // Per-half color: out is red; a late arrival makes the morning
-                        // orange and a leave-early the afternoon teal — and when only
-                        // one of those is set it tints the whole day, not just its half.
-                        const leftColor = holidayColor ?? (cell.amOut ? STATUS_COLOR.ABSENT : arrive ? STATUS_COLOR.PARTIAL : leave ? EARLY_COLOR : STATUS_COLOR.PRESENT);
-                        const rightColor = holidayColor ?? (cell.pmOut ? STATUS_COLOR.ABSENT : leave ? EARLY_COLOR : arrive ? STATUS_COLOR.PARTIAL : STATUS_COLOR.PRESENT);
-                        const detail = holiday
-                          ?? [cell.amOut ? "out in the morning" : arrive, cell.pmOut ? "out in the afternoon" : leave].filter(Boolean).join(", ")
-                          ?? "";
+                        // Which half each note belongs to is decided by the clock
+                        // time itself: a morning arrival or an afternoon departure
+                        // only touches its own half, while an afternoon arrival or a
+                        // morning departure covers most of the day, so those merge
+                        // both halves into one cell.
+                        const arriveText = holiday ? null : arriveNote(cell.arriveAt, cell.lateMinutes);
+                        const leaveText = holiday ? null : leaveNote(cell.leaveAt);
+                        const arriveHalf = arriveText ? (cell.arriveAt ? clockHalf(cell.arriveAt) : "AM") : null;
+                        const leaveHalf = leaveText && cell.leaveAt ? clockHalf(cell.leaveAt) : null;
+                        const merged = !holiday && !cell.amOut && !cell.pmOut && (leaveHalf === "AM" || arriveHalf === "PM");
+                        const mergedColor = leaveHalf === "AM" ? EARLY_COLOR : STATUS_COLOR.PARTIAL;
+                        const mergedText = [arriveHalf === "PM" ? arriveText : null, leaveHalf === "AM" ? leaveText : null].filter(Boolean).join(" · ");
+                        const noteFor = (half: "AM" | "PM") =>
+                          half === "AM"
+                            ? arriveHalf === "AM" ? arriveText : leaveHalf === "AM" ? leaveText : null
+                            : leaveHalf === "PM" ? leaveText : arriveHalf === "PM" ? arriveText : null;
+                        const colorFor = (half: "AM" | "PM") => {
+                          if (holidayColor) return holidayColor;
+                          if (half === "AM" ? cell.amOut : cell.pmOut) return STATUS_COLOR.ABSENT;
+                          if (arriveHalf === half) return STATUS_COLOR.PARTIAL;
+                          if (leaveHalf === half) return EARLY_COLOR;
+                          return STATUS_COLOR.PRESENT;
+                        };
+                        const bare = (t: string | null) => (t ? t.replace(/^(in|out) /, "") : "");
+                        const detail =
+                          holiday ??
+                          [cell.amOut ? "out in the morning" : null, cell.pmOut ? "out in the afternoon" : null, arriveText, leaveText]
+                            .filter(Boolean)
+                            .join(", ");
                         const label = `${row.name} — ${date}: ${detail || "in all day"}`;
                         // Your own row gets a solid accent wash instead of the
                         // current-week/alternating tints, so it stands out in either.
@@ -471,24 +490,26 @@ export default function StaffCalendarGrid({
                           isMe ? "accent-bg-soft" : inCurrentWeek ? "cal-current-week" : dateIndex % 2 === 1 ? "bg-slate-900/[0.04]" : ""
                         }`;
                         const textClass = `text-[10px] font-extrabold leading-none ${holiday ? "text-slate-700" : "text-white/90"}`;
+                        const boxHeight = isMe ? dynamicBigHeight : dynamicThinHeight;
 
                         if (!editable) {
-                          // One read-only cell: colored by the rules above, with the
-                          // actual times written in it.
-                          const wholeDay = leftColor === rightColor;
+                          // One read-only cell: colored half by half (or all one color
+                          // when merged), with the actual times written in it.
+                          const leftColor = merged ? mergedColor : colorFor("AM");
+                          const rightColor = merged ? mergedColor : colorFor("PM");
                           return (
                             <td key={date} className={tdClass}>
                               <div
                                 className="flex w-full items-center justify-center rounded-md"
-                                style={{ height: isMe ? dynamicBigHeight : dynamicThinHeight, background: splitBackground(leftColor, rightColor) }}
+                                style={{ height: boxHeight, background: splitBackground(leftColor, rightColor) }}
                                 title={label}
                               >
-                                {wholeDay ? (
-                                  <span className={textClass}>{arrive ?? leave}</span>
+                                {merged ? (
+                                  <span className={textClass}>{mergedText}</span>
                                 ) : (
                                   <>
-                                    <span className={`flex-1 ${textClass}`}>{arrive ? arrive.replace("in ", "") : ""}</span>
-                                    <span className={`flex-1 ${textClass}`}>{leave ? leave.replace("out ", "") : ""}</span>
+                                    <span className={`flex-1 ${textClass}`}>{bare(noteFor("AM"))}</span>
+                                    <span className={`flex-1 ${textClass}`}>{bare(noteFor("PM"))}</span>
                                   </>
                                 )}
                               </div>
@@ -496,29 +517,49 @@ export default function StaffCalendarGrid({
                           );
                         }
 
-                        // Editable: left box = morning, right box = afternoon.
-                        const halves = [
-                          { half: "AM" as const, out: cell.amOut, fill: leftColor, text: arrive ? arrive.replace("in ", "") : null },
-                          { half: "PM" as const, out: cell.pmOut, fill: rightColor, text: leave ? leave.replace("out ", "") : null },
-                        ];
+                        // Editable: left box = morning, right box = afternoon — except a
+                        // merged day, which is one wide box (tapping it marks both
+                        // halves out).
+                        const halves = (["AM", "PM"] as const).map((half) => ({
+                          half,
+                          out: half === "AM" ? cell.amOut : cell.pmOut,
+                          fill: colorFor(half),
+                          text: noteFor(half),
+                        }));
                         return (
                           <td key={date} className={tdClass}>
-                            <div className="flex w-full gap-0.5">
-                              {halves.map(({ half, out, fill, text }) => (
-                                <button
-                                  key={half}
-                                  type="button"
-                                  onClick={() => toggleHalf(row.staffId, date, half, !out)}
-                                  disabled={pending === `${row.staffId}:${date}:${half}`}
-                                  aria-label={`${label} (tap to toggle ${half === "AM" ? "morning" : "afternoon"})`}
-                                  title={`${label} (tap to toggle ${half === "AM" ? "morning" : "afternoon"})`}
-                                  className="flex min-w-0 flex-1 items-center justify-center rounded-md transition active:scale-95 disabled:opacity-40"
-                                  style={{ height: isMe ? dynamicBigHeight : dynamicThinHeight, background: fill }}
-                                >
-                                  <span className={textClass}>{text ?? half}</span>
-                                </button>
-                              ))}
-                            </div>
+                            {merged ? (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await toggleHalf(row.staffId, date, "AM", true);
+                                  await toggleHalf(row.staffId, date, "PM", true);
+                                }}
+                                aria-label={`${label} (tap to mark the whole day out)`}
+                                title={`${label} (tap to mark the whole day out)`}
+                                className="flex w-full items-center justify-center rounded-md transition active:scale-95"
+                                style={{ height: boxHeight, background: mergedColor }}
+                              >
+                                <span className={textClass}>{mergedText}</span>
+                              </button>
+                            ) : (
+                              <div className="flex w-full gap-0.5">
+                                {halves.map(({ half, out, fill, text }) => (
+                                  <button
+                                    key={half}
+                                    type="button"
+                                    onClick={() => toggleHalf(row.staffId, date, half, !out)}
+                                    disabled={pending === `${row.staffId}:${date}:${half}`}
+                                    aria-label={`${label} (tap to toggle ${half === "AM" ? "morning" : "afternoon"})`}
+                                    title={`${label} (tap to toggle ${half === "AM" ? "morning" : "afternoon"})`}
+                                    className="flex min-w-0 flex-1 items-center justify-center rounded-md transition active:scale-95 disabled:opacity-40"
+                                    style={{ height: boxHeight, background: fill }}
+                                  >
+                                    <span className={textClass}>{bare(text) || half}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </td>
                         );
                       })}

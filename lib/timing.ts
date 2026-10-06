@@ -21,3 +21,8 @@ export function arriveNote(arriveAt: string | null, lateMinutes: number | null):
 export function leaveNote(leaveAt: string | null): string | null {
   return leaveAt ? `out ${formatClock(leaveAt)}` : null;
 }
+
+// Which half of the day a clock time falls in — before noon is the morning.
+export function clockHalf(hhmm: string): "AM" | "PM" {
+  return hhmm < "12:00" ? "AM" : "PM";
+}
