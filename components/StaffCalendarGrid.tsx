@@ -491,7 +491,7 @@ export default function StaffCalendarGrid({
                             : out ? STATUS_COLOR.ABSENT : late ? STATUS_COLOR.PARTIAL : STATUS_COLOR.PRESENT;
                           const state = holiday ?? (out ? "out" : late ? `running late (${lateTagText})` : "in");
                           const label = `${row.name} — ${date} ${half === "AM" ? "morning" : "afternoon"}: ${state}`;
-                          return { half, out, fill, label, showLate: late && isBig && Boolean(lateTagText) };
+                          return { half, out, fill, label, showLate: late && Boolean(lateTagText) };
                         });
                         return (
                           <td key={date} className={`${rowCellPad} text-center ${inCurrentWeek ? "cal-current-week" : ""}`}>
@@ -508,7 +508,12 @@ export default function StaffCalendarGrid({
                                     className="flex min-w-0 flex-1 items-center justify-center rounded-md transition active:scale-95 disabled:opacity-40"
                                     style={{ height: rowBoxHeight, background: fill }}
                                   >
-                                    {showLate && <span className="text-[9px] font-extrabold text-white/90">{lateTagText}</span>}
+                                    {isBig && (
+                                      <span className={`text-[9px] font-extrabold leading-none ${holiday ? "text-slate-700" : "text-white/90"}`}>
+                                        {half}
+                                        {showLate && <span className="ml-0.5 opacity-80">· {lateTagText}</span>}
+                                      </span>
+                                    )}
                                   </button>
                                 ) : (
                                   <span
@@ -517,7 +522,12 @@ export default function StaffCalendarGrid({
                                     style={{ height: rowBoxHeight, background: fill }}
                                     title={label}
                                   >
-                                    {showLate && <span className="text-[9px] font-extrabold text-white/90">{lateTagText}</span>}
+                                    {isBig && (
+                                      <span className={`text-[9px] font-extrabold leading-none ${holiday ? "text-slate-700" : "text-white/90"}`}>
+                                        {half}
+                                        {showLate && <span className="ml-0.5 opacity-80">· {lateTagText}</span>}
+                                      </span>
+                                    )}
                                   </span>
                                 )
                               )}
