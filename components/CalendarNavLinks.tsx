@@ -17,7 +17,7 @@ export default function CalendarNavLinks({
   nextLabel: string;
 }) {
   return (
-    <div className="flex gap-2 text-sm font-bold">
+    <div className="flex shrink-0 gap-1.5 text-xs font-bold lg:gap-2 lg:text-sm">
       <Link href={prevHref} className="skew-btn accent-border border-2 px-3 py-2 lg:px-4">
         <span className="skew-label">
           ← <span className="lg:hidden">Previous</span>
