@@ -5,6 +5,7 @@ import { addMonths, effectiveScheduleDate, firstOfMonth, formatMonthLabel, month
 import { getWorkingHolidays } from "@/lib/holidays";
 import ProviderCalendarGrid, { ProviderLegend } from "@/components/ProviderCalendarGrid";
 import CalendarWhoToggle from "@/components/CalendarWhoToggle";
+import MobileWeekRedirect from "@/components/MobileWeekRedirect";
 import CalendarNavLinks from "@/components/CalendarNavLinks";
 
 // Reads live assignment/absence data on every load — see the note on
@@ -29,6 +30,7 @@ export default async function CalendarProvidersMonthPage({ params }: { params: P
 
   return (
     <div className="relative left-1/2 w-screen -translate-x-1/2">
+      <MobileWeekRedirect who="providers" month={month} />
       <div className="mx-auto max-w-[1600px] space-y-1.5 px-4 sm:px-8">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <h1 className="flex flex-wrap items-baseline gap-x-2 text-base font-extrabold tracking-tight">

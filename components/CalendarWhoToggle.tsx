@@ -19,7 +19,7 @@ const DESKTOP_BREAKPOINT = 1024;
 //    previous month (e.g. October 1st, a Thursday, lands on September
 //    28th) — landing on "an earlier week" every single time you switch to
 //    Week view, which is exactly the bug this fixes.
-function weekAnchorFor(anchorDate: string): string {
+export function weekAnchorFor(anchorDate: string): string {
   if (anchorDate === firstOfMonth(effectiveScheduleDate())) return effectiveMonday();
   return mondayOnOrAfter(anchorDate);
 }
@@ -152,6 +152,9 @@ export default function CalendarWhoToggle({
         ]}
       />
 
+      {/* Month view is far too small to use on a phone, so the whole
+          Month/Week pill is desktop-only — phones just get the week view. */}
+      <div className="max-lg:hidden">
       <SlidingPair
         trackClassName={trackClass}
         segClassName={segClass}
@@ -161,6 +164,7 @@ export default function CalendarWhoToggle({
           { key: "week", label: "Week", href: `${subBase}/week/${weekAnchorFor(anchorDate)}` },
         ]}
       />
+      </div>
     </div>
   );
 }
