@@ -46,9 +46,6 @@ export function StaffLegend() {
       <span className="flex items-center gap-1">
         <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: HOLIDAY_COLOR }} /> Holiday
       </span>
-      <span className="flex items-center gap-1">
-        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: WORKING_HOLIDAY_COLOR }} /> Holiday, open (tap date to toggle)
-      </span>
       {current && (
         <span className="hidden opacity-70 lg:inline">
           tap your row to toggle{current.isManager ? " (or anyone's)" : ""}
@@ -466,7 +463,7 @@ export default function StaffCalendarGrid({
                   const rowBoxHeight = isBig ? dynamicBigHeight : dynamicThinHeight;
                   const rowCellPad = isBig ? cellPad : otherCellPad;
                   return (
-                    <tr key={row.staffId} className={isMe ? "accent-bg-softer" : ""}>
+                    <tr key={row.staffId} className={`border-b border-slate-900/[0.07] last:border-b-0 ${isMe ? "accent-bg-softer" : ""}`}>
                       <td
                         className={`accent-border-soft sticky left-0 z-10 truncate border-r-2 bg-white px-1.5 font-bold ${
                           isBig ? "py-1.5 text-sm" : "py-0 text-[10px] leading-tight opacity-60"

@@ -138,7 +138,7 @@ export default function CalendarWhoToggle({
   // important choices, so one being visibly bigger than the other never
   // made sense.
   const trackClass = "skew-track accent-border border-2 p-1 text-sm font-bold";
-  const segClass = "skew-seg px-4 py-2";
+  const segClass = "skew-seg px-3 py-2 lg:px-4";
 
   return (
     <div className="flex flex-wrap items-center gap-3">

@@ -41,7 +41,7 @@ export default async function CalendarStaffMonthPage({ params }: { params: Promi
               </Link>
             )}
           </h1>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 max-lg:w-full max-lg:justify-between lg:flex-wrap">
             <CalendarWhoToggle who="staff" anchorDate={month} staffView="month" />
             <CalendarNavLinks
               prevHref={`/calendar/staff/month/${addMonths(month, -1)}`}

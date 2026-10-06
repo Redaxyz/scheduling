@@ -44,7 +44,7 @@ export default async function CalendarProvidersMonthPage({ params }: { params: P
               Edit weekly templates →
             </Link>
           </h1>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 max-lg:w-full max-lg:justify-between lg:flex-wrap">
             <CalendarWhoToggle who="providers" anchorDate={month} providersView="month" />
             <CalendarNavLinks
               prevHref={`/calendar/providers/month/${addMonths(month, -1)}`}

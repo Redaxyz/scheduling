@@ -42,7 +42,7 @@ export default async function CalendarProvidersWeekPage({ params }: { params: Pr
               Edit weekly templates →
             </Link>
           </h1>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 max-lg:w-full max-lg:justify-between lg:flex-wrap">
             <CalendarWhoToggle who="providers" anchorDate={monday} providersView="week" />
             <CalendarNavLinks
               prevHref={`/calendar/providers/week/${addDays(monday, -7)}`}
