@@ -196,7 +196,7 @@ export default function StaffCalendarGrid({
   // Box heights themselves are set inline (see dynamicBigHeight/
   // dynamicThinHeight above) rather than via fixed Tailwind classes.
   const otherCellPad = "p-px";
-  const cellPad = dense ? "p-1" : "p-1";
+  const cellPad = "px-0.5 py-1";
   const labelWidthClass = dense ? "w-16" : "w-20";
 
   // Your own row first — no hunting for your name in an alphabetical list —
@@ -249,7 +249,7 @@ export default function StaffCalendarGrid({
   // the overflow that kept showing up. Baked into the row-height math
   // below instead of just padding the safety margin, so it scales
   // correctly regardless of how many staff there are.
-  const bigPadPx = 8; // p-1 = 0.25rem top+bottom
+  const bigPadPx = 8; // py-1 = 0.25rem top+bottom
   const thinPadPx = 2; // p-px = 1px top+bottom
   const isManagerView = current?.isManager ?? false;
   // A manager's every row is "big"; everyone else only has their own —
@@ -418,7 +418,7 @@ export default function StaffCalendarGrid({
                   >
                     Staff
                   </th>
-                  {dates.map((date) => {
+                  {dates.map((date, dateIndex) => {
                     const day = Number(date.slice(-2));
                     const wd = weekdayIndex(date)!;
                     const holiday = federalHolidayName(date);
@@ -430,7 +430,7 @@ export default function StaffCalendarGrid({
                       <th
                         key={date}
                         onClick={holiday ? () => toggleHoliday(date) : undefined}
-                        className={`accent-border-soft border-b-2 text-center font-bold ${holiday ? "" : "opacity-50"} ${
+                        className={`accent-border-soft border-b-2 border-l border-l-slate-900/10 text-center font-bold ${holiday ? "" : "opacity-50"} ${dateIndex % 2 === 1 && !(mondayOf(date) === currentWeekMonday) ? "bg-slate-900/[0.04]" : ""} ${
                           holiday ? "cursor-pointer" : ""
                         } ${togglingHoliday === date ? "opacity-40" : ""} ${dense ? "px-1 py-1 text-[10px]" : "px-1 py-1 text-sm"} ${
                           inCurrentWeek ? "cal-current-week" : ""
@@ -471,7 +471,7 @@ export default function StaffCalendarGrid({
                       >
                         {row.name}
                       </td>
-                      {dates.map((date) => {
+                      {dates.map((date, dateIndex) => {
                         const cell = row.days[date];
                         const key = `${row.staffId}:${date}`;
                         const holiday = federalHolidayName(date);
@@ -490,7 +490,10 @@ export default function StaffCalendarGrid({
                           return { half, out, fill, label, showLate: late && Boolean(lateTagText) };
                         });
                         return (
-                          <td key={date} className={`${rowCellPad} text-center ${inCurrentWeek ? "cal-current-week" : ""}`}>
+                          <td
+                            key={date}
+                            className={`${rowCellPad} border-l border-slate-900/10 text-center ${inCurrentWeek ? "cal-current-week" : dateIndex % 2 === 1 ? "bg-slate-900/[0.04]" : ""}`}
+                          >
                             <div className="flex w-full gap-0.5">
                               {halves.map(({ half, out, fill, label, showLate }) =>
                                 editable ? (
@@ -505,7 +508,7 @@ export default function StaffCalendarGrid({
                                     style={{ height: rowBoxHeight, background: fill }}
                                   >
                                     {isBig && (
-                                      <span className={`text-[9px] font-extrabold leading-none ${holiday ? "text-slate-700" : "text-white/90"}`}>
+                                      <span className={`text-[10px] font-extrabold leading-none ${holiday ? "text-slate-700" : "text-white/90"}`}>
                                         {half}
                                         {showLate && <span className="ml-0.5 opacity-80">· {lateTagText}</span>}
                                       </span>
@@ -519,7 +522,7 @@ export default function StaffCalendarGrid({
                                     title={label}
                                   >
                                     {isBig && (
-                                      <span className={`text-[9px] font-extrabold leading-none ${holiday ? "text-slate-700" : "text-white/90"}`}>
+                                      <span className={`text-[10px] font-extrabold leading-none ${holiday ? "text-slate-700" : "text-white/90"}`}>
                                         {half}
                                         {showLate && <span className="ml-0.5 opacity-80">· {lateTagText}</span>}
                                       </span>
