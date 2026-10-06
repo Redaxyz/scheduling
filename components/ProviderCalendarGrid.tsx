@@ -310,7 +310,7 @@ export default function ProviderCalendarGrid({
                           className={`flex w-full items-center justify-center font-extrabold ${cellTextClass(cell, closedHoliday)} ${dense ? "text-[9px]" : "text-xs"}`}
                           style={{ height: dynamicRowHeight }}
                         >
-                          {cell.office && cell.status !== "ABSENT" ? OFFICE_LETTER[cell.office] : ""}
+                          {cell.office && cell.status !== "ABSENT" && !closedHoliday ? OFFICE_LETTER[cell.office] : ""}
                         </span>
                       </button>
                     </td>
