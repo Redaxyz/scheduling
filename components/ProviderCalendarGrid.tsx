@@ -29,8 +29,11 @@ const OFFICE_LETTER: Record<Office, string> = { BETHESDA: "B", GERMANTOWN: "G" }
 // instead of a mix of red/blue/office depending on what each provider's
 // template happened to say for that weekday. `holidayColor` is null for a
 // normal day, otherwise HOLIDAY_COLOR or (toggled open) WORKING_HOLIDAY_COLOR.
+// A holiday cell keeps its location color whenever the template has an
+// office for that half, including surgery halves — only an absence or a
+// half with no office at all falls back to the plain holiday color.
 function isLocated(cell: ProviderHalfCell): boolean {
-  return cell.status === "PRESENT" && cell.office !== null;
+  return cell.office !== null && cell.status !== "ABSENT";
 }
 
 function cellColor(cell: ProviderHalfCell, holidayColor: string | null): string {
@@ -318,7 +321,7 @@ export default function ProviderCalendarGrid({
                           className={`flex w-full items-center justify-center font-extrabold ${cellTextClass(cell, holidayColor)} ${dense ? "text-[9px]" : "text-xs"}`}
                           style={{ height: dynamicRowHeight }}
                         >
-                          {cell.status === "PRESENT" && cell.office ? OFFICE_LETTER[cell.office] : ""}
+                          {cell.office && cell.status !== "ABSENT" ? OFFICE_LETTER[cell.office] : ""}
                         </span>
                       </button>
                     </td>
