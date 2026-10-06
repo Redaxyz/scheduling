@@ -29,8 +29,12 @@ const OFFICE_LETTER: Record<Office, string> = { BETHESDA: "B", GERMANTOWN: "G" }
 // instead of a mix of red/blue/office depending on what each provider's
 // template happened to say for that weekday. `holidayColor` is null for a
 // normal day, otherwise HOLIDAY_COLOR or (toggled open) WORKING_HOLIDAY_COLOR.
+function isLocated(cell: ProviderHalfCell): boolean {
+  return cell.status === "PRESENT" && cell.office !== null;
+}
+
 function cellColor(cell: ProviderHalfCell, holidayColor: string | null): string {
-  if (holidayColor) return holidayColor;
+  if (holidayColor && !isLocated(cell)) return holidayColor;
   if (cell.status === "ABSENT") return OFF_COLOR;
   if (cell.status === "SURGERY") return SURGERY_COLOR;
   return cell.office ? OFFICE_COLOR[cell.office] : OFF_DUTY_COLOR;
@@ -39,7 +43,7 @@ function cellColor(cell: ProviderHalfCell, holidayColor: string | null): string 
 // White-on-Bethesda (and the washed-out holiday purple/green) are the fills
 // light enough to need dark text instead of white.
 function cellTextClass(cell: ProviderHalfCell, holidayColor: string | null): string {
-  if (holidayColor) return "text-slate-700";
+  if (holidayColor && !isLocated(cell)) return "text-slate-700";
   return cell.status === "PRESENT" && cell.office === "BETHESDA" ? "text-slate-700" : "text-white/90";
 }
 
@@ -314,7 +318,7 @@ export default function ProviderCalendarGrid({
                           className={`flex w-full items-center justify-center font-extrabold ${cellTextClass(cell, holidayColor)} ${dense ? "text-[9px]" : "text-xs"}`}
                           style={{ height: dynamicRowHeight }}
                         >
-                          {cell.status === "PRESENT" && cell.office && !holiday ? OFFICE_LETTER[cell.office] : ""}
+                          {cell.status === "PRESENT" && cell.office ? OFFICE_LETTER[cell.office] : ""}
                         </span>
                       </button>
                     </td>
