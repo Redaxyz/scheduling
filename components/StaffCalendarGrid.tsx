@@ -132,16 +132,12 @@ export default function StaffCalendarGrid({
   const [anotherDate, setAnotherDate] = useState(todayStr());
   const [schedulingAnother, setSchedulingAnother] = useState(false);
 
-  async function toggle(staffId: string, date: string, status: StaffDayStatus) {
-    const key = `${staffId}:${date}`;
+  async function toggleHalf(staffId: string, date: string, half: "AM" | "PM", out: boolean) {
+    const key = `${staffId}:${date}:${half}`;
     setError(null);
     setPending(key);
     try {
-      if (status === "PRESENT") {
-        await postJSON("/api/absences/staff", "POST", { staffId, startDate: date, endDate: date, half: "ALL", reason: "" });
-      } else {
-        await postJSON(`/api/absences/staff/day?staffId=${staffId}&date=${date}`, "DELETE");
-      }
+      await postJSON("/api/absences/staff/half", "POST", { staffId, date, half, out });
       startTransition(() => router.refresh());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
@@ -483,33 +479,49 @@ export default function StaffCalendarGrid({
                         const cell = row.days[date];
                         const key = `${row.staffId}:${date}`;
                         const holiday = federalHolidayName(date);
-                        const fill = holiday ? (workingHolidays.has(date) ? WORKING_HOLIDAY_COLOR : HOLIDAY_COLOR) : STATUS_COLOR[cell.status];
-                        const durationText = !holiday && cell.status === "PARTIAL" && cell.lateMinutes ? formatLateDuration(cell.lateMinutes) : null;
-                        const label = `${row.name} — ${date}: ${holiday ?? (durationText ? `${STATUS_LABEL[cell.status]} (${durationText})` : STATUS_LABEL[cell.status])}`;
                         const inCurrentWeek = mondayOf(date) === currentWeekMonday;
+                        const lateTagText = !holiday && cell.lateMinutes ? formatLateDuration(cell.lateMinutes) : null;
+                        // Left box = morning, right box = afternoon. A running-late
+                        // note only ever describes the morning, so it tints the left box.
+                        const halves = (["AM", "PM"] as const).map((half) => {
+                          const out = half === "AM" ? cell.amOut : cell.pmOut;
+                          const late = half === "AM" && !out && Boolean(cell.lateMinutes);
+                          const fill = holiday
+                            ? workingHolidays.has(date) ? WORKING_HOLIDAY_COLOR : HOLIDAY_COLOR
+                            : out ? STATUS_COLOR.ABSENT : late ? STATUS_COLOR.PARTIAL : STATUS_COLOR.PRESENT;
+                          const state = holiday ?? (out ? "out" : late ? `running late (${lateTagText})` : "in");
+                          const label = `${row.name} — ${date} ${half === "AM" ? "morning" : "afternoon"}: ${state}`;
+                          return { half, out, fill, label, showLate: late && isBig && Boolean(lateTagText) };
+                        });
                         return (
                           <td key={date} className={`${rowCellPad} text-center ${inCurrentWeek ? "cal-current-week" : ""}`}>
-                            {editable ? (
-                              <button
-                                type="button"
-                                onClick={() => toggle(row.staffId, date, cell.status)}
-                                disabled={pending === key}
-                                aria-label={`${label} (tap to toggle)`}
-                                title={`${label} (tap to toggle)`}
-                                className="flex w-full items-center justify-center rounded-lg transition active:scale-95 disabled:opacity-40"
-                                style={{ height: rowBoxHeight, background: fill }}
-                              >
-                                {isBig && durationText && <span className="text-[9px] font-extrabold text-white/90">{durationText}</span>}
-                              </button>
-                            ) : (
-                              <span
-                                className="flex w-full items-center justify-center rounded-lg opacity-80"
-                                style={{ height: rowBoxHeight, background: fill }}
-                                title={label}
-                              >
-                                {isBig && durationText && <span className="text-[9px] font-extrabold text-white/90">{durationText}</span>}
-                              </span>
-                            )}
+                            <div className="flex w-full gap-0.5">
+                              {halves.map(({ half, out, fill, label, showLate }) =>
+                                editable ? (
+                                  <button
+                                    key={half}
+                                    type="button"
+                                    onClick={() => toggleHalf(row.staffId, date, half, !out)}
+                                    disabled={pending === `${row.staffId}:${date}:${half}`}
+                                    aria-label={`${label} (tap to toggle)`}
+                                    title={`${label} (tap to toggle)`}
+                                    className="flex min-w-0 flex-1 items-center justify-center rounded-md transition active:scale-95 disabled:opacity-40"
+                                    style={{ height: rowBoxHeight, background: fill }}
+                                  >
+                                    {showLate && <span className="text-[9px] font-extrabold text-white/90">{lateTagText}</span>}
+                                  </button>
+                                ) : (
+                                  <span
+                                    key={half}
+                                    className="flex min-w-0 flex-1 items-center justify-center rounded-md opacity-80"
+                                    style={{ height: rowBoxHeight, background: fill }}
+                                    title={label}
+                                  >
+                                    {showLate && <span className="text-[9px] font-extrabold text-white/90">{lateTagText}</span>}
+                                  </span>
+                                )
+                              )}
+                            </div>
                           </td>
                         );
                       })}

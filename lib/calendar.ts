@@ -83,6 +83,9 @@ export type StaffDayCell = {
   // shows this as its own text (e.g. "30m"/"1h") instead of just a plain
   // color, so a tardy's actual length doesn't need a hover to see.
   lateMinutes: number | null;
+  // Whether each half specifically is out (a whole-day absence sets both).
+  amOut: boolean;
+  pmOut: boolean;
 };
 
 export type StaffCalendarRow = {
@@ -106,7 +109,7 @@ async function getStaffCalendarForDates(dates: string[]): Promise<StaffCalendarR
       const hasPM = rows.some((a) => a.half === "ALL" || a.half === "PM");
       const customRow = rows.find((a) => a.half === "CUSTOM");
       const status: StaffDayStatus = hasAM && hasPM ? "ABSENT" : hasAM || hasPM || customRow ? "PARTIAL" : "PRESENT";
-      days[date] = { status, lateMinutes: customRow?.lateMinutes ?? null };
+      days[date] = { status, lateMinutes: customRow?.lateMinutes ?? null, amOut: hasAM, pmOut: hasPM };
     }
     return { staffId: s.id, name: s.name, color: s.color, days };
   });
