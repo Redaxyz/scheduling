@@ -24,14 +24,18 @@ const STATUS_LABEL = { PRESENT: "present", ABSENT: "absent", SURGERY: "in surger
 const NEXT_STATUS = { PRESENT: "ABSENT", ABSENT: "SURGERY", SURGERY: "PRESENT" } as const;
 const OFFICE_LETTER: Record<Office, string> = { BETHESDA: "B", GERMANTOWN: "G" };
 
-function cellColor(cell: ProviderHalfCell): string {
+// A closed holiday (purple) overrides every cell in its column; an open
+// holiday, or a normal day, uses each cell's own template-based color.
+function cellColor(cell: ProviderHalfCell, closedHoliday: boolean): string {
+  if (closedHoliday) return HOLIDAY_COLOR;
   if (cell.status === "ABSENT") return OFF_COLOR;
   if (cell.status === "SURGERY") return SURGERY_COLOR;
   return cell.office ? OFFICE_COLOR[cell.office] : OFF_DUTY_COLOR;
 }
 
 // White-on-Bethesda is the one fill light enough to need dark text.
-function cellTextClass(cell: ProviderHalfCell): string {
+function cellTextClass(cell: ProviderHalfCell, closedHoliday: boolean): string {
+  if (closedHoliday) return "text-slate-700";
   return cell.status === "PRESENT" && cell.office === "BETHESDA" ? "text-slate-700" : "text-white/90";
 }
 
@@ -281,6 +285,7 @@ export default function ProviderCalendarGrid({
                   const key = `${row.providerId}:${date}:${half}`;
                   const officeName = cell.office ? OFFICE_LABELS[cell.office] : null;
                   const holiday = federalHolidayName(date);
+                  const closedHoliday = Boolean(holiday) && !workingHolidays.has(date);
                   const inCurrentWeek = mondayOf(date) === currentWeekMonday;
                   const label = holiday
                     ? `${row.name} — ${date} ${HALF_LABELS[half]}: ${holiday}`
@@ -299,10 +304,10 @@ export default function ProviderCalendarGrid({
                         aria-label={`${label} (tap to toggle)`}
                         title={`${label} (tap to toggle)`}
                         className="relative block w-full rounded-lg border border-slate-900/10 transition active:scale-95 disabled:opacity-40"
-                        style={{ background: cellColor(cell), boxShadow: cell.fromTemplate ? "inset 0 0 0 2px rgba(255,255,255,0.6)" : undefined }}
+                        style={{ background: cellColor(cell, closedHoliday), boxShadow: cell.fromTemplate ? "inset 0 0 0 2px rgba(255,255,255,0.6)" : undefined }}
                       >
                         <span
-                          className={`flex w-full items-center justify-center font-extrabold ${cellTextClass(cell)} ${dense ? "text-[9px]" : "text-xs"}`}
+                          className={`flex w-full items-center justify-center font-extrabold ${cellTextClass(cell, closedHoliday)} ${dense ? "text-[9px]" : "text-xs"}`}
                           style={{ height: dynamicRowHeight }}
                         >
                           {cell.office && cell.status !== "ABSENT" ? OFFICE_LETTER[cell.office] : ""}
