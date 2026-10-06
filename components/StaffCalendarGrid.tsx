@@ -7,10 +7,8 @@ import { effectiveMonday, effectiveScheduleDate, mondayOf, nearestBusinessDayOnO
 import { federalHolidayName, HOLIDAY_COLOR, WORKING_HOLIDAY_COLOR } from "@/lib/holidays";
 import { getBottomNavHeight } from "@/lib/bottomNav";
 import { useWhoAmI } from "@/lib/whoami";
-import { formatLateDuration } from "@/lib/lateDuration";
+import { arriveNote, leaveNote } from "@/lib/timing";
 import MyAbsencesList from "@/components/MyAbsencesList";
-
-const LATE_MINUTE_OPTIONS = [15, 30, 45, 60, 90, 120];
 
 const STATUS_COLOR: Record<StaffDayStatus, string> = {
   PRESENT: "#579669",
@@ -25,6 +23,18 @@ const STATUS_LABEL: Record<StaffDayStatus, string> = {
 };
 
 const WEEKDAY_LETTERS = ["M", "T", "W", "R", "F"];
+
+// Leaving before the standard end of day — its own color so it reads
+// differently from the orange of coming in late.
+const EARLY_COLOR = "#0e8f9e";
+
+// Two colors in one cell separated by a thin slanted line, ~30° off vertical
+// (the left color is the morning half, the right the afternoon half) — or
+// just the one color when both halves match.
+function splitBackground(left: string, right: string): string {
+  if (left === right) return left;
+  return `linear-gradient(120deg, ${left} calc(50% - 1px), rgba(255,255,255,0.9) calc(50% - 1px) calc(50% + 1px), ${right} calc(50% + 1px))`;
+}
 
 // Rendered by the page itself, alongside the title/toggle/nav row, instead
 // of inside the grid — keeping it out of the grid's own vertical stack is
@@ -41,7 +51,10 @@ export function StaffLegend() {
         <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: STATUS_COLOR.ABSENT }} /> Absent
       </span>
       <span className="flex items-center gap-1">
-        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: STATUS_COLOR.PARTIAL }} /> Partial
+        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: STATUS_COLOR.PARTIAL }} /> Coming in late
+      </span>
+      <span className="flex items-center gap-1">
+        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: EARLY_COLOR }} /> Leaving early
       </span>
       <span className="flex items-center gap-1">
         <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: HOLIDAY_COLOR }} /> Holiday
@@ -117,17 +130,17 @@ export default function StaffCalendarGrid({
   const [, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
-  const [lateMinutes, setLateMinutes] = useState(String(LATE_MINUTE_OPTIONS[1]));
   // Same "what day does this actually mean right now" rule used everywhere
   // else in the app (rolls to the next business day after 5pm, and treats
   // the whole weekend as Monday) — not the literal calendar day, so the
   // marker lines up with whatever the Calendar tab already defaults to.
   const today = effectiveScheduleDate();
   const currentWeekMonday = effectiveMonday();
-  const [markingLate, setMarkingLate] = useState(false);
-  const [showAnotherDay, setShowAnotherDay] = useState(false);
-  const [anotherDate, setAnotherDate] = useState(todayStr());
-  const [schedulingAnother, setSchedulingAnother] = useState(false);
+  // "Coming in late" vs "leaving early": same form, different time field.
+  const [changeKind, setChangeKind] = useState<"ARRIVE" | "LEAVE">("ARRIVE");
+  const [changeTimes, setChangeTimes] = useState({ ARRIVE: "09:00", LEAVE: "15:00" });
+  const [changeDate, setChangeDate] = useState(todayStr());
+  const [savingChange, setSavingChange] = useState(false);
 
   async function toggleHalf(staffId: string, date: string, half: "AM" | "PM", out: boolean) {
     const key = `${staffId}:${date}:${half}`;
@@ -143,49 +156,27 @@ export default function StaffCalendarGrid({
     }
   }
 
-  async function markLate() {
+  // Records a custom coming-in or leaving time for the picked day (today by
+  // default) — a same-day surprise or a planned one (school drop-off, an
+  // appointment) alike. Adding one kind never clears the other.
+  async function saveChange() {
     if (!current) return;
     setError(null);
-    setMarkingLate(true);
+    setSavingChange(true);
     try {
       await postJSON("/api/absences/staff", "POST", {
         staffId: current.id,
-        startDate: todayStr(),
-        endDate: todayStr(),
+        startDate: changeDate,
+        endDate: changeDate,
         half: "CUSTOM",
-        lateMinutes: Number(lateMinutes),
+        ...(changeKind === "ARRIVE" ? { arriveAt: changeTimes.ARRIVE } : { leaveAt: changeTimes.LEAVE }),
         reason: "",
       });
       startTransition(() => router.refresh());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
-      setMarkingLate(false);
-    }
-  }
-
-  // Same as markLate, but for a picked date instead of always today —
-  // covers a planned tardiness (a school drop-off morning, say) known
-  // ahead of time rather than a same-day surprise.
-  async function scheduleAnotherDay() {
-    if (!current) return;
-    setError(null);
-    setSchedulingAnother(true);
-    try {
-      await postJSON("/api/absences/staff", "POST", {
-        staffId: current.id,
-        startDate: anotherDate,
-        endDate: anotherDate,
-        half: "CUSTOM",
-        lateMinutes: Number(lateMinutes),
-        reason: "",
-      });
-      setShowAnotherDay(false);
-      startTransition(() => router.refresh());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
-    } finally {
-      setSchedulingAnother(false);
+      setSavingChange(false);
     }
   }
 
@@ -195,7 +186,6 @@ export default function StaffCalendarGrid({
   // the box inside it, gets real width instead of a tiny centered square.
   // Box heights themselves are set inline (see dynamicBigHeight/
   // dynamicThinHeight above) rather than via fixed Tailwind classes.
-  const otherCellPad = "p-px";
   const cellPad = "px-0.5 py-1";
   const labelWidthClass = dense ? "w-16" : "w-20";
 
@@ -256,8 +246,8 @@ export default function StaffCalendarGrid({
   // computed here (not inside the effect) so the effect can depend on
   // these two plain numbers instead of closing over the sortedRows array,
   // which is a fresh reference every render.
-  const bigCount = isManagerView ? sortedRows.length : sortedRows.some((r) => r.staffId === current?.id) ? 1 : 0;
-  const thinCount = sortedRows.length - bigCount;
+  const bigCount = sortedRows.length;
+  const thinCount = 0;
 
   useEffect(() => {
     if (!containerRef.current || bigCount + thinCount === 0) return;
@@ -334,66 +324,51 @@ export default function StaffCalendarGrid({
   }, [bigCount, thinCount, niceBig, niceThin]);
 
   const dynamicBigHeight = dynamicHeights?.big ?? niceBig;
-  const dynamicThinHeight = dynamicHeights?.thin ?? niceThin;
 
   const lateBox = current && (
     <div className="accent-border-soft flex flex-col gap-2 rounded-2xl border-2 p-2 text-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-bold opacity-70">Running late?</span>
-        <select
-          value={lateMinutes}
-          onChange={(e) => setLateMinutes(e.target.value)}
-          className="accent-border-soft rounded-full border-2 bg-transparent px-3 py-0.5 font-bold outline-none"
-        >
-          {LATE_MINUTE_OPTIONS.map((m) => (
-            <option key={m} value={m}>
-              {m < 60 ? `${m} min` : formatLateDuration(m)}
-            </option>
+        <div className="accent-border inline-flex overflow-hidden rounded-full border-2 text-xs font-bold">
+          {(["ARRIVE", "LEAVE"] as const).map((kind) => (
+            <button
+              key={kind}
+              type="button"
+              onClick={() => setChangeKind(kind)}
+              className={`px-3 py-1 transition ${changeKind === kind ? "accent-bg-soft" : "opacity-50"}`}
+            >
+              {kind === "ARRIVE" ? "Coming in late" : "Leaving early"}
+            </button>
           ))}
-        </select>
-        <button
-          type="button"
-          onClick={markLate}
-          disabled={markingLate}
-          className="accent-border rounded-full border-2 px-4 py-0.5 font-bold transition active:scale-95 disabled:opacity-40"
-        >
-          Mark me late today
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowAnotherDay((v) => !v)}
-          className="accent-border-soft rounded-full border-2 px-4 py-0.5 font-bold opacity-70 transition hover:opacity-100"
-        >
-          Another day
-        </button>
-        <span className="hidden text-xs font-bold opacity-40 sm:inline">Turns your box for today orange — tap it again to clear.</span>
-      </div>
-
-      {/* A planned tardiness (school drop-off, say) isn't always today's —
-          this schedules the same CUSTOM running-late note for any picked
-          weekday instead of only right now. */}
-      {showAnotherDay && (
-        <div className="accent-border-soft flex flex-wrap items-center gap-2 border-t-2 pt-2">
+        </div>
+        <label className="flex items-center gap-1.5 font-bold">
+          <span className="opacity-60">{changeKind === "ARRIVE" ? "In at" : "Out at"}</span>
           <input
-            type="date"
-            value={anotherDate}
-            onChange={(e) => {
-              if (e.target.value) setAnotherDate(nearestBusinessDayOnOrAfter(e.target.value));
-            }}
+            type="time"
+            value={changeTimes[changeKind]}
+            onChange={(e) => e.target.value && setChangeTimes((t) => ({ ...t, [changeKind]: e.target.value }))}
             className="accent-border-soft rounded-full border-2 bg-transparent px-3 py-0.5 text-xs font-bold outline-none"
           />
-          <button
-            type="button"
-            onClick={scheduleAnotherDay}
-            disabled={schedulingAnother}
-            className="accent-border rounded-full border-2 px-4 py-0.5 font-bold transition active:scale-95 disabled:opacity-40"
-          >
-            Schedule
-          </button>
-        </div>
-      )}
+        </label>
+        <input
+          type="date"
+          value={changeDate}
+          onChange={(e) => {
+            if (e.target.value) setChangeDate(nearestBusinessDayOnOrAfter(e.target.value));
+          }}
+          className="accent-border-soft rounded-full border-2 bg-transparent px-3 py-0.5 text-xs font-bold outline-none"
+        />
+        <button
+          type="button"
+          onClick={saveChange}
+          disabled={savingChange}
+          className="accent-border rounded-full border-2 px-4 py-0.5 font-bold transition active:scale-95 disabled:opacity-40"
+        >
+          Save
+        </button>
+      </div>
     </div>
   );
+
 
   // No full-bleed wrapper of its own — the page wraps its whole header
   // (title/toggle/nav/legend) AND this grid together in one full-bleed
@@ -455,81 +430,82 @@ export default function StaffCalendarGrid({
               <tbody>
                 {sortedRows.map((row) => {
                   const isMe = current?.id === row.staffId;
+                  // A manager can adjust anyone's row, anyone else only their own.
+                  // Everyone else's days are shown read-only as one cell (see
+                  // below) instead of the two clickable AM/PM boxes.
                   const editable = Boolean(current) && (isManagerView || isMe);
-                  // A manager can adjust anyone's row, so nobody's is "just for
-                  // reference" the way it is for everyone else — keep every row
-                  // full-size for her instead of shrinking everyone but herself.
-                  const isBig = isMe || isManagerView;
-                  const rowBoxHeight = isBig ? dynamicBigHeight : dynamicThinHeight;
-                  const rowCellPad = isBig ? cellPad : otherCellPad;
                   return (
                     <tr key={row.staffId} className={`border-b border-slate-900/[0.07] last:border-b-0 ${isMe ? "accent-bg-softer" : ""}`}>
-                      <td
-                        className={`accent-border-soft sticky left-0 z-10 truncate border-r-2 bg-white px-1.5 font-bold ${
-                          isBig ? "py-1.5 text-sm" : "py-0 text-[10px] leading-tight opacity-60"
-                        }`}
-                      >
+                      <td className="accent-border-soft sticky left-0 z-10 truncate border-r-2 bg-white px-1.5 py-1.5 text-sm font-bold">
                         {row.name}
                       </td>
                       {dates.map((date, dateIndex) => {
                         const cell = row.days[date];
-                        const key = `${row.staffId}:${date}`;
                         const holiday = federalHolidayName(date);
+                        const holidayColor = holiday ? (workingHolidays.has(date) ? WORKING_HOLIDAY_COLOR : HOLIDAY_COLOR) : null;
                         const inCurrentWeek = mondayOf(date) === currentWeekMonday;
-                        const lateTagText = !holiday && cell.lateMinutes ? formatLateDuration(cell.lateMinutes) : null;
-                        // Left box = morning, right box = afternoon. A running-late
-                        // note only ever describes the morning, so it tints the left box.
-                        const halves = (["AM", "PM"] as const).map((half) => {
-                          const out = half === "AM" ? cell.amOut : cell.pmOut;
-                          const late = half === "AM" && !out && Boolean(cell.lateMinutes);
-                          const fill = holiday
-                            ? workingHolidays.has(date) ? WORKING_HOLIDAY_COLOR : HOLIDAY_COLOR
-                            : out ? STATUS_COLOR.ABSENT : late ? STATUS_COLOR.PARTIAL : STATUS_COLOR.PRESENT;
-                          const state = holiday ?? (out ? "out" : late ? `running late (${lateTagText})` : "in");
-                          const label = `${row.name} — ${date} ${half === "AM" ? "morning" : "afternoon"}: ${state}`;
-                          return { half, out, fill, label, showLate: late && Boolean(lateTagText) };
-                        });
-                        return (
-                          <td
-                            key={date}
-                            className={`${rowCellPad} border-l border-slate-900/10 text-center ${inCurrentWeek ? "cal-current-week" : dateIndex % 2 === 1 ? "bg-slate-900/[0.04]" : ""}`}
-                          >
-                            <div className="flex w-full gap-0.5">
-                              {halves.map(({ half, out, fill, label, showLate }) =>
-                                editable ? (
-                                  <button
-                                    key={half}
-                                    type="button"
-                                    onClick={() => toggleHalf(row.staffId, date, half, !out)}
-                                    disabled={pending === `${row.staffId}:${date}:${half}`}
-                                    aria-label={`${label} (tap to toggle)`}
-                                    title={`${label} (tap to toggle)`}
-                                    className="flex min-w-0 flex-1 items-center justify-center rounded-md transition active:scale-95 disabled:opacity-40"
-                                    style={{ height: rowBoxHeight, background: fill }}
-                                  >
-                                    {isBig && (
-                                      <span className={`text-[10px] font-extrabold leading-none ${holiday ? "text-slate-700" : "text-white/90"}`}>
-                                        {half}
-                                        {showLate && <span className="ml-0.5 opacity-80">· {lateTagText}</span>}
-                                      </span>
-                                    )}
-                                  </button>
+                        const arrive = !holiday && !cell.amOut ? arriveNote(cell.arriveAt, cell.lateMinutes) : null;
+                        const leave = !holiday && !cell.pmOut ? leaveNote(cell.leaveAt) : null;
+                        // Per-half color: out is red; a late arrival makes the morning
+                        // orange and a leave-early the afternoon teal — and when only
+                        // one of those is set it tints the whole day, not just its half.
+                        const leftColor = holidayColor ?? (cell.amOut ? STATUS_COLOR.ABSENT : arrive ? STATUS_COLOR.PARTIAL : leave ? EARLY_COLOR : STATUS_COLOR.PRESENT);
+                        const rightColor = holidayColor ?? (cell.pmOut ? STATUS_COLOR.ABSENT : leave ? EARLY_COLOR : arrive ? STATUS_COLOR.PARTIAL : STATUS_COLOR.PRESENT);
+                        const detail = holiday
+                          ?? [cell.amOut ? "out in the morning" : arrive, cell.pmOut ? "out in the afternoon" : leave].filter(Boolean).join(", ")
+                          ?? "";
+                        const label = `${row.name} — ${date}: ${detail || "in all day"}`;
+                        const tdClass = `${cellPad} border-l border-slate-900/10 text-center ${
+                          inCurrentWeek ? "cal-current-week" : dateIndex % 2 === 1 ? "bg-slate-900/[0.04]" : ""
+                        }`;
+                        const textClass = `text-[10px] font-extrabold leading-none ${holiday ? "text-slate-700" : "text-white/90"}`;
+
+                        if (!editable) {
+                          // One read-only cell: colored by the rules above, with the
+                          // actual times written in it.
+                          const wholeDay = leftColor === rightColor;
+                          return (
+                            <td key={date} className={tdClass}>
+                              <div
+                                className="flex w-full items-center justify-center rounded-md"
+                                style={{ height: dynamicBigHeight, background: splitBackground(leftColor, rightColor) }}
+                                title={label}
+                              >
+                                {wholeDay ? (
+                                  <span className={textClass}>{arrive ?? leave}</span>
                                 ) : (
-                                  <span
-                                    key={half}
-                                    className="flex min-w-0 flex-1 items-center justify-center rounded-md opacity-80"
-                                    style={{ height: rowBoxHeight, background: fill }}
-                                    title={label}
-                                  >
-                                    {isBig && (
-                                      <span className={`text-[10px] font-extrabold leading-none ${holiday ? "text-slate-700" : "text-white/90"}`}>
-                                        {half}
-                                        {showLate && <span className="ml-0.5 opacity-80">· {lateTagText}</span>}
-                                      </span>
-                                    )}
-                                  </span>
-                                )
-                              )}
+                                  <>
+                                    <span className={`flex-1 ${textClass}`}>{arrive ? arrive.replace("in ", "") : ""}</span>
+                                    <span className={`flex-1 ${textClass}`}>{leave ? leave.replace("out ", "") : ""}</span>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          );
+                        }
+
+                        // Editable: left box = morning, right box = afternoon.
+                        const halves = [
+                          { half: "AM" as const, out: cell.amOut, fill: leftColor, text: arrive ? arrive.replace("in ", "") : null },
+                          { half: "PM" as const, out: cell.pmOut, fill: rightColor, text: leave ? leave.replace("out ", "") : null },
+                        ];
+                        return (
+                          <td key={date} className={tdClass}>
+                            <div className="flex w-full gap-0.5">
+                              {halves.map(({ half, out, fill, text }) => (
+                                <button
+                                  key={half}
+                                  type="button"
+                                  onClick={() => toggleHalf(row.staffId, date, half, !out)}
+                                  disabled={pending === `${row.staffId}:${date}:${half}`}
+                                  aria-label={`${label} (tap to toggle ${half === "AM" ? "morning" : "afternoon"})`}
+                                  title={`${label} (tap to toggle ${half === "AM" ? "morning" : "afternoon"})`}
+                                  className="flex min-w-0 flex-1 items-center justify-center rounded-md transition active:scale-95 disabled:opacity-40"
+                                  style={{ height: dynamicBigHeight, background: fill }}
+                                >
+                                  <span className={textClass}>{text ?? half}</span>
+                                </button>
+                              ))}
                             </div>
                           </td>
                         );

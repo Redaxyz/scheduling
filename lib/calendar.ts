@@ -86,6 +86,9 @@ export type StaffDayCell = {
   // Whether each half specifically is out (a whole-day absence sets both).
   amOut: boolean;
   pmOut: boolean;
+  // Custom coming-in / leaving times ("HH:MM") from a CUSTOM row, if any.
+  arriveAt: string | null;
+  leaveAt: string | null;
 };
 
 export type StaffCalendarRow = {
@@ -115,7 +118,14 @@ async function getStaffCalendarForDates(dates: string[]): Promise<StaffCalendarR
       const hasPM = rows.some((a) => a.half === "ALL" || a.half === "PM");
       const customRow = rows.find((a) => a.half === "CUSTOM");
       const status: StaffDayStatus = hasAM && hasPM ? "ABSENT" : hasAM || hasPM || customRow ? "PARTIAL" : "PRESENT";
-      days[date] = { status, lateMinutes: customRow?.lateMinutes ?? null, amOut: hasAM, pmOut: hasPM };
+      days[date] = {
+        status,
+        lateMinutes: customRow?.lateMinutes ?? null,
+        amOut: hasAM,
+        pmOut: hasPM,
+        arriveAt: customRow?.arriveAt ?? null,
+        leaveAt: customRow?.leaveAt ?? null,
+      };
     }
     return { staffId: s.id, name: s.name, color: s.color, days };
   });

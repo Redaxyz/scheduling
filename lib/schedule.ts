@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { weekDates, weekdayIndex } from "./date";
+import { arriveNote, leaveNote } from "./timing";
 import { HALVES, OFFICES, SCRIBE_PRIORITY, type Half, type Office, type Role } from "./types";
 
 export type ProviderCell = {
@@ -7,7 +8,7 @@ export type ProviderCell = {
   // assignmentId is set only for an explicit substitute (a real Assignment
   // row, removable via DELETE); null for a computed default (dedicated or
   // fallback), removable instead via an AutoOverride.
-  scribe: { staffId: string; name: string; color: string; substitute: boolean; assignmentId: string | null; lateMinutes: number | null } | null;
+  scribe: { staffId: string; name: string; color: string; substitute: boolean; assignmentId: string | null; lateMinutes: number | null; timing: string | null } | null;
 };
 
 export type AssignmentCell = {
@@ -19,6 +20,9 @@ export type AssignmentCell = {
   providerId: string | null;
   providerName: string | null;
   lateMinutes: number | null;
+  // Display note for a staffer's custom arrival/departure that half
+  // ("in 10:30" / "out 3:00" / legacy "30m late") — see lib/timing.ts.
+  timing: string | null;
   // true for a computed default placement (scribe fallback / dedicated aid)
   // rather than a manually-created Assignment row — not removable via the UI.
   auto: boolean;
@@ -302,6 +306,13 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
   // stored against.
   const lateStaffMinutes = (staffId: string, half: Half) =>
     half === "AM" ? (staffAbsences.find((a) => a.staffId === staffId && a.half === "CUSTOM")?.lateMinutes ?? null) : null;
+  // Morning shows the coming-in time, afternoon the leaving time — same
+  // half-of-day rule as lateStaffMinutes above.
+  const staffTiming = (staffId: string, half: Half) => {
+    const row = staffAbsences.find((a) => a.staffId === staffId && a.half === "CUSTOM");
+    if (!row) return null;
+    return half === "AM" ? arriveNote(row.arriveAt, row.lateMinutes) : leaveNote(row.leaveAt);
+  };
   const lateProviderMinutes = (providerId: string, half: Half) =>
     half === "AM" ? (providerAbsences.find((a) => a.providerId === providerId && a.half === "CUSTOM")?.lateMinutes ?? null) : null;
 
@@ -396,6 +407,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
             substitute: true,
             assignmentId: explicitSub.id,
             lateMinutes: lateStaffMinutes(explicitSub.staffId, half),
+            timing: staffTiming(explicitSub.staffId, half),
           };
         } else if (templateScribe) {
           scribe = {
@@ -405,6 +417,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
             substitute: false,
             assignmentId: null,
             lateMinutes: lateStaffMinutes(templateScribe.staffId, half),
+            timing: staffTiming(templateScribe.staffId, half),
           };
         } else if (dedicated) {
           scribe = {
@@ -414,6 +427,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
             substitute: false,
             assignmentId: null,
             lateMinutes: lateStaffMinutes(dedicated.id, half),
+            timing: staffTiming(dedicated.id, half),
           };
         } else {
           const target = resolveTargetScribe(s.providerId, half);
@@ -425,6 +439,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
               substitute: false,
               assignmentId: null,
               lateMinutes: lateStaffMinutes(target.staffId, half),
+              timing: staffTiming(target.staffId, half),
             };
           }
         }
@@ -450,6 +465,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
         providerId: a.providerId ?? null,
         providerName: a.provider?.name ?? null,
         lateMinutes: lateStaffMinutes(a.staffId, half),
+        timing: staffTiming(a.staffId, half),
         auto: false,
         hardCommitment: a.role === "XRAY",
         addableByAnyone: a.staff.addableByAnyone,
@@ -479,6 +495,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
               providerId: null,
               providerName: null,
               lateMinutes: lateStaffMinutes(s.id, half),
+              timing: staffTiming(s.id, half),
               auto: true,
               hardCommitment: false,
               addableByAnyone: s.addableByAnyone,
@@ -510,6 +527,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
           providerId: null,
           providerName: null,
           lateMinutes: lateStaffMinutes(s.id, half),
+          timing: staffTiming(s.id, half),
           auto: true,
           hardCommitment: true,
           addableByAnyone: s.addableByAnyone,
@@ -545,6 +563,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
               providerId: null,
               providerName: null,
               lateMinutes: lateStaffMinutes(s.id, half),
+              timing: staffTiming(s.id, half),
               auto: true,
               hardCommitment: true,
               addableByAnyone: s.addableByAnyone,
@@ -570,6 +589,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
                 providerId: null,
                 providerName: null,
                 lateMinutes: lateStaffMinutes(defaultXrayStaff.id, half),
+                timing: staffTiming(defaultXrayStaff.id, half),
                 auto: true,
                 hardCommitment: true,
                 addableByAnyone: defaultXrayStaff.addableByAnyone,
@@ -778,6 +798,8 @@ export type MyScheduleCell = {
   providerName: string | null;
   isOut: boolean;
   lateMinutes: number | null;
+  // Custom coming-in / leaving note for this half (see lib/timing.ts).
+  timing?: string | null;
   coveringName: string | null;
   isProvider: boolean;
   scribeName: string | null;
@@ -959,6 +981,12 @@ export async function getWeekScheduleForAllStaff(mondayStr: string): Promise<MyS
               scribeName: null,
             }
           : blankCell(true, lateMinutes);
+      }
+
+      const customRow = staffAbsences.find((a) => a.staffId === s.id && a.date === date && a.half === "CUSTOM");
+      if (customRow) {
+        halves.AM.timing = arriveNote(customRow.arriveAt, customRow.lateMinutes);
+        halves.PM.timing = leaveNote(customRow.leaveAt);
       }
 
       return { date, weekday, halves };

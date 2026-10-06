@@ -231,6 +231,11 @@ model StaffAbsence {
   half        String
   reason      String?
   lateMinutes Int?
+  // On a CUSTOM row: the clock time ("HH:MM", 24h) the person is coming in
+  // (instead of the standard start) and/or leaving (before the standard
+  // end). lateMinutes is the older "N minutes late" form of the same idea.
+  arriveAt    String?
+  leaveAt     String?
   createdAt   DateTime @default(now())
 
   staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)

@@ -46,8 +46,8 @@ function HalfPanel({ half, cell }: { half: (typeof HALVES)[number]; cell: MySche
           <div className={`text-xs font-bold sm:text-sm ${dark ? "text-white/70" : "opacity-70"}`}>
             {cell.role === "SCRIBE" ? `Scribe for ${cell.providerName}` : ROLE_LABEL[cell.role]}
           </div>
-          {cell.lateMinutes ? (
-            <div className={`text-xs font-bold ${dark ? "text-amber-400" : "text-amber-700"}`}>{cell.lateMinutes}m late</div>
+          {cell.timing ? (
+            <div className={`text-xs font-bold ${dark ? "text-amber-400" : "text-amber-700"}`}>{cell.timing}</div>
           ) : null}
           {cell.isOut && cell.coveringName && (
             <div className={`text-xs font-bold ${dark ? "text-amber-400" : "text-amber-700"}`}>You&apos;re out — covered by {cell.coveringName}</div>

@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { expandDateRange } from "@/lib/dateRange";
+import { CLOCK_RE } from "@/lib/timing";
 
 const HALF_OPTIONS = ["AM", "PM", "ALL", "CUSTOM"];
 
-function validateLateMinutes(half: string, lateMinutes: unknown): { value: number | null; error?: string } {
+function validateLateMinutes(half: string, lateMinutes: unknown, hasClock: boolean): { value: number | null; error?: string } {
   if (half !== "CUSTOM") return { value: null };
+  if (lateMinutes === undefined || lateMinutes === null) {
+    return hasClock ? { value: null } : { value: null, error: "Pick a time you're coming in or leaving." };
+  }
   const n = Number(lateMinutes);
   if (!Number.isInteger(n) || n <= 0 || n % 15 !== 0 || n > 480) {
     return { value: null, error: "Custom lateness must be a positive multiple of 15 minutes (up to 8 hours)." };
@@ -36,7 +40,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid half" }, { status: 400 });
   }
 
-  const late = validateLateMinutes(half, body.lateMinutes);
+  const { arriveAt, leaveAt } = body;
+  for (const [label, v] of [["arrival", arriveAt], ["departure", leaveAt]] as const) {
+    if (v !== undefined && v !== null && (typeof v !== "string" || !CLOCK_RE.test(v))) {
+      return NextResponse.json({ error: `Invalid ${label} time` }, { status: 400 });
+    }
+  }
+  if (half !== "CUSTOM" && (arriveAt || leaveAt)) {
+    return NextResponse.json({ error: "Arrival/departure times only apply to a custom entry" }, { status: 400 });
+  }
+  const late = validateLateMinutes(half, body.lateMinutes, Boolean(arriveAt || leaveAt));
   if (late.error) {
     return NextResponse.json({ error: late.error }, { status: 400 });
   }
@@ -52,8 +65,16 @@ export async function POST(req: NextRequest) {
     dates.map((date) =>
       prisma.staffAbsence.upsert({
         where: { staffId_date_half: { staffId, date, half } },
-        update: { reason: reason || null, lateMinutes },
-        create: { staffId, date, half, reason: reason || null, lateMinutes },
+        // Only touch the fields this request actually carries, so adding an
+        // early departure to a day that already has a late arrival (or vice
+        // versa) doesn't wipe the other one.
+        update: {
+          reason: reason || null,
+          ...(lateMinutes !== null ? { lateMinutes } : {}),
+          ...(arriveAt ? { arriveAt } : {}),
+          ...(leaveAt ? { leaveAt } : {}),
+        },
+        create: { staffId, date, half, reason: reason || null, lateMinutes, arriveAt: arriveAt || null, leaveAt: leaveAt || null },
       })
     )
   );

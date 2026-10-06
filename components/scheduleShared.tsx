@@ -100,6 +100,7 @@ export function Pill({
   name,
   color,
   lateMinutes,
+  timing,
   substitute,
   draggable,
   position,
@@ -110,6 +111,9 @@ export function Pill({
   name: string;
   color: string;
   lateMinutes?: number | null;
+  // A staffer's custom coming-in/leaving note ("in 10:30", "out 3:00") —
+  // preferred over the older minutes-late tag when present.
+  timing?: string | null;
   substitute?: boolean;
   draggable?: boolean;
   position?: PositionRef;
@@ -141,7 +145,11 @@ export function Pill({
     >
       {leading}
       <span className="truncate">{name}</span>
-      {lateMinutes ? <span className="shrink-0 opacity-70">{lateTag(lateMinutes)}</span> : null}
+      {timing ? (
+        <span className="shrink-0 opacity-70">({timing})</span>
+      ) : lateMinutes ? (
+        <span className="shrink-0 opacity-70">{lateTag(lateMinutes)}</span>
+      ) : null}
       {onRemove && (
         <button
           type="button"

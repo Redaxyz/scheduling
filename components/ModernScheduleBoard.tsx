@@ -379,6 +379,7 @@ function ProviderRow({
             name={cell.scribe.name}
             color={cell.scribe.color}
             lateMinutes={cell.scribe.lateMinutes}
+            timing={cell.scribe.timing}
             substitute={cell.scribe.substitute}
             draggable={isManager}
             position={{ office, half, role: "SCRIBE", providerId: cell.provider.id, staffId: cell.scribe.staffId, assignmentId: cell.scribe.assignmentId }}
@@ -457,6 +458,7 @@ function RoleSection({
     providerName: string | null;
     auto?: boolean;
     lateMinutes?: number | null;
+    timing?: string | null;
     addableByAnyone?: boolean;
   }[];
   free: FreeStaffMember[];
@@ -495,6 +497,7 @@ function RoleSection({
                   name={c.providerName ? `${c.name} — ${c.providerName}` : c.name}
                   color={c.color}
                   lateMinutes={c.lateMinutes}
+                  timing={c.timing}
                   draggable={isManager}
                   position={{ office, half, role, providerId: null, staffId: c.staffId, assignmentId: c.auto ? null : c.id }}
                   onRemove={canRemove ? doRemove : undefined}

@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useWhoAmI } from "@/lib/whoami";
 import { formatLateDuration } from "@/lib/lateDuration";
+import { formatClock } from "@/lib/timing";
 
 type AbsenceRow = {
   id: string;
@@ -12,12 +13,20 @@ type AbsenceRow = {
   half: string;
   reason: string | null;
   lateMinutes: number | null;
+  arriveAt: string | null;
+  leaveAt: string | null;
   staff: { name: string };
 };
 
-function halfLabel(r: Pick<AbsenceRow, "half" | "lateMinutes">) {
+function halfLabel(r: Pick<AbsenceRow, "half" | "lateMinutes" | "arriveAt" | "leaveAt">) {
   if (r.half === "ALL") return "all day";
-  if (r.half === "CUSTOM") return `${formatLateDuration(r.lateMinutes ?? 0)} late`;
+  if (r.half === "CUSTOM") {
+    const parts = [
+      r.arriveAt ? `in ${formatClock(r.arriveAt)}` : r.lateMinutes ? `${formatLateDuration(r.lateMinutes)} late` : null,
+      r.leaveAt ? `out ${formatClock(r.leaveAt)}` : null,
+    ].filter(Boolean);
+    return parts.join(", ");
+  }
   return r.half;
 }
 
