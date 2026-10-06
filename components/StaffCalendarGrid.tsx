@@ -200,7 +200,7 @@ export default function StaffCalendarGrid({
   // dynamicThinHeight above) rather than via fixed Tailwind classes.
   const otherCellPad = "p-px";
   const cellPad = dense ? "p-1" : "p-1";
-  const labelWidthClass = dense ? "w-20" : "w-24";
+  const labelWidthClass = dense ? "w-16" : "w-20";
 
   // Your own row first — no hunting for your name in an alphabetical list —
   // then everyone else in their existing order.
@@ -417,7 +417,7 @@ export default function StaffCalendarGrid({
               <thead ref={theadRef} className="sticky top-0 z-20">
                 <tr>
                   <th
-                    className={`accent-border-soft sticky left-0 z-30 border-b-2 border-r-2 bg-white px-2 py-1 text-left font-extrabold tracking-tight ${labelWidthClass}`}
+                    className={`accent-border-soft sticky left-0 z-30 border-b-2 border-r-2 bg-white px-1.5 py-1 text-left font-extrabold tracking-tight ${labelWidthClass}`}
                   >
                     Staff
                   </th>
@@ -468,8 +468,8 @@ export default function StaffCalendarGrid({
                   return (
                     <tr key={row.staffId} className={isMe ? "accent-bg-softer" : ""}>
                       <td
-                        className={`accent-border-soft sticky left-0 z-10 truncate border-r-2 bg-white px-2 font-bold ${
-                          isBig ? "py-1.5 text-base" : "py-0 text-[10px] leading-tight opacity-60"
+                        className={`accent-border-soft sticky left-0 z-10 truncate border-r-2 bg-white px-1.5 font-bold ${
+                          isBig ? "py-1.5 text-sm" : "py-0 text-[10px] leading-tight opacity-60"
                         }`}
                       >
                         {row.name}
