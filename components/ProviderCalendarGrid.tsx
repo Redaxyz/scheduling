@@ -24,29 +24,14 @@ const STATUS_LABEL = { PRESENT: "present", ABSENT: "absent", SURGERY: "in surger
 const NEXT_STATUS = { PRESENT: "ABSENT", ABSENT: "SURGERY", SURGERY: "PRESENT" } as const;
 const OFFICE_LETTER: Record<Office, string> = { BETHESDA: "B", GERMANTOWN: "G" };
 
-// A holiday wins over everything else — office, absence, even a usual
-// surgery day — so a holiday column reads as one uniform color at a glance
-// instead of a mix of red/blue/office depending on what each provider's
-// template happened to say for that weekday. `holidayColor` is null for a
-// normal day, otherwise HOLIDAY_COLOR or (toggled open) WORKING_HOLIDAY_COLOR.
-// A holiday cell keeps its location color whenever the template has an
-// office for that half, including surgery halves — only an absence or a
-// half with no office at all falls back to the plain holiday color.
-function isLocated(cell: ProviderHalfCell): boolean {
-  return cell.office !== null && cell.status !== "ABSENT";
-}
-
-function cellColor(cell: ProviderHalfCell, holidayColor: string | null): string {
-  if (holidayColor && !isLocated(cell)) return holidayColor;
+function cellColor(cell: ProviderHalfCell): string {
   if (cell.status === "ABSENT") return OFF_COLOR;
   if (cell.status === "SURGERY") return SURGERY_COLOR;
   return cell.office ? OFFICE_COLOR[cell.office] : OFF_DUTY_COLOR;
 }
 
-// White-on-Bethesda (and the washed-out holiday purple/green) are the fills
-// light enough to need dark text instead of white.
-function cellTextClass(cell: ProviderHalfCell, holidayColor: string | null): string {
-  if (holidayColor && !isLocated(cell)) return "text-slate-700";
+// White-on-Bethesda is the one fill light enough to need dark text.
+function cellTextClass(cell: ProviderHalfCell): string {
   return cell.status === "PRESENT" && cell.office === "BETHESDA" ? "text-slate-700" : "text-white/90";
 }
 
@@ -296,7 +281,6 @@ export default function ProviderCalendarGrid({
                   const key = `${row.providerId}:${date}:${half}`;
                   const officeName = cell.office ? OFFICE_LABELS[cell.office] : null;
                   const holiday = federalHolidayName(date);
-                  const holidayColor = holiday ? (workingHolidays.has(date) ? WORKING_HOLIDAY_COLOR : HOLIDAY_COLOR) : null;
                   const inCurrentWeek = mondayOf(date) === currentWeekMonday;
                   const label = holiday
                     ? `${row.name} — ${date} ${HALF_LABELS[half]}: ${holiday}`
@@ -315,10 +299,10 @@ export default function ProviderCalendarGrid({
                         aria-label={`${label} (tap to toggle)`}
                         title={`${label} (tap to toggle)`}
                         className="relative block w-full rounded-lg border border-slate-900/10 transition active:scale-95 disabled:opacity-40"
-                        style={{ background: cellColor(cell, holidayColor), boxShadow: cell.fromTemplate ? "inset 0 0 0 2px rgba(255,255,255,0.6)" : undefined }}
+                        style={{ background: cellColor(cell), boxShadow: cell.fromTemplate ? "inset 0 0 0 2px rgba(255,255,255,0.6)" : undefined }}
                       >
                         <span
-                          className={`flex w-full items-center justify-center font-extrabold ${cellTextClass(cell, holidayColor)} ${dense ? "text-[9px]" : "text-xs"}`}
+                          className={`flex w-full items-center justify-center font-extrabold ${cellTextClass(cell)} ${dense ? "text-[9px]" : "text-xs"}`}
                           style={{ height: dynamicRowHeight }}
                         >
                           {cell.office && cell.status !== "ABSENT" ? OFFICE_LETTER[cell.office] : ""}
