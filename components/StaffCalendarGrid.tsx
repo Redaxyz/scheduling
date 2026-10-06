@@ -230,8 +230,8 @@ export default function StaffCalendarGrid({
   // fit instead of forcing a scrollbar. The whole point is fitting the
   // header, every row, and (on a phone, where it's stacked below) the late
   // box and absences list on one screen with nothing left to scroll.
-  const niceBig = dense ? 20 : 34;
-  const niceThin = dense ? 6 : 8;
+  const niceBig = dense ? 30 : 44;
+  const niceThin = dense ? 16 : 20;
   // Each <td>'s own padding (cellPad/otherCellPad below) adds real height
   // on top of the button/span inside it — for a manager, where every one
   // of 15 rows uses the bigger p-1 padding (4px top + 4px bottom), that's
@@ -240,14 +240,16 @@ export default function StaffCalendarGrid({
   // below instead of just padding the safety margin, so it scales
   // correctly regardless of how many staff there are.
   const bigPadPx = 8; // py-1 = 0.25rem top+bottom
-  const thinPadPx = 2; // p-px = 1px top+bottom
+  const thinPadPx = 8; // every row uses the same py-1 cell padding now
   const isManagerView = current?.isManager ?? false;
   // A manager's every row is "big"; everyone else only has their own —
   // computed here (not inside the effect) so the effect can depend on
   // these two plain numbers instead of closing over the sortedRows array,
   // which is a fresh reference every render.
-  const bigCount = sortedRows.length;
-  const thinCount = 0;
+  // Only the signed-in person's own row is the tall one; everyone else's is
+  // still tall enough to read the times in, just shorter.
+  const bigCount = sortedRows.some((r) => r.staffId === current?.id) ? 1 : 0;
+  const thinCount = sortedRows.length - bigCount;
 
   useEffect(() => {
     if (!containerRef.current || bigCount + thinCount === 0) return;
@@ -302,8 +304,8 @@ export default function StaffCalendarGrid({
         // basically just its padding).
         const scale = Math.max(0, available) / naturalTotal;
         setDynamicHeights({
-          big: Math.max(2, niceBigTotal * scale - bigPadPx),
-          thin: Math.max(2, niceThinTotal * scale - thinPadPx),
+          big: Math.max(14, niceBigTotal * scale - bigPadPx),
+          thin: Math.max(12, niceThinTotal * scale - thinPadPx),
         });
       }
     }
@@ -324,6 +326,7 @@ export default function StaffCalendarGrid({
   }, [bigCount, thinCount, niceBig, niceThin]);
 
   const dynamicBigHeight = dynamicHeights?.big ?? niceBig;
+  const dynamicThinHeight = dynamicHeights?.thin ?? niceThin;
 
   const lateBox = current && (
     <div className="accent-border-soft flex flex-col gap-2 rounded-2xl border-2 p-2 text-sm">
@@ -435,8 +438,15 @@ export default function StaffCalendarGrid({
                   // below) instead of the two clickable AM/PM boxes.
                   const editable = Boolean(current) && (isManagerView || isMe);
                   return (
-                    <tr key={row.staffId} className={`border-b border-slate-900/[0.07] last:border-b-0 ${isMe ? "accent-bg-softer" : ""}`}>
-                      <td className="accent-border-soft sticky left-0 z-10 truncate border-r-2 bg-white px-1.5 py-1.5 text-sm font-bold">
+                    <tr
+                      key={row.staffId}
+                      className={isMe ? "accent-border border-y-2" : "border-b border-slate-900/[0.07] last:border-b-0"}
+                    >
+                      <td
+                        className={`accent-border-soft sticky left-0 z-10 truncate border-r-2 px-1.5 py-1.5 text-sm ${
+                          isMe ? "accent-bg-soft font-extrabold" : "bg-white font-bold"
+                        }`}
+                      >
                         {row.name}
                       </td>
                       {dates.map((date, dateIndex) => {
@@ -455,8 +465,10 @@ export default function StaffCalendarGrid({
                           ?? [cell.amOut ? "out in the morning" : arrive, cell.pmOut ? "out in the afternoon" : leave].filter(Boolean).join(", ")
                           ?? "";
                         const label = `${row.name} — ${date}: ${detail || "in all day"}`;
+                        // Your own row gets a solid accent wash instead of the
+                        // current-week/alternating tints, so it stands out in either.
                         const tdClass = `${cellPad} border-l border-slate-900/10 text-center ${
-                          inCurrentWeek ? "cal-current-week" : dateIndex % 2 === 1 ? "bg-slate-900/[0.04]" : ""
+                          isMe ? "accent-bg-soft" : inCurrentWeek ? "cal-current-week" : dateIndex % 2 === 1 ? "bg-slate-900/[0.04]" : ""
                         }`;
                         const textClass = `text-[10px] font-extrabold leading-none ${holiday ? "text-slate-700" : "text-white/90"}`;
 
@@ -468,7 +480,7 @@ export default function StaffCalendarGrid({
                             <td key={date} className={tdClass}>
                               <div
                                 className="flex w-full items-center justify-center rounded-md"
-                                style={{ height: dynamicBigHeight, background: splitBackground(leftColor, rightColor) }}
+                                style={{ height: isMe ? dynamicBigHeight : dynamicThinHeight, background: splitBackground(leftColor, rightColor) }}
                                 title={label}
                               >
                                 {wholeDay ? (
@@ -501,7 +513,7 @@ export default function StaffCalendarGrid({
                                   aria-label={`${label} (tap to toggle ${half === "AM" ? "morning" : "afternoon"})`}
                                   title={`${label} (tap to toggle ${half === "AM" ? "morning" : "afternoon"})`}
                                   className="flex min-w-0 flex-1 items-center justify-center rounded-md transition active:scale-95 disabled:opacity-40"
-                                  style={{ height: dynamicBigHeight, background: fill }}
+                                  style={{ height: isMe ? dynamicBigHeight : dynamicThinHeight, background: fill }}
                                 >
                                   <span className={textClass}>{text ?? half}</span>
                                 </button>
