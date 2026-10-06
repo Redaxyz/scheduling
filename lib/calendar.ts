@@ -96,10 +96,16 @@ export type StaffCalendarRow = {
 };
 
 async function getStaffCalendarForDates(dates: string[]): Promise<StaffCalendarRow[]> {
-  const [staff, absences] = await Promise.all([
+  const [allStaff, absences, providers] = await Promise.all([
     prisma.staff.findMany({ where: { active: true, usesApp: true }, orderBy: { name: "asc" } }),
     prisma.staffAbsence.findMany({ where: { date: { in: dates } } }),
+    prisma.provider.findMany({ where: { active: true }, select: { name: true } }),
   ]);
+  // A PA-C who logs in as staff is just a shadow Staff record sharing their
+  // Provider's exact name — they're already on the Providers calendar, so
+  // listing them here too would just be a duplicate row.
+  const providerNames = new Set(providers.map((p) => p.name));
+  const staff = allStaff.filter((s) => !providerNames.has(s.name));
 
   return staff.map((s) => {
     const days = {} as Record<string, StaffDayCell>;
