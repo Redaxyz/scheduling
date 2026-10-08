@@ -451,8 +451,12 @@ export default function StaffCalendarGrid({
                       </td>
                       {dates.map((date, dateIndex) => {
                         const cell = row.days[date];
-                        const holiday = federalHolidayName(date);
-                        const holidayColor = holiday ? (workingHolidays.has(date) ? WORKING_HOLIDAY_COLOR : HOLIDAY_COLOR) : null;
+                        // Only a CLOSED holiday overrides the cells. One toggled open
+                        // (green in the header) is a normal working day in the body,
+                        // so absences, late arrivals etc. show up and can be set.
+                        const holidayName = federalHolidayName(date);
+                        const holiday = holidayName && !workingHolidays.has(date) ? holidayName : null;
+                        const holidayColor = holiday ? HOLIDAY_COLOR : null;
                         const inCurrentWeek = mondayOf(date) === currentWeekMonday;
                         // Which half each note belongs to is decided by the clock
                         // time itself: a morning arrival or an afternoon departure
