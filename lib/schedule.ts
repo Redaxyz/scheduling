@@ -346,21 +346,26 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
     return null;
   };
 
-  // The legacy dedicatedProviderId fallback — still checked for opted-in
-  // staff too, since a generic Rooming/X-ray template slot is a soft
-  // "nothing better to do" default, not a hard commitment that should leave
-  // their own doctor without a scribe. Only backs off when their template
-  // has them explicitly scribing someone else this half, or marks them off
-  // duty entirely (no row) — either genuinely outranks the old default.
+  // A doctor's dedicated scribe (Staff.dedicatedProviderId) is the default
+  // scribe whenever both are in — for opted-in staff too, whatever their
+  // personal template says about the rest of the half (a generic Rooming/
+  // X-ray row, or no row at all, never takes them off their own doctor).
+  // It only backs off when they're absent, were manually removed for the
+  // half (an AutoOverride), are already explicitly placed somewhere
+  // (a real Assignment), or their own template has them explicitly scribing
+  // a DIFFERENT provider this half. With more than one scribe dedicated to
+  // the same doctor, the first one who's actually available gets it.
   const resolveDedicatedScribe = (providerId: string, half: Half) => {
-    const dedicated = staff.find((st) => st.dedicatedProviderId === providerId);
-    if (!dedicated) return null;
-    if (isStaffAbsent(dedicated.id, half) || isOverridden(dedicated.id, half) || isStaffAssigned(dedicated.id, half)) return null;
-    if (optedInStaffIds.has(dedicated.id)) {
-      const slot = templateSlotFor(dedicated.id, half);
-      if (!slot || slot.role === "SCRIBE") return null;
+    for (const dedicated of staff) {
+      if (dedicated.dedicatedProviderId !== providerId) continue;
+      if (isStaffAbsent(dedicated.id, half) || isOverridden(dedicated.id, half) || isStaffAssigned(dedicated.id, half)) continue;
+      if (optedInStaffIds.has(dedicated.id)) {
+        const slot = templateSlotFor(dedicated.id, half);
+        if (slot?.role === "SCRIBE" && slot.providerId !== providerId) continue;
+      }
+      return dedicated;
     }
-    return dedicated;
+    return null;
   };
 
   const halves = {} as Record<Half, Record<Office, HalfSlot>>;
