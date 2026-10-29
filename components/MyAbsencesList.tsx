@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useWhoAmI } from "@/lib/whoami";
 import { formatLateDuration } from "@/lib/lateDuration";
 import { formatClock } from "@/lib/timing";
+import { isFederalHoliday } from "@/lib/holidays";
 
 type AbsenceRow = {
   id: string;
@@ -49,6 +50,9 @@ export default function MyAbsencesList() {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [rows, setRows] = useState<AbsenceRow[]>([]);
+  // Holidays the clinic is open (toggled green) — an absence on one of those
+  // still matters, unlike one on a closed holiday.
+  const [workingHolidays, setWorkingHolidays] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -62,12 +66,22 @@ export default function MyAbsencesList() {
   }
 
   useEffect(() => {
+    fetch("/api/holiday-overrides")
+      .then((r) => r.json())
+      .then((dates) => setWorkingHolidays(new Set(Array.isArray(dates) ? dates : [])))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     load();
   }, []);
 
   if (!current) return null;
 
-  const visible = current.isManager ? rows : rows.filter((r) => r.staffId === current.id);
+  // Someone being out on a day the clinic is closed anyway isn't worth
+  // listing.
+  const relevant = rows.filter((r) => !isFederalHoliday(r.date) || workingHolidays.has(r.date));
+  const visible = current.isManager ? relevant : relevant.filter((r) => r.staffId === current.id);
 
   async function cancel(id: string) {
     setBusyId(id);

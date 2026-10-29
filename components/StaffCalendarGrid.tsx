@@ -28,14 +28,6 @@ const WEEKDAY_LETTERS = ["M", "T", "W", "Th", "F"];
 // differently from the orange of coming in late.
 const EARLY_COLOR = "#0e8f9e";
 
-// Two colors in one cell separated by a thin slanted line, ~30° off vertical
-// (the left color is the morning half, the right the afternoon half) — or
-// just the one color when both halves match.
-function splitBackground(left: string, right: string): string {
-  if (left === right) return left;
-  return `linear-gradient(120deg, ${left} calc(50% - 1px), rgba(255,255,255,0.9) calc(50% - 1px) calc(50% + 1px), ${right} calc(50% + 1px))`;
-}
-
 // Rendered by the page itself, alongside the title/toggle/nav row, instead
 // of inside the grid — keeping it out of the grid's own vertical stack is
 // what lets the page compress the whole header area into one thin band
@@ -496,34 +488,10 @@ export default function StaffCalendarGrid({
                         const textClass = `text-[10px] font-extrabold leading-none ${holiday ? "text-slate-700" : "text-white/90"}`;
                         const boxHeight = isMe ? dynamicBigHeight : dynamicThinHeight;
 
-                        if (!editable) {
-                          // One read-only cell: colored half by half (or all one color
-                          // when merged), with the actual times written in it.
-                          const leftColor = merged ? mergedColor : colorFor("AM");
-                          const rightColor = merged ? mergedColor : colorFor("PM");
-                          return (
-                            <td key={date} className={tdClass}>
-                              <div
-                                className="flex w-full items-center justify-center rounded-md"
-                                style={{ height: boxHeight, background: splitBackground(leftColor, rightColor) }}
-                                title={label}
-                              >
-                                {merged ? (
-                                  <span className={textClass}>{mergedText}</span>
-                                ) : (
-                                  <>
-                                    <span className={`flex-1 ${textClass}`}>{bare(noteFor("AM"))}</span>
-                                    <span className={`flex-1 ${textClass}`}>{bare(noteFor("PM"))}</span>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          );
-                        }
-
-                        // Editable: left box = morning, right box = afternoon — except a
-                        // merged day, which is one wide box (tapping it marks both
-                        // halves out).
+                        // Left box = morning, right box = afternoon — except a merged
+                        // day, which is one wide box. Everyone sees the same boxes;
+                        // only rows you can edit (your own, or anyone's for a manager)
+                        // are tappable — tapping a merged box marks both halves out.
                         const halves = (["AM", "PM"] as const).map((half) => ({
                           half,
                           out: half === "AM" ? cell.amOut : cell.pmOut,
@@ -532,7 +500,15 @@ export default function StaffCalendarGrid({
                         }));
                         return (
                           <td key={date} className={tdClass}>
-                            {merged ? (
+                            {merged && !editable ? (
+                              <div
+                                className="flex w-full items-center justify-center rounded-md"
+                                style={{ height: boxHeight, background: mergedColor }}
+                                title={label}
+                              >
+                                <span className={textClass}>{mergedText}</span>
+                              </div>
+                            ) : merged ? (
                               <button
                                 type="button"
                                 onClick={async () => {
@@ -548,7 +524,17 @@ export default function StaffCalendarGrid({
                               </button>
                             ) : (
                               <div className="flex w-full gap-0.5">
-                                {halves.map(({ half, out, fill, text }) => (
+                                {halves.map(({ half, out, fill, text }) =>
+                                  !editable ? (
+                                    <div
+                                      key={half}
+                                      className="flex min-w-0 flex-1 items-center justify-center rounded-md"
+                                      style={{ height: boxHeight, background: fill }}
+                                      title={label}
+                                    >
+                                      <span className={textClass}>{bare(text) || half}</span>
+                                    </div>
+                                  ) : (
                                   <button
                                     key={half}
                                     type="button"
@@ -561,7 +547,8 @@ export default function StaffCalendarGrid({
                                   >
                                     <span className={textClass}>{bare(text) || half}</span>
                                   </button>
-                                ))}
+                                  )
+                                )}
                               </div>
                             )}
                           </td>
