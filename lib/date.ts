@@ -24,6 +24,12 @@ function easternNow(): { date: string; hour: number } {
   return { date: `${get("year")}-${get("month")}-${get("day")}`, hour: Number(get("hour")) % 24 };
 }
 
+// The real calendar date in Eastern time, regardless of the server's own
+// timezone (Vercel runs in UTC).
+export function easternToday(): string {
+  return easternNow().date;
+}
+
 // "Today," for the purposes of what every tab defaults to — not the actual
 // calendar date real absences/holidays/late-marks key off of (see
 // todayStr for that). Once it's past 5pm Eastern, the current day's

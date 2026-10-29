@@ -1,4 +1,4 @@
-import { prisma } from "./prisma";
+import { prisma, type Tx } from "./prisma";
 import { findStaffPosition, getDaySchedule, type PositionRef } from "./schedule";
 import type { Half, Office, Role } from "./types";
 import type { Prisma } from "@prisma/client";
@@ -136,7 +136,7 @@ export async function toggleSwapRequest(input: {
   return { cancelled: false };
 }
 
-async function vacate(tx: Prisma.TransactionClient, pos: PositionRef, date: string) {
+async function vacate(tx: Tx, pos: PositionRef, date: string) {
   if (pos.assignmentId) {
     await tx.assignment.delete({ where: { id: pos.assignmentId } });
   } else {
@@ -148,7 +148,7 @@ async function vacate(tx: Prisma.TransactionClient, pos: PositionRef, date: stri
   }
 }
 
-async function place(tx: Prisma.TransactionClient, staffId: string, date: string, pos: Pick<PositionRef, "half" | "office" | "role" | "providerId">) {
+async function place(tx: Tx, staffId: string, date: string, pos: Pick<PositionRef, "half" | "office" | "role" | "providerId">) {
   await tx.assignment.create({
     data: { date, half: pos.half, office: pos.office, role: pos.role, staffId, providerId: pos.providerId },
   });
