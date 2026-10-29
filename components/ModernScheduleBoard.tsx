@@ -10,6 +10,7 @@ import { HALVES, HALF_LABELS, OFFICES, OFFICE_LABELS, WEEKDAY_LABELS, type Half,
 import { useWhoAmI } from "@/lib/whoami";
 import AutoRefresh from "@/components/AutoRefresh";
 import ScheduleDateNav from "@/components/ScheduleDateNav";
+import DayNote, { type DayNoteData } from "@/components/DayNote";
 import { DropZone, Pill, SwapControl, TakeRoleButton, lateTag, moveStaff, postJSON, type DropTarget } from "@/components/scheduleShared";
 
 const SWAP_POLL_MS = 8000;
@@ -18,6 +19,7 @@ type Props = {
   date: string;
   day: DaySchedule;
   freeStaff: Record<Half, FreeStaffMember[]>;
+  note: DayNoteData;
 };
 
 // The modern Home page: literally half the screen per office instead of a
@@ -25,7 +27,7 @@ type Props = {
 // Same data, same interactions (drag-to-reassign, remove, swap-request) as
 // the classic ScheduleBoard, just laid out as a continuous, low-chrome
 // column of names and dividers instead of a card per provider/role.
-export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
+export default function ModernScheduleBoard({ date, day, freeStaff, note }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const { current } = useWhoAmI();
@@ -66,6 +68,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
 
   const weekdayLabel = day.weekday !== null ? WEEKDAY_LABELS[day.weekday] : "Weekend";
   const isToday = date === effectiveScheduleDate();
+  const titleColor = mobileFirst === "GERMANTOWN" ? "text-white lg:text-slate-900" : "text-slate-900";
 
   return (
     // -mt-4/-mb-28 cancel <main>'s own py-4/pb-28 (see app/layout.tsx) so
@@ -99,7 +102,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
           black for Germantown — and their text color follows that. */}
       <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-4 sm:px-10">
         <div>
-          <h1 className={`text-xl font-extrabold tracking-tight ${mobileFirst === "GERMANTOWN" ? "text-white lg:text-slate-900" : "text-slate-900"}`}>
+          <h1 className={`text-xl font-extrabold tracking-tight ${titleColor}`}>
             {weekdayLabel} — {formatLong(date)}
           </h1>
           {!isToday && (
@@ -107,6 +110,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
               Jump to today
             </Link>
           )}
+          <DayNote key={date} date={date} initial={note} textClass={titleColor} />
         </div>
         <div className={mobileFirst === "GERMANTOWN" ? "text-white" : "text-slate-900 lg:text-white"}>
           <ScheduleDateNav date={date} />
@@ -130,17 +134,28 @@ export default function ModernScheduleBoard({ date, day, freeStaff }: Props) {
         ))}
       </div>
 
-      {unassignedLine.length > 0 && (
-        // Right below the content (the x-ray row), not pinned to the
-        // bottom of the full-height background — each half is exactly 50%
-        // wide so the label and the names meet right at the seam.
-        <div className="relative z-10 flex pb-6">
-          <div className="flex w-1/2 justify-end pr-3 sm:pr-4">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-900/70">Not assigned yet</span>
-          </div>
-          <div className="flex w-1/2 justify-start pl-3 sm:pl-4">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-white/80">{unassignedLine.join(", ")}</span>
-          </div>
+      {/* Right below the content (the x-ray row), not pinned to the bottom
+          of the full-height background — each half is exactly 50% wide so
+          each label and its names meet right at the seam. "Out of office"
+          is everyone absent the whole day (they're never in "not assigned",
+          which only lists people who are in). */}
+      {(unassignedLine.length > 0 || day.ooo.length > 0) && (
+        <div className="relative z-10 space-y-1.5 pb-6">
+          {[
+            { label: "Not assigned yet", names: unassignedLine },
+            { label: "Out of office", names: day.ooo.map((s) => s.name) },
+          ]
+            .filter((row) => row.names.length > 0)
+            .map((row) => (
+              <div key={row.label} className="flex">
+                <div className="flex w-1/2 justify-end pr-3 sm:pr-4">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-slate-900/70">{row.label}</span>
+                </div>
+                <div className="flex w-1/2 justify-start pl-3 sm:pl-4">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-white/80">{row.names.join(", ")}</span>
+                </div>
+              </div>
+            ))}
         </div>
       )}
     </div>

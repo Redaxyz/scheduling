@@ -22,7 +22,7 @@ const STATUS_LABEL: Record<StaffDayStatus, string> = {
   PARTIAL: "partial / running late",
 };
 
-const WEEKDAY_LETTERS = ["M", "T", "W", "R", "F"];
+const WEEKDAY_LETTERS = ["M", "T", "W", "Th", "F"];
 
 // Leaving before the standard end of day — its own color so it reads
 // differently from the orange of coming in late.

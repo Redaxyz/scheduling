@@ -32,6 +32,12 @@ function lastWeekdayOfMonth(year: number, month: number, weekday: number): strin
   return toDateStr(year, month, day);
 }
 
+function dayAfter(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + 1));
+  return toDateStr(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate());
+}
+
 // Returns the holiday's name if `dateStr` ("YYYY-MM-DD") falls on one of the
 // 11 official U.S. federal holidays, else null. Deliberately doesn't shift
 // fixed dates that land on a weekend (e.g. July 4th on a Saturday) — the
@@ -55,6 +61,8 @@ export function federalHolidayName(dateStr: string): string | null {
     [nthWeekdayOfMonth(year, 9, 1, 1)]: "Labor Day",
     [nthWeekdayOfMonth(year, 10, 1, 2)]: "Columbus Day",
     [nthWeekdayOfMonth(year, 11, 4, 4)]: "Thanksgiving Day",
+    // Not federal, but the clinic takes it off too.
+    [dayAfter(nthWeekdayOfMonth(year, 11, 4, 4))]: "Day after Thanksgiving",
   };
   return floating[dateStr] ?? null;
 }

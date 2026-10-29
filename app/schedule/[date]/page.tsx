@@ -1,4 +1,5 @@
 import { getDaySchedule, getFreeStaff } from "@/lib/schedule";
+import { prisma } from "@/lib/prisma";
 import ModernScheduleBoard from "@/components/ModernScheduleBoard";
 
 // Reads live assignment/absence data on every load — without this, Next can
@@ -14,7 +15,11 @@ export default async function SchedulePage({ params }: { params: Promise<{ date:
     return <p className="text-red-600">Invalid date: {date}</p>;
   }
 
-  const [day, freeStaff] = await Promise.all([getDaySchedule(date), getFreeStaff(date)]);
+  const [day, freeStaff, note] = await Promise.all([
+    getDaySchedule(date),
+    getFreeStaff(date),
+    prisma.dayNote.findUnique({ where: { date } }),
+  ]);
 
   // The title/date-nav row lives inside ModernScheduleBoard itself now —
   // it floats over the edge-to-edge Bethesda/Germantown split rather than
@@ -25,5 +30,12 @@ export default async function SchedulePage({ params }: { params: Promise<{ date:
       <p className="accent-border-soft rounded-2xl border-2 p-4 font-bold opacity-50">No clinic scheduled on weekends.</p>
     );
   }
-  return <ModernScheduleBoard date={date} day={day} freeStaff={freeStaff} />;
+  return (
+    <ModernScheduleBoard
+      date={date}
+      day={day}
+      freeStaff={freeStaff}
+      note={{ text: note?.text ?? "", updatedByName: note?.updatedByName ?? null }}
+    />
+  );
 }

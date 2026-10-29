@@ -15,7 +15,7 @@ export type StaffKind = (typeof STAFF_KINDS)[number];
 
 // Priority order for filling an open scribe slot (dedicated scribe absent) —
 // most experienced first. Names, matched against Staff.name.
-export const SCRIBE_PRIORITY = ["Emily", "Reda", "Hope", "Emma", "Anna", "Jen"];
+export const SCRIBE_PRIORITY = ["Reda", "Hope", "Emma", "Anna", "Jen", "Ben"];
 
 export const WEEKDAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 

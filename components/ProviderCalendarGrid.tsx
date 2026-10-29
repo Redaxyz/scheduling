@@ -39,7 +39,7 @@ function cellTextClass(cell: ProviderHalfCell, closedHoliday: boolean): string {
   return cell.status === "PRESENT" && cell.office === "BETHESDA" ? "text-slate-700" : "text-white/90";
 }
 
-const WEEKDAY_LETTERS = ["M", "T", "W", "R", "F"];
+const WEEKDAY_LETTERS = ["M", "T", "W", "Th", "F"];
 
 // Rendered by the page itself, alongside the title/toggle/nav row, instead
 // of inside the grid — see StaffLegend for why.

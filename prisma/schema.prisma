@@ -322,3 +322,12 @@ model Assignment {
 model HolidayOverride {
   date String @id
 }
+
+// A free-text note for one day, shown under the date on the Home page —
+// anyone can write it and everyone sees it.
+model DayNote {
+  date          String   @id
+  text          String
+  updatedByName String?
+  updatedAt     DateTime @updatedAt
+}

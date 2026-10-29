@@ -144,11 +144,11 @@ const STAFF: {
   // a clearly different color while staying soft/mellow.
   // pinnedGridIndex values below lay out the sign-in picker (5 rows x 3
   // cols, column-major: index = col*ROWS + row) in this exact arrangement:
-  //   Row1: Anna, Emily, Emma       Row2: Hope, Jen, Reda
+  //   Row1: Anna, Ben, Emma       Row2: Hope, Jen, Reda
   //   Row3: Brian PA-C, Joanna, Jessica PA-C
   //   Row4: Cindy, Charlie, JB      Row5: Shelby, Mark, Jenish
   { name: "Reda", kind: "SCRIBE", canScribe: true, color: "hsl(0, 62%, 85%)", homeOffice: null, dedicatedProviderInitials: "C", isManager: true, pinnedGridIndex: 11 },
-  { name: "Emily", kind: "SCRIBE", canScribe: true, color: "hsl(30, 62%, 83%)", homeOffice: null, dedicatedProviderInitials: "R", pinnedGridIndex: 5 },
+  { name: "Ben", kind: "SCRIBE", canScribe: true, color: "hsl(30, 62%, 83%)", homeOffice: null, dedicatedProviderInitials: "R", pinnedGridIndex: 5 },
   { name: "Hope", kind: "SCRIBE", canScribe: true, color: "hsl(50, 58%, 80%)", homeOffice: null, dedicatedProviderInitials: "Fe", pinnedGridIndex: 1 },
   { name: "Anna", kind: "SCRIBE", canScribe: true, color: "hsl(80, 45%, 79%)", homeOffice: null, dedicatedProviderInitials: "Mc", pinnedGridIndex: 0 },
   { name: "Emma", kind: "SCRIBE", canScribe: true, color: "hsl(120, 38%, 80%)", homeOffice: null, dedicatedProviderInitials: "Fi", pinnedGridIndex: 10 },
@@ -263,9 +263,9 @@ const SCRIBE_FALLBACKS: Record<string, FallbackRow[]> = {
     { weekday: 3, half: "PM", office: "BETHESDA" },
     { weekday: 4, half: "PM", office: "BETHESDA", targetProviderInitials: "B" },
   ],
-  // Emily (Raffo's scribe): Raffo never works Tuesdays. Only the PM half
+  // Ben (Raffo's scribe): Raffo never works Tuesdays. Only the PM half
   // gets a fallback (Germantown); AM Tuesday she's simply free.
-  Emily: [{ weekday: 1, half: "PM", office: "GERMANTOWN" }],
+  Ben: [{ weekday: 1, half: "PM", office: "GERMANTOWN" }],
   // Hope (Feldman's scribe): Feldman is off Fridays entirely.
   Hope: [
     { weekday: 4, half: "AM", office: "BETHESDA" },

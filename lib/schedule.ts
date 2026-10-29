@@ -68,6 +68,9 @@ export type DaySchedule = {
   // still offerable elsewhere without an explicit remove-first step, since
   // rooming isn't a specific commitment the way scribing or x-ray is.
   reassignable: Record<Half, { id: string; name: string }[]>;
+  // Out of office: staff absent for the WHOLE day (both halves), listed on
+  // Home so a day's full-day absences are visible at a glance.
+  ooo: { id: string; name: string }[];
 };
 
 export type FreeStaffMember = {
@@ -667,7 +670,12 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
       .map((s) => ({ id: s.id, name: s.name }));
   }
 
-  return { date, weekday, halves, unassigned, reassignable };
+  const ooo = staff
+    .filter((s) => s.usesApp && !providerNames.has(s.name) && isStaffAbsent(s.id, "AM") && isStaffAbsent(s.id, "PM"))
+    .map((s) => ({ id: s.id, name: s.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return { date, weekday, halves, unassigned, reassignable, ooo };
 }
 
 // Which staff are free to self-place, per half. Anyone not absent, not
