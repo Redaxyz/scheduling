@@ -8,6 +8,7 @@ import AutoRefresh from "@/components/AutoRefresh";
 import MyTemplateEditor from "@/components/MyTemplateEditor";
 import CalendarNavLinks from "@/components/CalendarNavLinks";
 import MyScheduleHeading from "@/components/MyScheduleHeading";
+import PushTest from "@/components/PushTest";
 
 // Reads live assignment/absence data on every load — see the note on
 // app/schedule/[date]/page.tsx.
@@ -55,6 +56,7 @@ export default async function MySchedulePage({ params }: { params: Promise<{ mon
       </div>
 
       <MyTemplateEditor />
+      <PushTest />
     </div>
   );
 }
