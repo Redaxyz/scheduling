@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import webpush from "web-push";
 import { prisma } from "@/lib/prisma";
+import { easternToday } from "@/lib/date";
+import { findNextChangeNotice, NOTIFIED_STAFF, sendPush } from "@/lib/push";
 
-// A one-person trial of push notifications: Reda's phone registers and gets a
-// test notification straight back, with nothing stored. Only ever posts to
-// the browser vendors' own push services, never a URL the caller made up.
+// Saves this phone for the nightly change alerts, then sends it a preview of
+// the next one coming up. Only ever posts to the browser vendors' own push
+// services, never a URL the caller made up.
 const PUSH_HOST = /^(web\.push\.apple\.com|fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[a-z0-9-]+\.notify\.windows\.com)$/;
 const DELAY_MS = 5000;
-// Push services require a contact address on every send; the site itself will do.
-const VAPID_SUBJECT = "https://scheduling-chi-navy.vercel.app";
 
 function isPushEndpoint(endpoint: unknown): endpoint is string {
   if (typeof endpoint !== "string") return false;
@@ -31,26 +30,31 @@ export async function POST(req: NextRequest) {
   const { staffId, subscription } = body ?? {};
 
   const staff = typeof staffId === "string" ? await prisma.staff.findUnique({ where: { id: staffId } }) : null;
-  if (staff?.name !== "Reda") {
-    return NextResponse.json({ error: "Only Reda can run this test" }, { status: 403 });
+  if (!staff || !NOTIFIED_STAFF.includes(staff.name)) {
+    return NextResponse.json({ error: "Notifications aren't available for this person yet" }, { status: 403 });
   }
   if (!isPushEndpoint(subscription?.endpoint) || typeof subscription?.keys?.p256dh !== "string" || typeof subscription?.keys?.auth !== "string") {
     return NextResponse.json({ error: "Invalid subscription" }, { status: 400 });
   }
 
-  const { VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY } = process.env;
-  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-    return NextResponse.json({ error: "Push keys aren't set up" }, { status: 500 });
-  }
+  const sub = { endpoint: subscription.endpoint, p256dh: subscription.keys.p256dh, auth: subscription.keys.auth };
+  await prisma.pushSubscription.upsert({
+    where: { endpoint: sub.endpoint },
+    update: { ...sub, staffId: staff.id },
+    create: { ...sub, staffId: staff.id },
+  });
+
+  const notice = await findNextChangeNotice(staff.id, easternToday());
 
   // Long enough to lock the phone and see it arrive on the lock screen.
   await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
 
   try {
-    await webpush.sendNotification(
-      { endpoint: subscription.endpoint, keys: { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth } },
-      JSON.stringify({ title: "CFA Schedule", body: "It works! Notifications are reaching your phone.", url: "/" }),
-      { vapidDetails: { subject: VAPID_SUBJECT, publicKey: VAPID_PUBLIC_KEY, privateKey: VAPID_PRIVATE_KEY } },
+    await sendPush(
+      sub,
+      notice
+        ? { ...notice, title: `Preview. ${notice.title}` }
+        : { title: "CFA Schedule", body: "You're set up. No changes coming up in the next two weeks.", url: "/" },
     );
   } catch (e) {
     const err = e as { statusCode?: number; body?: string; message?: string };

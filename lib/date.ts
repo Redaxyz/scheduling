@@ -30,6 +30,10 @@ export function easternToday(): string {
   return easternNow().date;
 }
 
+export function easternHour(): number {
+  return easternNow().hour;
+}
+
 // "Today," for the purposes of what every tab defaults to — not the actual
 // calendar date real absences/holidays/late-marks key off of (see
 // todayStr for that). Once it's past 5pm Eastern, the current day's

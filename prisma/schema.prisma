@@ -128,6 +128,7 @@ model Staff {
   active               Boolean  @default(true)
   createdAt            DateTime @default(now())
 
+  pushSubscriptions PushSubscription[]
   dedicatedProvider Provider?        @relation("DedicatedScribeFor", fields: [dedicatedProviderId], references: [id])
   fallbacks         ScribeFallback[]
   absences          StaffAbsence[]
@@ -330,4 +331,21 @@ model DayNote {
   text          String
   updatedByName String?
   updatedAt     DateTime @updatedAt
+}
+
+// A phone or browser that's allowed notifications, so the nightly job can
+// reach it with nobody tapping anything. lastNoticeFor is the schedule date
+// it was last told about, so a repeated run can't notify twice.
+model PushSubscription {
+  id            String   @id @default(cuid())
+  staffId       String
+  endpoint      String   @unique
+  p256dh        String
+  auth          String
+  lastNoticeFor String?
+  createdAt     DateTime @default(now())
+
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
 }

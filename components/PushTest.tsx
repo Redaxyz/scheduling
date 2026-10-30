@@ -9,7 +9,8 @@ function keyToBytes(base64url: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(raw, (c) => c.charCodeAt(0));
 }
 
-// Reda-only trial of push notifications, see app/api/push/test.
+// Reda-only for now: saves this phone for the nightly change alerts and sends
+// a preview, see app/api/push/test.
 export default function PushTest() {
   const { current } = useWhoAmI();
   const [status, setStatus] = useState<string | null>(null);
@@ -45,7 +46,7 @@ export default function PushTest() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-      setStatus("Sent! It should show up on your phone now.");
+      setStatus("This phone is saved for change alerts, and a preview should show up now.");
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Something went wrong");
     } finally {

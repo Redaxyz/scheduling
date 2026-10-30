@@ -773,6 +773,8 @@ export type PositionRef = {
   assignmentId: string | null;
 };
 
+export type UsualPosition = { office: Office; role: Role; providerId: string | null };
+
 export function findStaffPosition(day: DaySchedule, half: Half, staffId: string): PositionRef | null {
   for (const office of OFFICES) {
     const slot = day.halves[half][office];
@@ -1005,4 +1007,55 @@ export async function getWeekScheduleForAllStaff(mondayStr: string): Promise<MyS
       return { date, weekday, halves };
     }),
   }));
+}
+
+// Where someone normally is for this weekday+half, going only by the weekly
+// templates and ignoring anything specific to `date` (absences, swaps,
+// one-off placements). Follows the same order of precedence as getDaySchedule.
+export async function getUsualPosition(staffId: string, date: string, half: Half): Promise<UsualPosition | null> {
+  const weekday = weekdayIndex(date);
+  if (weekday === null) return null;
+
+  const [staff, slots, fallbacks, templateRows] = await Promise.all([
+    prisma.staff.findUnique({ where: { id: staffId } }),
+    prisma.providerScheduleSlot.findMany({ where: { weekday } }),
+    prisma.scribeFallback.findMany({ where: { staffId, weekday } }),
+    prisma.staffScheduleSlot.findMany({ where: { staffId } }),
+  ]);
+  if (!staff) return null;
+
+  const { isActive, activeOffice } = buildActivity(slots, [], []);
+  const scribing = (providerId: string): UsualPosition | null => {
+    const office = activeOffice(providerId, half);
+    return office ? { office, role: "SCRIBE", providerId } : null;
+  };
+  const dedicated = staff.dedicatedProviderId;
+
+  if (templateRows.length > 0) {
+    const row = templateRows.find((t) => t.weekday === weekday && t.half === half);
+    if (row?.role === "SCRIBE" && row.providerId) return scribing(row.providerId);
+    if (dedicated) {
+      const own = scribing(dedicated);
+      if (own) return own;
+    }
+    if ((row?.role === "ROOMING" || row?.role === "XRAY") && row.office) {
+      return { office: row.office as Office, role: row.role, providerId: null };
+    }
+    return null;
+  }
+
+  if (dedicated) {
+    const own = scribing(dedicated);
+    if (own) return own;
+  }
+  const fallback = resolveFallback(fallbacks, staffId, weekday, half, isActive);
+  if (fallback?.targetProviderId) {
+    const target = scribing(fallback.targetProviderId);
+    if (target) return target;
+  } else if (fallback) {
+    return { office: fallback.office as Office, role: "ROOMING", providerId: null };
+  }
+  if (staff.defaultXrayOffice) return { office: staff.defaultXrayOffice as Office, role: "XRAY", providerId: null };
+  if (staff.defaultRoomingOffice) return { office: staff.defaultRoomingOffice as Office, role: "ROOMING", providerId: null };
+  return null;
 }
