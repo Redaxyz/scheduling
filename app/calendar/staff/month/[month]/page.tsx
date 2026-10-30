@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getStaffMonthCalendar } from "@/lib/calendar";
 import { addMonths, effectiveScheduleDate, firstOfMonth, formatMonthLabel, monthWeekdays } from "@/lib/date";
-import { getWorkingHolidays } from "@/lib/holidays";
+import { getWorkingHolidays } from "@/lib/workingHolidays";
 import StaffCalendarGrid, { StaffLegend } from "@/components/StaffCalendarGrid";
 import CalendarWhoToggle from "@/components/CalendarWhoToggle";
 import MobileWeekRedirect from "@/components/MobileWeekRedirect";

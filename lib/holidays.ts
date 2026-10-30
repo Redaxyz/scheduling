@@ -1,5 +1,3 @@
-import { prisma } from "./prisma";
-
 // U.S. federal holidays — computed per-year from calendar rules instead of a
 // hardcoded date table, so this stays correct for any year without needing
 // yearly maintenance. Purely a display concern (see StaffCalendarGrid /
@@ -81,13 +79,3 @@ export const HOLIDAY_COLOR = "#c4b5fd";
 // the clinic actually works (see HolidayOverride/api/holiday-overrides),
 // toggled by clicking the date header in the Staff/Provider calendar grids.
 export const WORKING_HOLIDAY_COLOR = "#579669";
-
-// Which federal holidays within `dates` the clinic actually works, as a
-// Set for O(1) lookup — queried once per calendar page load and passed down
-// to both grids so Staff/Provider/week/month all agree on the same toggle.
-export async function getWorkingHolidays(dates: string[]): Promise<Set<string>> {
-  const holidayDates = dates.filter(isFederalHoliday);
-  if (holidayDates.length === 0) return new Set();
-  const rows = await prisma.holidayOverride.findMany({ where: { date: { in: holidayDates } } });
-  return new Set(rows.map((r) => r.date));
-}
