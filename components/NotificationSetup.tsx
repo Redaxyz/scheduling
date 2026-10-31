@@ -184,19 +184,19 @@ function SetupSheet({ onClose, setup }: { onClose: () => void; setup: ReturnType
 
         {view === "on" ? (
           <p className="mt-1 text-sm font-medium leading-snug">
-            This {name} is saved, so you don't need to do this again. The night before, around 9pm, you'll get an alert if you're in a different office or role than usual,
+            This {name} is saved, so you don&apos;t need to do this again. The night before, around 9pm, you&apos;ll get an alert if you&apos;re in a different office or role than usual,
             with who else will be there. No change, no alert.{justTurnedOn && " A sample is on its way."}
           </p>
         ) : (
           <p className="mt-1 text-sm font-medium leading-snug opacity-70">
-            A heads-up the night before if you're in a different office or role than usual. You only set this up once on each device.
+            A heads-up the night before if you&apos;re in a different office or role than usual. You only set this up once on each device.
           </p>
         )}
 
         {view === "ios-safari" && (
           <ol className="mt-4 space-y-3">
             <Step n={1}>
-              Tap the <strong>Share</strong> button <ShareIcon className="inline h-5 w-5 align-text-bottom" /> in Safari's toolbar. If you don't see it, tap <strong>•••</strong>{" "}
+              Tap the <strong>Share</strong> button <ShareIcon className="inline h-5 w-5 align-text-bottom" /> in Safari&apos;s toolbar. If you don&apos;t see it, tap <strong>•••</strong>{" "}
               first.
             </Step>
             <Step n={2}>
@@ -206,7 +206,7 @@ function SetupSheet({ onClose, setup }: { onClose: () => void; setup: ReturnType
               If you see <strong>Open as Web App</strong>, leave it on. Then tap <strong>Add</strong>.
             </Step>
             <Step n={4}>
-              Close Safari and open <strong>Schedule</strong> from your home screen. You'll sign in one more time, and this guide will finish up there.
+              Close Safari and open <strong>Schedule</strong> from your home screen. You&apos;ll sign in one more time, and this guide will finish up there.
             </Step>
           </ol>
         )}
@@ -226,7 +226,7 @@ function SetupSheet({ onClose, setup }: { onClose: () => void; setup: ReturnType
             <Step n={1}>
               Your {name} needs a software update first. Open <strong>Settings</strong>, then <strong>General</strong>, then <strong>Software Update</strong>.
             </Step>
-            <Step n={2}>Once it's updated, open this app in Safari and this guide will walk you through the rest.</Step>
+            <Step n={2}>Once it&apos;s updated, open this app in Safari and this guide will walk you through the rest.</Step>
           </ol>
         )}
 
@@ -239,7 +239,7 @@ function SetupSheet({ onClose, setup }: { onClose: () => void; setup: ReturnType
             </Step>
             {view === "android" && (
               <Step n={2}>
-                Optional: for one-tap access, open Chrome's <strong>⋮</strong> menu and tap <strong>Add to Home screen</strong>.
+                Optional: for one-tap access, open Chrome&apos;s <strong>⋮</strong> menu and tap <strong>Add to Home screen</strong>.
               </Step>
             )}
           </ol>
@@ -248,7 +248,7 @@ function SetupSheet({ onClose, setup }: { onClose: () => void; setup: ReturnType
         {view === "android-other-browser" && (
           <ol className="mt-4 space-y-3">
             <Step n={1}>
-              This browser can't do notifications. Copy this link:
+              This browser can&apos;t do notifications. Copy this link:
               <CopyLink />
             </Step>
             <Step n={2}>Open Chrome and paste it into the address bar. This guide will walk you through the rest.</Step>
