@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { easternToday } from "@/lib/date";
-import { findNextChangeNotice, NOTIFIED_STAFF, sendPush } from "@/lib/push";
+import { findNextChangeNotice, sendPush } from "@/lib/push";
+import { NOTIFIED_STAFF } from "@/lib/types";
 
 // Saves this phone for the nightly change alerts, then sends it a preview of
 // the next one coming up. Only ever posts to the browser vendors' own push

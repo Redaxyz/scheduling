@@ -5,6 +5,7 @@ import { WhoAmIProvider } from "@/lib/whoami";
 import BottomNav from "@/components/BottomNav";
 import AppGate from "@/components/AppGate";
 import ThemeAccent from "@/components/ThemeAccent";
+import { NotificationPrompt } from "@/components/NotificationSetup";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <WhoAmIProvider>
           <ThemeAccent />
           <AppGate />
+          <NotificationPrompt />
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-4 pb-28">{children}</main>
           <BottomNav />
         </WhoAmIProvider>

@@ -57,3 +57,21 @@ export function SwapIcon({ className, style }: IconProps) {
     </svg>
   );
 }
+
+export function ShareIcon({ className, style }: IconProps) {
+  return (
+    <svg {...base} className={className} style={style}>
+      <path d="M12 3.5v11M8.5 7 12 3.5 15.5 7" />
+      <path d="M8 10.5H6.5a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-8.5a1 1 0 0 0-1-1H16" />
+    </svg>
+  );
+}
+
+export function PlusSquareIcon({ className, style }: IconProps) {
+  return (
+    <svg {...base} className={className} style={style}>
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="M12 8.5v7M8.5 12h7" />
+    </svg>
+  );
+}

@@ -17,6 +17,9 @@ export type StaffKind = (typeof STAFF_KINDS)[number];
 // most experienced first. Names, matched against Staff.name.
 export const SCRIBE_PRIORITY = ["Reda", "Hope", "Emma", "Anna", "Jen", "Emily", "Ben"];
 
+// Who can set up notifications and gets change alerts, for now.
+export const NOTIFIED_STAFF = ["Reda"];
+
 export const WEEKDAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 export const OFFICE_LABELS: Record<Office, string> = {
