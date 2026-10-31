@@ -1,7 +1,7 @@
 {
   "framework": "nextjs",
   "crons": [
-    { "path": "/api/cron/change-notices", "schedule": "7 0 * * *" },
-    { "path": "/api/cron/change-notices", "schedule": "7 1 * * *" }
+    { "path": "/api/cron/change-notices", "schedule": "0 1 * * *" },
+    { "path": "/api/cron/change-notices", "schedule": "0 2 * * *" }
   ]
 }
