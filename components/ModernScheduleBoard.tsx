@@ -251,7 +251,7 @@ function OfficeHalf({
 
                 <div data-cell={`${prefix}-providers`}>
                   {slot.providers.length === 0 ? (
-                    <p className={`text-sm font-bold italic ${dark ? "text-white/30" : "text-slate-400"}`}>No provider scheduled here.</p>
+                    <p className={`text-2xl font-black uppercase tracking-tight ${dark ? "text-white/25" : "text-slate-300"}`}>No office</p>
                   ) : (
                     <div className="space-y-3">
                       {slot.providers.map((cell) => (
@@ -290,47 +290,51 @@ function OfficeHalf({
                   )}
                 </div>
 
-                <div data-cell={`${prefix}-rooming`}>
-                  <RoleSection
-                    title="Rooming"
-                    role="ROOMING"
-                    date={date}
-                    half={half}
-                    office={office}
-                    cells={slot.rooming}
-                    free={free}
-                    reassignable={reassignable}
-                    run={run}
-                    currentId={currentId}
-                    isManager={isManager}
-                    dark={dark}
-                    swapRequests={swapRequests}
-                    onToggleSwap={(p) => toggleSwap(half, p)}
-                    onRespondSwap={respondSwap}
-                    onDropStaff={dropOnto(half, { role: "ROOMING", office, providerId: null })}
-                  />
-                </div>
+                {slot.providers.length > 0 && (
+                  <>
+                    <div data-cell={`${prefix}-rooming`}>
+                      <RoleSection
+                        title="Rooming"
+                        role="ROOMING"
+                        date={date}
+                        half={half}
+                        office={office}
+                        cells={slot.rooming}
+                        free={free}
+                        reassignable={reassignable}
+                        run={run}
+                        currentId={currentId}
+                        isManager={isManager}
+                        dark={dark}
+                        swapRequests={swapRequests}
+                        onToggleSwap={(p) => toggleSwap(half, p)}
+                        onRespondSwap={respondSwap}
+                        onDropStaff={dropOnto(half, { role: "ROOMING", office, providerId: null })}
+                      />
+                    </div>
 
-                <div data-cell={`${prefix}-xray`}>
-                  <RoleSection
-                    title="X-ray"
-                    role="XRAY"
-                    date={date}
-                    half={half}
-                    office={office}
-                    cells={slot.xray}
-                    free={slot.xrayEligible}
-                    reassignable={reassignable}
-                    run={run}
-                    currentId={currentId}
-                    isManager={isManager}
-                    dark={dark}
-                    swapRequests={swapRequests}
-                    onToggleSwap={(p) => toggleSwap(half, p)}
-                    onRespondSwap={respondSwap}
-                    onDropStaff={dropOnto(half, { role: "XRAY", office, providerId: null })}
-                  />
-                </div>
+                    <div data-cell={`${prefix}-xray`}>
+                      <RoleSection
+                        title="X-ray"
+                        role="XRAY"
+                        date={date}
+                        half={half}
+                        office={office}
+                        cells={slot.xray}
+                        free={slot.xrayEligible}
+                        reassignable={reassignable}
+                        run={run}
+                        currentId={currentId}
+                        isManager={isManager}
+                        dark={dark}
+                        swapRequests={swapRequests}
+                        onToggleSwap={(p) => toggleSwap(half, p)}
+                        onRespondSwap={respondSwap}
+                        onDropStaff={dropOnto(half, { role: "XRAY", office, providerId: null })}
+                      />
+                    </div>
+                  </>
+                )}
               </Fragment>
             );
           })}

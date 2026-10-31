@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getFreeStaff, getXrayEligible } from "@/lib/schedule";
+import { getDaySchedule, getFreeStaff, getXrayEligible } from "@/lib/schedule";
 import { weekdayIndex } from "@/lib/date";
 import { HALVES, OFFICES, ROLES, type Half, type Office } from "@/lib/types";
 
@@ -27,6 +27,11 @@ export async function POST(req: NextRequest) {
   const staff = await prisma.staff.findUnique({ where: { id: staffId } });
   if (!staff || !staff.active) {
     return NextResponse.json({ error: "Unknown staff member" }, { status: 400 });
+  }
+
+  const day = await getDaySchedule(date);
+  if (day.halves[half as Half][office as Office].providers.length === 0) {
+    return NextResponse.json({ error: "That office is closed that half, since no providers are working." }, { status: 400 });
   }
 
   // X-ray has its own eligibility system (default tech, or a satisfied
@@ -78,6 +83,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Someone can only hold one placement a half, and if they got this far
+    // any they already have is set aside at a closed office.
+    const closedOffices = OFFICES.filter((o) => day.halves[half as Half][o].providers.length === 0);
+    await prisma.assignment.deleteMany({ where: { date, half, staffId, office: { in: [...closedOffices] } } });
     const created = await prisma.assignment.create({
       data: {
         date,

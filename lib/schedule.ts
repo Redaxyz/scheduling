@@ -253,7 +253,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
     providerAutoOverrides,
     staff,
     staffAbsences,
-    assignments,
+    allAssignments,
     scribeFallbacks,
     autoOverrides,
     allProviders,
@@ -288,6 +288,14 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
   const templateSlotFor = (staffId: string, half: Half) => staffTemplateSlots.find((t) => t.staffId === staffId && t.half === half);
 
   const { isAbsent: isProviderAbsent, isActive: isProviderActive } = buildActivity(scheduleSlots, providerAbsences, providerAutoOverrides);
+
+  // An office with no provider working this half is closed: nobody's placed
+  // there, so everyone planned for it stays free to be added elsewhere. A
+  // placement made before it closed is only set aside, not deleted, so it
+  // comes back if a provider returns.
+  const isOfficeOpen = (office: string, half: string) =>
+    scheduleSlots.some((s) => s.office === office && s.half === half && !isProviderAbsent(s.providerId, half as Half));
+  const assignments = allAssignments.filter((a) => isOfficeOpen(a.office, a.half));
 
   const isStaffAbsent = (staffId: string, half: Half) =>
     staffAbsences.some((a) => a.staffId === staffId && absenceMatches(half, a.half));
@@ -613,20 +621,24 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
         ...s,
         defaultXrayOffice: optedInStaffIds.has(s.id) ? (templateSlotFor(s.id, half)?.role === "XRAY" ? templateSlotFor(s.id, half)!.office : null) : s.defaultXrayOffice,
       }));
-      const xrayEligible =
-        weekday === null ? [] : computeXrayEligible(office, half, xrayEligibilityStaff, isStaffAbsent, isStaffAssigned, isOverridden);
+      const open = isOfficeOpen(office, half);
+      const xrayEligible = open ? computeXrayEligible(office, half, xrayEligibilityStaff, isStaffAbsent, isStaffAssigned, isOverridden) : [];
 
-      const rooming = [
-        ...officeAssignments.filter((a) => a.role === "ROOMING").map(toCell),
-        ...autoRoomingEntries,
-        ...autoDefaultRoomingEntries,
-        ...autoTemplateEntries.filter((e) => e.role === "ROOMING"),
-      ];
-      const xray = [
-        ...officeAssignments.filter((a) => a.role === "XRAY").map(toCell),
-        ...autoXrayEntries,
-        ...autoTemplateEntries.filter((e) => e.role === "XRAY"),
-      ];
+      const rooming = open
+        ? [
+            ...officeAssignments.filter((a) => a.role === "ROOMING").map(toCell),
+            ...autoRoomingEntries,
+            ...autoDefaultRoomingEntries,
+            ...autoTemplateEntries.filter((e) => e.role === "ROOMING"),
+          ]
+        : [];
+      const xray = open
+        ? [
+            ...officeAssignments.filter((a) => a.role === "XRAY").map(toCell),
+            ...autoXrayEntries,
+            ...autoTemplateEntries.filter((e) => e.role === "XRAY"),
+          ]
+        : [];
       const staffCount = providers.filter((p) => p.scribe).length + rooming.length + xray.length;
 
       halves[half][office] = {
@@ -725,36 +737,8 @@ export async function getFreeStaff(date: string): Promise<Record<Half, FreeStaff
 // backup techs whose primary is out (see computeXrayEligible). Used by the
 // assignments API to validate an XRAY-role request without hardcoding kind.
 export async function getXrayEligible(date: string, office: Office, half: Half): Promise<FreeStaffMember[]> {
-  const weekday = weekdayIndex(date);
-  if (weekday === null) return [];
-
-  const [staff, staffAbsences, assignments, autoOverrides, templateSlots, optedInRows] = await Promise.all([
-    prisma.staff.findMany({ where: { active: true }, include: { xrayBackupAs: true } }),
-    prisma.staffAbsence.findMany({ where: { date } }),
-    prisma.assignment.findMany({ where: { date } }),
-    prisma.autoOverride.findMany({ where: { date } }),
-    prisma.staffScheduleSlot.findMany({ where: { weekday, half } }),
-    prisma.staffScheduleSlot.findMany({ select: { staffId: true }, distinct: ["staffId"] }),
-  ]);
-
-  const isStaffAbsent = (staffId: string, h: Half) =>
-    staffAbsences.some((a) => a.staffId === staffId && absenceMatches(h, a.half));
-  const isStaffAssigned = (staffId: string, h: Half) => assignments.some((a) => a.staffId === staffId && a.half === h);
-  const isOverridden = (staffId: string, h: Half) => autoOverrides.some((o) => o.staffId === staffId && o.half === h);
-
-  // Same effective-office adaptation as getDaySchedule: once someone has any
-  // personal template row at all (any weekday/half — opted-in status isn't
-  // specific to this one), their template's XRAY office for THIS half (if
-  // any) is what "your usual spot" means now, not the legacy field.
-  const optedInStaffIds = new Set(optedInRows.map((r) => r.staffId));
-  const xrayEligibilityStaff = staff.map((s) => ({
-    ...s,
-    defaultXrayOffice: optedInStaffIds.has(s.id)
-      ? (templateSlots.find((t) => t.staffId === s.id)?.role === "XRAY" ? (templateSlots.find((t) => t.staffId === s.id)!.office ?? null) : null)
-      : s.defaultXrayOffice,
-  }));
-
-  return computeXrayEligible(office, half, xrayEligibilityStaff, isStaffAbsent, isStaffAssigned, isOverridden);
+  const day = await getDaySchedule(date);
+  return day.halves[half][office].xrayEligible;
 }
 
 // Where a staff member currently sits for one half — office/role/providerId
@@ -1029,6 +1013,10 @@ export async function getUsualPosition(staffId: string, date: string, half: Half
     const office = activeOffice(providerId, half);
     return office ? { office, role: "SCRIBE", providerId } : null;
   };
+  // Nobody's usually at an office with no providers that half, whatever their
+  // template says (see isOfficeOpen in getDaySchedule).
+  const atOffice = (office: string, role: Role): UsualPosition | null =>
+    slots.some((s) => s.office === office && s.half === half && isActive(s.providerId, half)) ? { office: office as Office, role, providerId: null } : null;
   const dedicated = staff.dedicatedProviderId;
 
   if (templateRows.length > 0) {
@@ -1039,7 +1027,7 @@ export async function getUsualPosition(staffId: string, date: string, half: Half
       if (own) return own;
     }
     if ((row?.role === "ROOMING" || row?.role === "XRAY") && row.office) {
-      return { office: row.office as Office, role: row.role, providerId: null };
+      return atOffice(row.office, row.role);
     }
     return null;
   }
@@ -1053,9 +1041,9 @@ export async function getUsualPosition(staffId: string, date: string, half: Half
     const target = scribing(fallback.targetProviderId);
     if (target) return target;
   } else if (fallback) {
-    return { office: fallback.office as Office, role: "ROOMING", providerId: null };
+    return atOffice(fallback.office, "ROOMING");
   }
-  if (staff.defaultXrayOffice) return { office: staff.defaultXrayOffice as Office, role: "XRAY", providerId: null };
-  if (staff.defaultRoomingOffice) return { office: staff.defaultRoomingOffice as Office, role: "ROOMING", providerId: null };
+  if (staff.defaultXrayOffice) return atOffice(staff.defaultXrayOffice, "XRAY");
+  if (staff.defaultRoomingOffice) return atOffice(staff.defaultRoomingOffice, "ROOMING");
   return null;
 }
