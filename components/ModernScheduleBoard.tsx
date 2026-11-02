@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState, useTransition } from "react";
+import { Fragment, useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { DaySchedule, FreeStaffMember, PositionRef, ProviderCell } from "@/lib/schedule";
@@ -59,6 +59,10 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
   // folds AM and PM into one summary line — so anyone unassigned for both
   // halves needs deduping here, or they'd otherwise print twice.
   const unassignedLine = Array.from(new Map(HALVES.flatMap((half) => day.unassigned[half]).map((s) => [s.id, s.name])).values());
+  const rosterRows = [
+    { label: "Not assigned yet", names: unassignedLine },
+    { label: "Out of office", names: day.ooo.map((s) => s.name) },
+  ].filter((row) => row.names.length > 0);
 
   // On a phone the two offices stack, so whichever one is actually "yours"
   // should land on top instead of always defaulting to Bethesda-then-
@@ -117,7 +121,9 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
         </div>
       </div>
 
-      <div className="relative z-10 flex flex-col lg:flex-row lg:items-stretch">
+      {/* max-lg:pb-28 keeps the bottom nav from covering the end of the
+          stacked offices on a phone. */}
+      <div className="relative z-10 flex flex-col max-lg:pb-28 lg:flex-row lg:items-stretch">
         {OFFICES.map((office) => (
           <OfficeHalf
             key={office}
@@ -130,6 +136,21 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
             swapRequests={swapRequests}
             onChanged={refresh}
             mobileOrderClass={office === mobileFirst ? "order-1 lg:order-none" : "order-2 lg:order-none"}
+            footer={
+              office === "GERMANTOWN" &&
+              rosterRows.length > 0 && (
+                // On a phone the offices stack, so the seam-straddling rows
+                // below can't work; they sit at the end of Germantown instead.
+                <div className="mt-10 space-y-4 border-t border-white/10 pt-6 lg:hidden">
+                  {rosterRows.map((row) => (
+                    <div key={row.label}>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">{row.label}</div>
+                      <p className="mt-1 text-sm font-bold text-white">{row.names.join(", ")}</p>
+                    </div>
+                  ))}
+                </div>
+              )
+            }
           />
         ))}
       </div>
@@ -139,23 +160,18 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
           each label and its names meet right at the seam. "Out of office"
           is everyone absent the whole day (they're never in "not assigned",
           which only lists people who are in). */}
-      {(unassignedLine.length > 0 || day.ooo.length > 0) && (
-        <div className="relative z-10 space-y-1.5 pb-6">
-          {[
-            { label: "Not assigned yet", names: unassignedLine },
-            { label: "Out of office", names: day.ooo.map((s) => s.name) },
-          ]
-            .filter((row) => row.names.length > 0)
-            .map((row) => (
-              <div key={row.label} className="flex">
-                <div className="flex w-1/2 justify-end pr-3 sm:pr-4">
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-slate-900/70">{row.label}</span>
-                </div>
-                <div className="flex w-1/2 justify-start pl-3 sm:pl-4">
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-white/80">{row.names.join(", ")}</span>
-                </div>
+      {rosterRows.length > 0 && (
+        <div className="relative z-10 space-y-1.5 pb-6 max-lg:hidden">
+          {rosterRows.map((row) => (
+            <div key={row.label} className="flex">
+              <div className="flex w-1/2 justify-end pr-3 sm:pr-4">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-slate-900/70">{row.label}</span>
               </div>
-            ))}
+              <div className="flex w-1/2 justify-start pl-3 sm:pl-4">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-white/80">{row.names.join(", ")}</span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -172,6 +188,7 @@ function OfficeHalf({
   swapRequests,
   onChanged,
   mobileOrderClass,
+  footer,
 }: {
   date: string;
   office: Office;
@@ -182,6 +199,7 @@ function OfficeHalf({
   swapRequests: SwapRequestView[];
   onChanged: () => void;
   mobileOrderClass: string;
+  footer?: ReactNode;
 }) {
   const [error, setError] = useState<string | null>(null);
   const dark = office === "GERMANTOWN";
@@ -340,6 +358,7 @@ function OfficeHalf({
           })}
         </div>
       </div>
+      {footer}
     </div>
   );
 }
