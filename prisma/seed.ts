@@ -142,17 +142,21 @@ const STAFF: {
 }[] = [
   // 12 pastels evenly spaced around the hue wheel so every person reads as
   // a clearly different color while staying soft/mellow.
-  // pinnedGridIndex values below lay out the sign-in picker (5 rows x 3
-  // cols, column-major: index = col*ROWS + row) in this exact arrangement:
-  //   Row1: Anna, Ben, Emma       Row2: Hope, Jen, Reda
-  //   Row3: Brian PA-C, Joanna, Jessica PA-C
-  //   Row4: Cindy, Charlie, JB      Row5: Shelby, Mark, Jenish
-  { name: "Reda", kind: "SCRIBE", canScribe: true, color: "hsl(0, 62%, 85%)", homeOffice: null, dedicatedProviderInitials: "C", isManager: true, pinnedGridIndex: 11 },
-  { name: "Ben", kind: "SCRIBE", canScribe: true, color: "hsl(30, 62%, 83%)", homeOffice: null, dedicatedProviderInitials: "R", pinnedGridIndex: 5 },
-  { name: "Hope", kind: "SCRIBE", canScribe: true, color: "hsl(50, 58%, 80%)", homeOffice: null, dedicatedProviderInitials: "Fe", pinnedGridIndex: 1 },
+  // pinnedGridIndex values below lay out the sign-in picker (4 rows x 4
+  // cols for now, column-major: index = col*4 + row; see ROW_COLS in
+  // lib/zigzagGrid.ts) in this exact arrangement:
+  //   Row1: Anna, Ben, Emma, Hope
+  //   Row2: Jen, Charlie, Mark, Isabel
+  //   Row3: Brian PA-C, Joanna, Reda, Jessica PA-C
+  //   Row4: Cindy, Shelby, JB, Jenish
+  // Once JB leaves it goes back to 5 rows x 3 cols, with Isabel in JB's old
+  // spot (row 4, col 3).
+  { name: "Reda", kind: "SCRIBE", canScribe: true, color: "hsl(0, 62%, 85%)", homeOffice: null, dedicatedProviderInitials: "C", isManager: true, pinnedGridIndex: 10 },
+  { name: "Ben", kind: "SCRIBE", canScribe: true, color: "hsl(30, 62%, 83%)", homeOffice: null, dedicatedProviderInitials: "R", pinnedGridIndex: 4 },
+  { name: "Hope", kind: "SCRIBE", canScribe: true, color: "hsl(50, 58%, 80%)", homeOffice: null, dedicatedProviderInitials: "Fe", pinnedGridIndex: 12 },
   { name: "Anna", kind: "SCRIBE", canScribe: true, color: "hsl(80, 45%, 79%)", homeOffice: null, dedicatedProviderInitials: "Mc", pinnedGridIndex: 0 },
-  { name: "Emma", kind: "SCRIBE", canScribe: true, color: "hsl(120, 38%, 80%)", homeOffice: null, dedicatedProviderInitials: "Fi", pinnedGridIndex: 10 },
-  { name: "Jen", kind: "SCRIBE", canScribe: true, color: "hsl(155, 42%, 79%)", homeOffice: null, dedicatedProviderInitials: "G", pinnedGridIndex: 6 },
+  { name: "Emma", kind: "SCRIBE", canScribe: true, color: "hsl(120, 38%, 80%)", homeOffice: null, dedicatedProviderInitials: "Fi", pinnedGridIndex: 8 },
+  { name: "Jen", kind: "SCRIBE", canScribe: true, color: "hsl(155, 42%, 79%)", homeOffice: null, dedicatedProviderInitials: "G", pinnedGridIndex: 1 },
   // JB and Mark are standing default Support/rooming for Bethesda every day
   // (unless absent); Charlie and Jenish, same for Germantown. See
   // defaultRoomingOffice — a "hard" commitment like defaultXrayOffice.
@@ -164,7 +168,7 @@ const STAFF: {
     homeOffice: "BETHESDA",
     dedicatedProviderInitials: null,
     defaultRoomingOffice: "BETHESDA",
-    pinnedGridIndex: 13,
+    pinnedGridIndex: 11,
   },
   // Mark is also certified for X-ray, backing up either Cindy or Shelby
   // when one of them is out (it's not his dedicated role, just a backup).
@@ -190,7 +194,19 @@ const STAFF: {
     dedicatedProviderInitials: null,
     defaultRoomingOffice: "GERMANTOWN",
     xrayBackupForNames: ["Cindy", "Shelby"],
-    pinnedGridIndex: 8,
+    pinnedGridIndex: 5,
+  },
+  // Isabel: same setup as Jenish (no scribing, no x-ray, not a manager),
+  // standing default Support/rooming for Bethesda.
+  {
+    name: "Isabel",
+    kind: "GENERAL",
+    canScribe: false,
+    color: "hsl(140, 40%, 80%)",
+    homeOffice: "BETHESDA",
+    dedicatedProviderInitials: null,
+    defaultRoomingOffice: "BETHESDA",
+    pinnedGridIndex: 13,
   },
   {
     name: "Jenish",
@@ -200,15 +216,15 @@ const STAFF: {
     homeOffice: "GERMANTOWN",
     dedicatedProviderInitials: null,
     defaultRoomingOffice: "GERMANTOWN",
-    pinnedGridIndex: 14,
+    pinnedGridIndex: 15,
   },
   { name: "Cindy", kind: "XRAY", canScribe: false, color: "hsl(298, 45%, 86%)", homeOffice: "BETHESDA", dedicatedProviderInitials: null, defaultXrayOffice: "BETHESDA", pinnedGridIndex: 3 },
-  { name: "Shelby", kind: "XRAY", canScribe: false, color: "hsl(332, 58%, 86%)", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null, defaultXrayOffice: "GERMANTOWN", pinnedGridIndex: 4 },
+  { name: "Shelby", kind: "XRAY", canScribe: false, color: "hsl(332, 58%, 86%)", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null, defaultXrayOffice: "GERMANTOWN", pinnedGridIndex: 7 },
   // Brian and Jessica are PA-Cs (see PROVIDERS/SCHEDULES above for their clinic
   // schedule) but also get a Staff row so they can pick themselves in the app
   // and self-log their own absences, same as the rest of the staff.
   { name: "Brian, PA-C", kind: "GENERAL", canScribe: false, color: "hsl(15, 60%, 84%)", homeOffice: null, dedicatedProviderInitials: null, pinnedGridIndex: 2 },
-  { name: "Jessica, PA-C", kind: "GENERAL", canScribe: false, color: "hsl(345, 55%, 86%)", homeOffice: null, dedicatedProviderInitials: null, pinnedGridIndex: 12 },
+  { name: "Jessica, PA-C", kind: "GENERAL", canScribe: false, color: "hsl(345, 55%, 86%)", homeOffice: null, dedicatedProviderInitials: null, pinnedGridIndex: 14 },
   // Lester floats between both offices, only accessible for X-ray when
   // either Cindy or Shelby is out — not office-locked like Mark/Charlie.
   {
@@ -223,9 +239,8 @@ const STAFF: {
     usesApp: false,
   },
   // Joanna is the manager: can add anyone eligible to any position while
-  // logged in as herself, not just self-add (see TakeRoleButton). Pinned to
-  // the exact center of the 5-row x 3-col sign-in grid (index 7 = row 2,
-  // col 1), rather than wherever alphabetical order would otherwise put her.
+  // logged in as herself, not just self-add (see TakeRoleButton). Pinned in
+  // the sign-in grid like everyone else (see the layout note above).
   {
     name: "Joanna",
     kind: "GENERAL",
@@ -234,7 +249,7 @@ const STAFF: {
     homeOffice: null,
     dedicatedProviderInitials: null,
     isManager: true,
-    pinnedGridIndex: 7,
+    pinnedGridIndex: 6,
   },
 ];
 

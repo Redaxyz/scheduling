@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { useWhoAmI, type StaffOption } from "@/lib/whoami";
-import { buildGridCurves, cellClipPath, COLS, ROWS } from "@/lib/zigzagGrid";
+import { buildGridCurves, cellCenterPct, cellClipPath, GRID_SLOTS, gridColorIndexes } from "@/lib/zigzagGrid";
 
 const GROW_MS = 480;
 const HOLD_MS = 120;
@@ -35,13 +35,12 @@ function useTweener() {
 type Phase = "idle" | "grow" | "hold" | "fade";
 type Cell = { staff: StaffOption; row: number; col: number };
 
-// Straight from the CAO pin logo. Assigning by (row + col) % length instead
-// of per-person means every edge-adjacent pair of cells always lands on a
-// different index in the cycle — no two touching tiles ever share a color,
-// without needing a real graph-coloring pass for a plain grid.
+// Straight from the CAO pin logo. Colored by position, not per person, and
+// arranged so no two touching tiles ever share a color (see gridColorIndexes).
 const CAO_PALETTE = ["#1878b4", "#4fb3e8", "#f5871f", "#333f4c"];
+const CELL_COLORS = gridColorIndexes(CAO_PALETTE.length);
 function modernCellColor(row: number, col: number) {
-  return CAO_PALETTE[(row + col) % CAO_PALETTE.length];
+  return CAO_PALETTE[CELL_COLORS.get(`${row}:${col}`) ?? 0];
 }
 
 export default function UserPicker() {
@@ -58,8 +57,8 @@ export default function UserPicker() {
 
   const curves = useMemo(() => buildGridCurves(), []);
 
-  // Alphabetical, top-to-bottom then left-to-right: first ROWS names fill
-  // column 0, next ROWS fill column 1, etc. — except anyone with a
+  // Alphabetical, slot by slot in GRID_SLOTS order (column 0 top to
+  // bottom, then column 1, ...) — except anyone with a
   // pinnedGridIndex, who's fixed at that exact slot; everyone else fills
   // the remaining slots around them, still in alphabetical order.
   const cells: Cell[] = useMemo(() => {
@@ -67,17 +66,19 @@ export default function UserPicker() {
     const pinned = sorted.filter((s) => s.pinnedGridIndex !== null);
     const unpinned = sorted.filter((s) => s.pinnedGridIndex === null);
 
-    const slots: (StaffOption | undefined)[] = new Array(sorted.length);
+    // One slot per grid cell. Anyone past the last cell isn't shown, so
+    // change ROW_COLS in lib/zigzagGrid.ts whenever the headcount changes.
+    const slots: (StaffOption | undefined)[] = new Array(GRID_SLOTS.length);
     for (const p of pinned) {
       if (p.pinnedGridIndex! >= 0 && p.pinnedGridIndex! < slots.length) slots[p.pinnedGridIndex!] = p;
     }
     let next = 0;
-    for (let i = 0; i < slots.length; i++) {
+    for (let i = 0; i < slots.length && next < unpinned.length; i++) {
       if (!slots[i]) slots[i] = unpinned[next++];
     }
 
     return slots
-      .map((staff, i) => (staff ? { staff, row: i % ROWS, col: Math.floor(i / ROWS) } : null))
+      .map((staff, i) => (staff ? { staff, ...GRID_SLOTS[i] } : null))
       .filter((c): c is Cell => c !== null);
   }, [staffList]);
 
@@ -89,11 +90,10 @@ export default function UserPicker() {
 
   function pick(cell: Cell) {
     if (phase !== "idle") return;
-    const xCenterPct = ((cell.col + 0.5) / COLS) * 100;
-    const yCenterPct = ((cell.row + 0.5) / ROWS) * 100;
+    const center = cellCenterPct(cell.row, cell.col);
     setOrigin({
-      x: (xCenterPct / 100) * window.innerWidth,
-      y: (yCenterPct / 100) * window.innerHeight,
+      x: (center.x / 100) * window.innerWidth,
+      y: (center.y / 100) * window.innerHeight,
     });
     setPicked(cell.staff);
     setPickedColor(modernCellColor(cell.row, cell.col));
@@ -122,7 +122,9 @@ export default function UserPicker() {
       )}
 
       {phase !== "fade" &&
-        cells.map((cell) => (
+        cells.map((cell) => {
+          const center = cellCenterPct(cell.row, cell.col);
+          return (
           <button
             key={cell.staff.id}
             type="button"
@@ -143,16 +145,32 @@ export default function UserPicker() {
             <span
               className={labelClass}
               style={{
-                left: `${((cell.col + 0.5) / COLS) * 100}%`,
-                top: `${((cell.row + 0.5) / ROWS) * 100}%`,
+                left: `${center.x}%`,
+                top: `${center.y}%`,
                 transform: "translate(-50%, -50%)",
                 ...labelStyle,
+                // A long name (e.g. "Jessica, PA-C") wraps inside its own
+                // tile on a narrow phone instead of spilling into the next.
+                whiteSpace: "normal",
+                textAlign: "center",
+                width: "max-content",
+                maxWidth: `calc(${center.width}vw - 12px)`,
               }}
             >
-              {cell.staff.name}
+              {/* Only ever break after a comma, never inside "PA-C". */}
+              {cell.staff.name.split(", ").map((part, i, parts) => (
+                <Fragment key={i}>
+                  <span className="whitespace-nowrap">
+                    {part}
+                    {i < parts.length - 1 && ","}
+                  </span>
+                  {i < parts.length - 1 && " "}
+                </Fragment>
+              ))}
             </span>
           </button>
-        ))}
+          );
+        })}
 
       {picked && phase !== "idle" && (
         <div
