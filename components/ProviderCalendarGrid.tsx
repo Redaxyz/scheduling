@@ -33,10 +33,19 @@ function cellColor(cell: ProviderHalfCell, closedHoliday: boolean): string {
   return cell.office ? OFFICE_COLOR[cell.office] : OFF_DUTY_COLOR;
 }
 
-// White-on-Bethesda is the one fill light enough to need dark text.
+// The pale fills (holiday purple, surgery light blue, white Bethesda) need
+// dark text; red absent and near-black Germantown take white.
 function cellTextClass(cell: ProviderHalfCell, closedHoliday: boolean): string {
-  if (closedHoliday) return "text-slate-700";
+  if (closedHoliday || cell.status === "SURGERY") return "text-slate-800";
   return cell.status === "PRESENT" && cell.office === "BETHESDA" ? "text-slate-700" : "text-white/90";
+}
+
+// H closed holiday, X absent, S surgery, otherwise the office's B / G.
+function cellLetter(cell: ProviderHalfCell, closedHoliday: boolean): string {
+  if (closedHoliday) return "H";
+  if (cell.status === "ABSENT") return "X";
+  if (cell.status === "SURGERY") return "S";
+  return cell.office ? OFFICE_LETTER[cell.office] : "";
 }
 
 const WEEKDAY_LETTERS = ["M", "T", "W", "Th", "F"];
@@ -305,7 +314,7 @@ export default function ProviderCalendarGrid({
                           className={`flex w-full items-center justify-center font-extrabold ${cellTextClass(cell, closedHoliday)} ${dense ? "text-[9px]" : "text-xs"}`}
                           style={{ height: dynamicRowHeight }}
                         >
-                          {cell.office && cell.status !== "ABSENT" && !closedHoliday ? OFFICE_LETTER[cell.office] : ""}
+                          {cellLetter(cell, closedHoliday)}
                         </span>
                       </button>
                     </td>
