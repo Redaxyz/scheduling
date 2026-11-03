@@ -5,11 +5,19 @@ export type DeviceKind =
   | "ios-other-browser" // in-app browsers and the like can't add it reliably
   | "ios-outdated" // web push arrived in iOS 16.4
   | "ios-app" // opened from the home screen icon, ready to turn on
-  | "android"
+  | "android" // Chrome, including Pixels
+  | "android-samsung" // Samsung Internet: same idea, different menus
+  | "android-app" // opened from the home screen icon, ready to turn on
   | "android-other-browser"
+  | "mac-safari" // can add it to the Dock (macOS Sonoma and up)
+  | "mac-app" // opened from the Dock, ready to turn on
   | "computer";
 
 export type Device = { kind: DeviceKind; name: string };
+
+function isStandalone(): boolean {
+  return window.matchMedia("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true;
+}
 
 export function detectDevice(): Device {
   const ua = navigator.userAgent;
@@ -20,8 +28,7 @@ export function detectDevice(): Device {
 
   if (isIPad || /iPhone|iPod/.test(ua)) {
     const name = isIPad ? "iPad" : "iPhone";
-    const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true;
-    if (standalone) return { kind: pushSupported ? "ios-app" : "ios-outdated", name };
+    if (isStandalone()) return { kind: pushSupported ? "ios-app" : "ios-outdated", name };
     const version = ua.match(/OS (\d+)_(\d+)/);
     if (version && (Number(version[1]) < 16 || (Number(version[1]) === 16 && Number(version[2]) < 4))) {
       return { kind: "ios-outdated", name };
@@ -29,6 +36,15 @@ export function detectDevice(): Device {
     const safari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|GSA|DuckDuckGo|FBAN|FBAV|Instagram|Line\//.test(ua);
     return { kind: safari ? "ios-safari" : "ios-other-browser", name };
   }
-  if (/Android/.test(ua)) return { kind: pushSupported ? "android" : "android-other-browser", name: "Android phone" };
+  if (/Android/.test(ua)) {
+    const name = "Android phone";
+    if (!pushSupported) return { kind: "android-other-browser", name };
+    if (isStandalone()) return { kind: "android-app", name };
+    return { kind: /SamsungBrowser/.test(ua) ? "android-samsung" : "android", name };
+  }
+  if (/Macintosh/.test(ua) && pushSupported) {
+    if (isStandalone()) return { kind: "mac-app", name: "Mac" };
+    if (/Safari/.test(ua) && !/Chrome|Chromium|CriOS|Edg|Firefox|OPR/.test(ua)) return { kind: "mac-safari", name: "Mac" };
+  }
   return { kind: "computer", name: "computer" };
 }

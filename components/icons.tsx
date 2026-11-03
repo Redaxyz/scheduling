@@ -67,6 +67,57 @@ export function ShareIcon({ className, style }: IconProps) {
   );
 }
 
+// Chrome's three-dot menu.
+export function MoreVerticalIcon({ className, style }: IconProps) {
+  return (
+    <svg {...base} className={className} style={style}>
+      <circle cx="12" cy="5.5" r="1.3" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.3" fill="currentColor" />
+      <circle cx="12" cy="18.5" r="1.3" fill="currentColor" />
+    </svg>
+  );
+}
+
+// Safari's newer "•••" button.
+export function MoreHorizontalIcon({ className, style }: IconProps) {
+  return (
+    <svg {...base} className={className} style={style}>
+      <circle cx="5.5" cy="12" r="1.3" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.3" fill="currentColor" />
+      <circle cx="18.5" cy="12" r="1.3" fill="currentColor" />
+    </svg>
+  );
+}
+
+// Samsung Internet's three-line menu.
+export function MenuIcon({ className, style }: IconProps) {
+  return (
+    <svg {...base} className={className} style={style}>
+      <path d="M4.5 7h15M4.5 12h15M4.5 17h15" />
+    </svg>
+  );
+}
+
+export function InstallIcon({ className, style }: IconProps) {
+  return (
+    <svg {...base} className={className} style={style}>
+      <path d="M12 4v10M8 10.5l4 4 4-4" />
+      <path d="M5 15.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5" />
+    </svg>
+  );
+}
+
+// A row of app icons sitting on the Mac's Dock.
+export function DockIcon({ className, style }: IconProps) {
+  return (
+    <svg {...base} className={className} style={style}>
+      <rect x="3" y="14" width="18" height="6" rx="2" />
+      <rect x="6" y="9" width="4" height="4" rx="1" />
+      <rect x="14" y="9" width="4" height="4" rx="1" />
+    </svg>
+  );
+}
+
 export function PlusSquareIcon({ className, style }: IconProps) {
   return (
     <svg {...base} className={className} style={style}>

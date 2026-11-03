@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useWhoAmI } from "@/lib/whoami";
 import { detectDevice, type Device, type DeviceKind } from "@/lib/device";
 import { NOTIFIED_STAFF } from "@/lib/types";
-import { PlusSquareIcon, ShareIcon } from "@/components/icons";
+import { DockIcon, HomeIcon, InstallIcon, MenuIcon, MoreHorizontalIcon, MoreVerticalIcon, PlusSquareIcon, ShareIcon } from "@/components/icons";
 
 type SetupState = "on" | "off" | "blocked";
 type View = DeviceKind | "blocked" | "on";
@@ -40,11 +40,188 @@ const PREVIEWS: { view: View; label: string }[] = [
   { view: "ios-other-browser", label: "iPhone, other browser" },
   { view: "ios-app", label: "iPhone, home screen" },
   { view: "ios-outdated", label: "Old iPhone" },
-  { view: "android", label: "Android" },
-  { view: "computer", label: "Computer" },
+  { view: "android", label: "Android / Pixel" },
+  { view: "android-samsung", label: "Samsung" },
+  { view: "android-app", label: "Android, home screen" },
+  { view: "mac-safari", label: "Mac, Safari" },
+  { view: "mac-app", label: "Mac, Dock" },
+  { view: "computer", label: "Other computer" },
   { view: "blocked", label: "Blocked" },
   { view: "on", label: "All set" },
 ];
+
+const VIEW_NAMES: Partial<Record<View, string>> = {
+  android: "Android phone",
+  "android-samsung": "Android phone",
+  "android-app": "Android phone",
+  "android-other-browser": "Android phone",
+  "mac-safari": "Mac",
+  "mac-app": "Mac",
+  computer: "computer",
+};
+
+// --- Add-to-home-screen walkthroughs, one step at a time -------------------
+
+type WalkStep = { icon: ReactNode; title: ReactNode; detail?: ReactNode };
+
+const ICON = "h-8 w-8";
+
+function Pill({ children }: { children: ReactNode }) {
+  return <span className="rounded-lg bg-slate-900 px-2 py-0.5 text-sm font-extrabold text-white">{children}</span>;
+}
+
+// eslint-disable-next-line @next/next/no-img-element
+const APP_ICON = <img src="/icon.svg" alt="" className="h-10 w-10 rounded-xl" />;
+
+const IOS_STEPS: WalkStep[] = [
+  {
+    icon: <ShareIcon className={ICON} />,
+    title: "Tap the Share button",
+    detail: (
+      <>
+        It&apos;s in Safari&apos;s toolbar. Don&apos;t see it? Tap <MoreHorizontalIcon className="inline h-5 w-5 align-text-bottom" /> first, then <strong>Share</strong>.
+      </>
+    ),
+  },
+  {
+    icon: <PlusSquareIcon className={ICON} />,
+    title: "Tap Add to Home Screen",
+    detail: "Scroll down the list if you don't see it right away.",
+  },
+  {
+    icon: <Pill>Add</Pill>,
+    title: "Tap Add",
+    detail: (
+      <>
+        If you see <strong>Open as Web App</strong>, leave it on.
+      </>
+    ),
+  },
+  {
+    icon: APP_ICON,
+    title: "Open Schedule from your home screen",
+    detail: "Close Safari and tap the new Schedule icon. Sign in once more and this guide will finish up there.",
+  },
+];
+
+const ANDROID_STEPS: WalkStep[] = [
+  {
+    icon: <MoreVerticalIcon className={ICON} />,
+    title: "Tap the ⋮ menu",
+    detail: "Top right corner of Chrome.",
+  },
+  {
+    icon: <InstallIcon className={ICON} />,
+    title: "Tap Add to home screen",
+    detail: (
+      <>
+        On some phones it says <strong>Install app</strong> instead.
+      </>
+    ),
+  },
+  {
+    icon: <Pill>Install</Pill>,
+    title: "Tap Install",
+    detail: (
+      <>
+        If it asks, pick <strong>Install</strong>, not Create shortcut.
+      </>
+    ),
+  },
+  {
+    icon: APP_ICON,
+    title: "Open Schedule from your home screen",
+    detail: "Tap the new Schedule icon. Sign in once more and this guide will finish up there.",
+  },
+];
+
+const SAMSUNG_STEPS: WalkStep[] = [
+  {
+    icon: <MenuIcon className={ICON} />,
+    title: "Tap the ☰ menu",
+    detail: "Bottom right corner of the screen.",
+  },
+  {
+    icon: <PlusSquareIcon className={ICON} />,
+    title: "Tap Add page to",
+    detail: (
+      <>
+        If you see <strong>Add to Home screen</strong> instead, tap that.
+      </>
+    ),
+  },
+  {
+    icon: <HomeIcon className={ICON} />,
+    title: "Tap Home screen, then Add",
+  },
+  {
+    icon: APP_ICON,
+    title: "Open Schedule from your home screen",
+    detail: "Tap the new Schedule icon. Sign in once more and this guide will finish up there.",
+  },
+];
+
+const MAC_STEPS: WalkStep[] = [
+  {
+    icon: <Pill>File</Pill>,
+    title: "Click File in the menu bar",
+    detail: "At the very top of your screen, with Safari in front.",
+  },
+  {
+    icon: <DockIcon className={ICON} />,
+    title: "Click Add to Dock, then Add",
+    detail: "Don't see it? Your Mac needs macOS Sonoma or newer. Use the button below instead.",
+  },
+  {
+    icon: APP_ICON,
+    title: "Open Schedule from your Dock",
+    detail: "This guide will finish up there.",
+  },
+];
+
+function Walkthrough({ steps }: { steps: WalkStep[] }) {
+  const [i, setI] = useState(0);
+  const step = steps[i];
+  const last = i === steps.length - 1;
+  const navClass = "rounded-full px-4 py-1.5 text-sm font-bold transition active:scale-95";
+
+  return (
+    <div className="mt-4">
+      <div className="rounded-2xl bg-slate-100 p-4">
+        <div className="text-xs font-bold uppercase tracking-wide opacity-50">
+          Step {i + 1} of {steps.length}
+        </div>
+        <div className="mt-3 flex items-start gap-3">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm">{step.icon}</div>
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-extrabold leading-snug">{step.title}</p>
+            {step.detail && <p className="mt-1 text-sm font-medium leading-snug opacity-70">{step.detail}</p>}
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <button type="button" onClick={() => setI(i - 1)} disabled={i === 0} className={`${navClass} accent-border border-2 ${i === 0 ? "invisible" : ""}`}>
+          Back
+        </button>
+        <div className="flex gap-1.5" aria-hidden>
+          {steps.map((_, j) => (
+            <span key={j} className={`h-2 w-2 rounded-full ${j === i ? "bg-slate-900" : "bg-slate-300"}`} />
+          ))}
+        </div>
+        <button type="button" onClick={() => setI(i + 1)} disabled={last} className={`${navClass} bg-slate-900 text-white ${last ? "invisible" : ""}`}>
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const WALKTHROUGHS: Partial<Record<View, WalkStep[]>> = {
+  "ios-safari": IOS_STEPS,
+  android: ANDROID_STEPS,
+  "android-samsung": SAMSUNG_STEPS,
+  "mac-safari": MAC_STEPS,
+};
 
 function keyToBytes(base64url: string): Uint8Array<ArrayBuffer> {
   const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
@@ -130,9 +307,10 @@ function CopyLink() {
 }
 
 function blockedHelp(kind: DeviceKind) {
-  if (kind === "android" || kind === "android-other-browser") {
-    return "Tap the icon to the left of the web address, then Permissions, then turn Notifications on.";
-  }
+  if (kind === "android-app") return "Press and hold the Schedule icon, tap App info, then Notifications, and turn them on.";
+  if (kind.startsWith("android")) return "Tap the icon to the left of the web address, then Permissions, then turn Notifications on.";
+  if (kind === "mac-app") return "Open System Settings, click Notifications, then Schedule, and turn on Allow notifications.";
+  if (kind === "mac-safari") return "In Safari, open Settings, then Websites, then Notifications, and set this site to Allow.";
   if (kind === "computer") return "Click the icon to the left of the web address and allow notifications for this site.";
   return "Open your phone's Settings app, tap Notifications, then Schedule, and turn on Allow Notifications.";
 }
@@ -150,7 +328,8 @@ function SetupSheet({ onClose, setup }: { onClose: () => void; setup: ReturnType
   const view = preview ?? actual;
   const previewing = view !== actual;
   // A preview of another device's steps describes that device, not this one.
-  const name = previewing ? (view === "android" ? "Android phone" : view === "computer" ? "computer" : "iPhone") : device.name;
+  const name = previewing ? (VIEW_NAMES[view] ?? "iPhone") : device.name;
+  const walkthrough = WALKTHROUGHS[view];
 
   async function run() {
     setBusy(true);
@@ -214,26 +393,19 @@ function SetupSheet({ onClose, setup }: { onClose: () => void; setup: ReturnType
           </p>
         ) : (
           <p className="mt-1 text-sm font-medium leading-snug opacity-70">
-            A heads-up the night before if you&apos;re in a different office or role than usual. You only set this up once on each device.
+            A heads-up the day before, around 5pm, if you&apos;re in a different office or role than usual. You only set this up once on each device.
+            {walkthrough && ` First, add Schedule to your ${view === "mac-safari" ? "Dock" : "home screen"}.`}
           </p>
         )}
 
-        {view === "ios-safari" && (
-          <ol className="mt-4 space-y-3">
-            <Step n={1}>
-              Tap the <strong>Share</strong> button <ShareIcon className="inline h-5 w-5 align-text-bottom" /> in Safari&apos;s toolbar. If you don&apos;t see it, tap <strong>•••</strong>{" "}
-              first.
-            </Step>
-            <Step n={2}>
-              Scroll down and tap <strong>Add to Home Screen</strong> <PlusSquareIcon className="inline h-5 w-5 align-text-bottom" />.
-            </Step>
-            <Step n={3}>
-              If you see <strong>Open as Web App</strong>, leave it on. Then tap <strong>Add</strong>.
-            </Step>
-            <Step n={4}>
-              Close Safari and open <strong>Schedule</strong> from your home screen. You&apos;ll sign in one more time, and this guide will finish up there.
-            </Step>
-          </ol>
+        {walkthrough && <Walkthrough key={view} steps={walkthrough} />}
+
+        {(view === "android" || view === "android-samsung" || view === "mac-safari") && (
+          <p className="mt-4 border-t border-slate-200 pt-3 text-sm font-medium leading-snug opacity-80">
+            Or skip that and turn them on right here in the browser.
+            <br />
+            {turnOnButton}
+          </p>
         )}
 
         {view === "ios-other-browser" && (
@@ -255,18 +427,13 @@ function SetupSheet({ onClose, setup }: { onClose: () => void; setup: ReturnType
           </ol>
         )}
 
-        {(view === "ios-app" || view === "android") && (
+        {(view === "ios-app" || view === "android-app" || view === "mac-app") && (
           <ol className="mt-4 space-y-3">
             <Step n={1}>
-              Tap the button below, then choose <strong>Allow</strong>.
+              {view === "mac-app" ? "Click" : "Tap"} the button below, then choose <strong>Allow</strong>.
               <br />
               {turnOnButton}
             </Step>
-            {view === "android" && (
-              <Step n={2}>
-                Optional: for one-tap access, open Chrome&apos;s <strong>⋮</strong> menu and tap <strong>Add to Home screen</strong>.
-              </Step>
-            )}
           </ol>
         )}
 
@@ -300,7 +467,7 @@ function SetupSheet({ onClose, setup }: { onClose: () => void; setup: ReturnType
           </p>
         )}
 
-        {previewing && (view === "ios-app" || view === "android" || view === "computer") && <p className="mt-3 text-xs font-bold opacity-50">The button is off in this preview.</p>}
+        {previewing && ["ios-app", "android", "android-samsung", "android-app", "mac-safari", "mac-app", "computer"].includes(view) && <p className="mt-3 text-xs font-bold opacity-50">The button is off in this preview.</p>}
         {error && <p className="mt-3 rounded-xl bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700">{error}</p>}
 
         <button type="button" onClick={onClose} className="mt-4 w-full py-1 text-sm font-bold opacity-50 hover:opacity-100">
@@ -364,7 +531,7 @@ export function NotificationPrompt() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (!device || !state || state === "on" || device.kind === "computer") return;
+    if (!device || !state || state === "on" || device.kind === "computer" || device.kind.startsWith("mac")) return;
     try {
       if (window.localStorage.getItem(DISMISSED_KEY)) return;
     } catch {
