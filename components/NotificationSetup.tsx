@@ -209,7 +209,7 @@ function SetupSheet({ onClose, setup }: { onClose: () => void; setup: ReturnType
 
         {view === "on" ? (
           <p className="mt-1 text-sm font-medium leading-snug">
-            This {name} is saved, so you don&apos;t need to do this again. The night before, around 9pm, you&apos;ll get an alert if you&apos;re in a different office or role than usual,
+            This {name} is saved, so you don&apos;t need to do this again. The day before, around 5pm, you&apos;ll get an alert if you&apos;re in a different office or role than usual,
             with who else will be there. No change, no alert.{justTurnedOn && " A sample is on its way."}
           </p>
         ) : (
