@@ -9,8 +9,8 @@ const PROVIDERS = [
   { initials: "Fe", name: "Dr. Feldman" },
   { initials: "Mc", name: "Dr. McCormick" },
   { initials: "G", name: "Dr. Gardiner" },
-  { initials: "B", name: "Brian, PA-C" },
-  { initials: "J", name: "Jessica, PA-C" },
+  { initials: "B", name: "Brian" },
+  { initials: "J", name: "Jessica" },
 ];
 
 type ScheduleRow = { weekday: number; half: "AM" | "PM"; office: "BETHESDA" | "GERMANTOWN" | null };
@@ -148,7 +148,7 @@ const STAFF: {
   //   Row1: Anna, Ben, Emma, Hope
   //   Row2: Cindy, Jen, Isabel, Shelby
   //   Row3: Mark, Joanna, Reda, Charlie
-  //   Row4: JB, Brian PA-C, Jessica PA-C, Jenish
+  //   Row4: JB, Brian, Jessica, Jenish
   // Once JB leaves it goes back to 5 rows x 3 cols, with Isabel in JB's old
   // spot (row 4, col 3).
   { name: "Reda", kind: "SCRIBE", canScribe: true, color: "hsl(0, 62%, 85%)", homeOffice: null, dedicatedProviderInitials: "C", isManager: true, pinnedGridIndex: 10 },
@@ -222,9 +222,10 @@ const STAFF: {
   { name: "Shelby", kind: "XRAY", canScribe: false, color: "hsl(332, 58%, 86%)", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null, defaultXrayOffice: "GERMANTOWN", pinnedGridIndex: 13 },
   // Brian and Jessica are PA-Cs (see PROVIDERS/SCHEDULES above for their clinic
   // schedule) but also get a Staff row so they can pick themselves in the app
-  // and self-log their own absences, same as the rest of the staff.
-  { name: "Brian, PA-C", kind: "GENERAL", canScribe: false, color: "hsl(15, 60%, 84%)", homeOffice: null, dedicatedProviderInitials: null, pinnedGridIndex: 7 },
-  { name: "Jessica, PA-C", kind: "GENERAL", canScribe: false, color: "hsl(345, 55%, 86%)", homeOffice: null, dedicatedProviderInitials: null, pinnedGridIndex: 11 },
+  // and self-log their own absences, same as the rest of the staff. The Staff
+  // name must match the Provider name exactly: that's what links the two.
+  { name: "Brian", kind: "GENERAL", canScribe: false, color: "hsl(15, 60%, 84%)", homeOffice: null, dedicatedProviderInitials: null, pinnedGridIndex: 7 },
+  { name: "Jessica", kind: "GENERAL", canScribe: false, color: "hsl(345, 55%, 86%)", homeOffice: null, dedicatedProviderInitials: null, pinnedGridIndex: 11 },
   // Lester floats between both offices, only accessible for X-ray when
   // either Cindy or Shelby is out — not office-locked like Mark/Charlie.
   {
