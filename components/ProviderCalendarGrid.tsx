@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ProviderCalendarRow, ProviderHalfCell } from "@/lib/calendar";
 import { effectiveMonday, effectiveScheduleDate, mondayOf, weekdayIndex } from "@/lib/date";
 import { federalHolidayName, HOLIDAY_COLOR, WORKING_HOLIDAY_COLOR } from "@/lib/holidays";
-import { getBottomNavHeight } from "@/lib/bottomNav";
+import { spaceBelow } from "@/lib/viewportSpace";
 import { HALVES, HALF_LABELS, OFFICE_LABELS, type Half, type Office } from "@/lib/types";
 import { useWhoAmI } from "@/lib/whoami";
 import { SURGERY_COLOR, OFF_COLOR, OFFICE_COLOR } from "@/lib/colors";
@@ -151,8 +151,6 @@ export default function ProviderCalendarGrid({
 
     function compute() {
       if (!containerRef.current || rows.length === 0) return;
-      const top = containerRef.current.getBoundingClientRect().top;
-      const bottomNavHeight = getBottomNavHeight();
       const headerHeight = theadRef.current?.getBoundingClientRect().height ?? 0;
       // A much bigger safety margin than a single-row measurement needs,
       // plus the same proportional shrink used for the Me tab's
@@ -160,7 +158,7 @@ export default function ProviderCalendarGrid({
       // row peeking out from under the footer with just a fixed buffer, so
       // this trades a little unused space at the bottom for a hard
       // guarantee nothing ever sits under the nav.
-      const available = (window.innerHeight - top - bottomNavHeight - headerHeight - 66) * 0.94;
+      const available = (spaceBelow(containerRef.current) - headerHeight - 66) * 0.94;
       // Each <td>'s own p-1 padding (8px top+bottom) adds real height on
       // top of the button inside it — with several providers that padding
       // alone can add up to a real chunk of unaccounted-for height, so it

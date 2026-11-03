@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { StaffCalendarRow, StaffDayStatus } from "@/lib/calendar";
 import { effectiveMonday, effectiveScheduleDate, mondayOf, nearestBusinessDayOnOrAfter, todayStr, weekdayIndex } from "@/lib/date";
 import { federalHolidayName, HOLIDAY_COLOR, WORKING_HOLIDAY_COLOR } from "@/lib/holidays";
-import { getBottomNavHeight } from "@/lib/bottomNav";
+import { spaceBelow } from "@/lib/viewportSpace";
 import { useWhoAmI } from "@/lib/whoami";
 import { arriveNote, clockHalf, leaveNote } from "@/lib/timing";
 import MyAbsencesList from "@/components/MyAbsencesList";
@@ -248,8 +248,6 @@ export default function StaffCalendarGrid({
 
     function compute() {
       if (!containerRef.current) return;
-      const top = containerRef.current.getBoundingClientRect().top;
-      const bottomNavHeight = getBottomNavHeight();
       const headerHeight = theadRef.current?.getBoundingClientRect().height ?? 0;
       const isDesktopLayout = window.innerWidth >= DESKTOP_BREAKPOINT;
       // Deliberately NOT subtracting the trailing sidebar's height here even
@@ -267,7 +265,7 @@ export default function StaffCalendarGrid({
       // row peeking out from under the footer with just a fixed buffer, so
       // this trades a little unused space at the bottom for a hard
       // guarantee nothing ever sits under the nav.
-      const available = (window.innerHeight - top - bottomNavHeight - headerHeight - 66) * 0.94;
+      const available = (spaceBelow(containerRef.current) - headerHeight - 66) * 0.94;
 
       // The sidebar spans the same vertical range as the grid+header
       // together (it has no header row of its own to subtract), only on
@@ -336,7 +334,7 @@ export default function StaffCalendarGrid({
           ))}
         </div>
         <label className="flex items-center gap-1.5 font-bold">
-          <span className="opacity-60">{changeKind === "ARRIVE" ? "In at" : "Out at"}</span>
+          <span className="inline-block w-[3.2em] opacity-60">{changeKind === "ARRIVE" ? "In at" : "Out at"}</span>
           <input
             type="time"
             value={changeTimes[changeKind]}

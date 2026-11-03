@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getBottomNavHeight } from "@/lib/bottomNav";
+import { spaceBelow } from "@/lib/viewportSpace";
 
 // Measures the real remaining space below wherever this frame starts (i.e.
 // below the page's own header) down to the top of the fixed bottom nav, and
@@ -34,9 +34,7 @@ export default function FullHeightFrame({
 
     function compute() {
       if (!ref.current) return;
-      const top = ref.current.getBoundingClientRect().top;
-      const bottomNavHeight = getBottomNavHeight();
-      const available = (window.innerHeight - top - bottomNavHeight - reserveBelow) * heightScale;
+      const available = (spaceBelow(ref.current) - reserveBelow) * heightScale;
       setHeight(Math.max(0, available));
     }
     compute();
