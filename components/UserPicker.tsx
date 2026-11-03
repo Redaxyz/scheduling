@@ -61,7 +61,10 @@ export default function UserPicker() {
   const grow = useTweener();
   const fade = useTweener();
 
-  const curves = useMemo(() => buildGridCurves(), []);
+  // The grid fills the window; seams are rebuilt for its real pixel size so
+  // teeth stay the same size both ways (see lib/zigzagGrid.ts).
+  const [gridSize, setGridSize] = useState({ width: 1280, height: 800 });
+  const curves = useMemo(() => buildGridCurves(gridSize), [gridSize]);
 
   // Alphabetical, slot by slot in GRID_SLOTS order (column 0 top to
   // bottom, then column 1, ...) — except anyone with a
@@ -106,6 +109,9 @@ export default function UserPicker() {
       });
       size = Math.min(size, (window.innerHeight / ROWS) * 0.5);
       if (Number.isFinite(size)) setFontPx(Math.floor(size));
+      setGridSize((prev) =>
+        prev.width === window.innerWidth && prev.height === window.innerHeight ? prev : { width: window.innerWidth, height: window.innerHeight },
+      );
     }
     fit();
     document.fonts?.ready.then(fit).catch(() => {});

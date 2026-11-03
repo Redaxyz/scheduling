@@ -15,10 +15,16 @@ export const ROW_COLS = [4, 4, 4, 4];
 export const ROWS = ROW_COLS.length;
 const MAX_COLS = Math.max(...ROW_COLS);
 
-const TEETH_PER_ROW = 9; // segments along each vertical seam
-const TEETH_ACROSS = 21; // segments along each horizontal seam, full width
-const AMP_V = 4; // px, x-wobble of each vertical seam
-const AMP_H = 3.5; // px, y-wobble of each horizontal seam
+// Teeth are sized in pixels, the same in both directions, so up-down and
+// left-right seams look identical whatever the screen's shape.
+const TOOTH_PX = 22; // distance between neighboring points along a seam
+const AMP_PX = 4; // how far each point sticks out from the seam line
+
+export type GridSize = { width: number; height: number };
+
+function teeth(lengthPx: number) {
+  return Math.max(2, Math.round(lengthPx / TOOTH_PX));
+}
 
 type Pt = [string, string]; // [xExpr, yExpr] as CSS length strings
 type HPt = { x: number; pt: Pt }; // a horizontal-seam point and its ideal x
@@ -51,7 +57,7 @@ export function cellCenterPct(row: number, col: number) {
 }
 
 // The seam between row r-1 and row r, pinned at both rows' column edges.
-function horizontalSeam(r: number): HPt[] {
+function horizontalSeam(r: number, size: GridSize): HPt[] {
   const y = (r / ROWS) * 100;
   const breaks = new Set<number>([0, 100]);
   for (const row of [r - 1, r]) for (let c = 1; c < ROW_COLS[row]; c++) breaks.add((c / ROW_COLS[row]) * 100);
@@ -61,10 +67,10 @@ function horizontalSeam(r: number): HPt[] {
   let tooth = 0;
   for (let i = 1; i < sorted.length; i++) {
     const [a, b] = [sorted[i - 1], sorted[i]];
-    const n = Math.max(2, Math.round((TEETH_ACROSS * (b - a)) / 100));
+    const n = teeth(((b - a) / 100) * size.width);
     for (let j = 1; j < n; j++) {
       const x = a + ((b - a) * j) / n;
-      pts.push({ x, pt: [pct(x), wobble(y, tooth++ % 2 === 0 ? AMP_H : -AMP_H)] });
+      pts.push({ x, pt: [pct(x), wobble(y, tooth++ % 2 === 0 ? AMP_PX : -AMP_PX)] });
     }
     pts.push({ x: b, pt: [pct(b), pct(y)] });
   }
@@ -72,13 +78,14 @@ function horizontalSeam(r: number): HPt[] {
 }
 
 // The seam inside row r at x, pinned at the row's top and bottom.
-function verticalSeam(r: number, x: number): Pt[] {
+function verticalSeam(r: number, x: number, size: GridSize): Pt[] {
   const { yStart, yEnd } = rowBounds(r);
+  const n = teeth(((yEnd - yStart) / 100) * size.height);
   const pts: Pt[] = [];
-  for (let i = 0; i <= TEETH_PER_ROW; i++) {
-    const y = yStart + ((yEnd - yStart) * i) / TEETH_PER_ROW;
-    const pinned = i === 0 || i === TEETH_PER_ROW;
-    pts.push([pinned ? pct(x) : wobble(x, i % 2 === 0 ? AMP_V : -AMP_V), pct(y)]);
+  for (let i = 0; i <= n; i++) {
+    const y = yStart + ((yEnd - yStart) * i) / n;
+    const pinned = i === 0 || i === n;
+    pts.push([pinned ? pct(x) : wobble(x, i % 2 === 0 ? AMP_PX : -AMP_PX), pct(y)]);
   }
   return pts;
 }
@@ -87,13 +94,14 @@ function verticalSeam(r: number, x: number): Pt[] {
 // vSeams[r][c] is the seam in row r between column c-1 and column c.
 export type GridCurves = { hSeams: HPt[][]; vSeams: Pt[][][] };
 
-export function buildGridCurves(): GridCurves {
+// `size` is the grid's on-screen size in pixels (the whole window here).
+export function buildGridCurves(size: GridSize): GridCurves {
   const hSeams: HPt[][] = [];
-  for (let r = 1; r < ROWS; r++) hSeams[r] = horizontalSeam(r);
+  for (let r = 1; r < ROWS; r++) hSeams[r] = horizontalSeam(r, size);
   const vSeams: Pt[][][] = [];
   for (let r = 0; r < ROWS; r++) {
     vSeams[r] = [];
-    for (let c = 1; c < ROW_COLS[r]; c++) vSeams[r][c] = verticalSeam(r, (c / ROW_COLS[r]) * 100);
+    for (let c = 1; c < ROW_COLS[r]; c++) vSeams[r][c] = verticalSeam(r, (c / ROW_COLS[r]) * 100, size);
   }
   return { hSeams, vSeams };
 }
