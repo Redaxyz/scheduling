@@ -10,6 +10,30 @@ type SetupState = "on" | "off" | "blocked";
 type View = DeviceKind | "blocked" | "on";
 
 const DISMISSED_KEY = "cfa-notification-guide-dismissed";
+// Bump to wipe every device back to "never set up": the old push
+// subscription is dropped and the guide pops up again on its own. The server
+// side (saved subscriptions) has to be cleared separately.
+const RESET_KEY = "cfa-notification-reset";
+const RESET_VERSION = "2026-11-02";
+
+let resetting: Promise<void> | null = null;
+
+function resetOnce(): Promise<void> {
+  resetting ??= (async () => {
+    try {
+      if (window.localStorage.getItem(RESET_KEY) === RESET_VERSION) return;
+      if ("serviceWorker" in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration();
+        await (await registration?.pushManager.getSubscription())?.unsubscribe();
+      }
+      window.localStorage.removeItem(DISMISSED_KEY);
+      window.localStorage.setItem(RESET_KEY, RESET_VERSION);
+    } catch {
+      // Storage or push blocked: nothing to reset, carry on as usual.
+    }
+  })();
+  return resetting;
+}
 
 const PREVIEWS: { view: View; label: string }[] = [
   { view: "ios-safari", label: "iPhone, Safari" },
@@ -67,7 +91,8 @@ function useSetup() {
   useEffect(() => {
     if (!eligible) return;
     setDevice(detectDevice());
-    readSetupState()
+    resetOnce()
+      .then(readSetupState)
       .then(setState)
       .catch(() => setState("off"));
   }, [eligible]);
