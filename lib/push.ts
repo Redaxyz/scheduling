@@ -1,6 +1,6 @@
 import webpush from "web-push";
 import { prisma } from "./prisma";
-import { addDays, formatLong, weekdayIndex } from "./date";
+import { addDays, weekdayIndex } from "./date";
 import { getDaySchedule, getUsualPosition, findStaffPosition, type DaySchedule, type UsualPosition } from "./schedule";
 import { getWorkingHolidays } from "./workingHolidays";
 import { isFederalHoliday } from "./holidays";
@@ -29,6 +29,12 @@ function describeRole(role: Role, providerName: string | null): string {
   return role === "XRAY" ? "x-ray" : "rooming";
 }
 
+// "2026-11-03" -> "11/3/26"
+function shortDate(date: string): string {
+  const [y, m, d] = date.split("-").map(Number);
+  return `${m}/${d}/${String(y).slice(2)}`;
+}
+
 function capitalize(text: string): string {
   return text[0].toUpperCase() + text.slice(1);
 }
@@ -45,12 +51,8 @@ function describeHalf(day: DaySchedule, half: Half, staffId: string, providerNam
   for (const a of [...slot.rooming, ...slot.xray]) staff.set(a.staffId, a.name);
   staff.delete(staffId);
 
-  const where = `${capitalize(describeRole(position.role, position.providerId ? (providerNames.get(position.providerId) ?? null) : null))} in ${OFFICE_LABELS[position.office]}`;
-  const was = usual
-    ? `usually ${describeRole(usual.role, usual.providerId ? (providerNames.get(usual.providerId) ?? null) : null)} in ${OFFICE_LABELS[usual.office]}`
-    : "not usually scheduled";
   return {
-    where: `${where} (${was})`,
+    where: `${capitalize(describeRole(position.role, position.providerId ? (providerNames.get(position.providerId) ?? null) : null))} in ${OFFICE_LABELS[position.office]}`,
     details: `Doctors: ${doctors.join(", ") || "none"}\nStaff: ${[...staff.values()].join(", ") || "nobody else yet"}`,
   };
 }
@@ -81,7 +83,7 @@ export async function buildChangeNotice(staffId: string, date: string): Promise<
     ? `All day: ${changes[0].where}\n${changes[0].details}`
     : changes.map((c) => `${HALF_LABELS[c.half]}: ${c.where}\n${c.details}`).join("\n\n");
 
-  return { title: `Schedule change: ${formatLong(date).replace(/, \d{4}$/, "")}`, body, url: `/schedule/${date}` };
+  return { title: `Schedule change: ${shortDate(date)}`, body, url: `/schedule/${date}` };
 }
 
 // The next `days` calendar days' first change, for previewing what an alert
