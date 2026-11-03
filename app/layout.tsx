@@ -13,7 +13,7 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "CFA Ortho Schedule",
+  title: "MOS Schedule",
   description: "Daily staffing schedule for Bethesda and Germantown offices",
   appleWebApp: {
     capable: true,

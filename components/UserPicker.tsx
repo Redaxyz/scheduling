@@ -168,7 +168,7 @@ export default function UserPicker() {
         <div
           className="pointer-events-none absolute left-1/2 top-6 z-10 -translate-x-1/2 whitespace-nowrap text-lg font-black uppercase tracking-[0.3em] text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)] sm:text-xl"
         >
-          CFA Ortho
+          MOS Schedule
         </div>
       )}
 

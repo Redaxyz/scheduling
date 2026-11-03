@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "CFA Ortho Schedule",
+    name: "MOS Schedule",
     short_name: "Schedule",
     // Always land on the Home tab (which redirects to today) on launch,
     // regardless of whatever page was open when this was added to the home screen.
