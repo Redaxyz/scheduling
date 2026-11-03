@@ -146,9 +146,9 @@ const STAFF: {
   // cols for now, column-major: index = col*4 + row; see ROW_COLS in
   // lib/zigzagGrid.ts) in this exact arrangement:
   //   Row1: Anna, Ben, Emma, Hope
-  //   Row2: Jen, Charlie, Mark, Isabel
-  //   Row3: Brian PA-C, Joanna, Reda, Jessica PA-C
-  //   Row4: Cindy, Shelby, JB, Jenish
+  //   Row2: Cindy, Jen, Isabel, Shelby
+  //   Row3: Mark, Joanna, Reda, Charlie
+  //   Row4: JB, Brian PA-C, Jessica PA-C, Jenish
   // Once JB leaves it goes back to 5 rows x 3 cols, with Isabel in JB's old
   // spot (row 4, col 3).
   { name: "Reda", kind: "SCRIBE", canScribe: true, color: "hsl(0, 62%, 85%)", homeOffice: null, dedicatedProviderInitials: "C", isManager: true, pinnedGridIndex: 10 },
@@ -156,7 +156,7 @@ const STAFF: {
   { name: "Hope", kind: "SCRIBE", canScribe: true, color: "hsl(50, 58%, 80%)", homeOffice: null, dedicatedProviderInitials: "Fe", pinnedGridIndex: 12 },
   { name: "Anna", kind: "SCRIBE", canScribe: true, color: "hsl(80, 45%, 79%)", homeOffice: null, dedicatedProviderInitials: "Mc", pinnedGridIndex: 0 },
   { name: "Emma", kind: "SCRIBE", canScribe: true, color: "hsl(120, 38%, 80%)", homeOffice: null, dedicatedProviderInitials: "Fi", pinnedGridIndex: 8 },
-  { name: "Jen", kind: "SCRIBE", canScribe: true, color: "hsl(155, 42%, 79%)", homeOffice: null, dedicatedProviderInitials: "G", pinnedGridIndex: 1 },
+  { name: "Jen", kind: "SCRIBE", canScribe: true, color: "hsl(155, 42%, 79%)", homeOffice: null, dedicatedProviderInitials: "G", pinnedGridIndex: 5 },
   // JB and Mark are standing default Support/rooming for Bethesda every day
   // (unless absent); Charlie and Jenish, same for Germantown. See
   // defaultRoomingOffice — a "hard" commitment like defaultXrayOffice.
@@ -168,7 +168,7 @@ const STAFF: {
     homeOffice: "BETHESDA",
     dedicatedProviderInitials: null,
     defaultRoomingOffice: "BETHESDA",
-    pinnedGridIndex: 11,
+    pinnedGridIndex: 3,
   },
   // Mark is also certified for X-ray, backing up either Cindy or Shelby
   // when one of them is out (it's not his dedicated role, just a backup).
@@ -181,7 +181,7 @@ const STAFF: {
     dedicatedProviderInitials: null,
     defaultRoomingOffice: "BETHESDA",
     xrayBackupForNames: ["Cindy", "Shelby"],
-    pinnedGridIndex: 9,
+    pinnedGridIndex: 2,
   },
   // Charlie is also certified for X-ray, backing up either Cindy or Shelby
   // when one of them is out (it's not his dedicated role, just a backup).
@@ -194,7 +194,7 @@ const STAFF: {
     dedicatedProviderInitials: null,
     defaultRoomingOffice: "GERMANTOWN",
     xrayBackupForNames: ["Cindy", "Shelby"],
-    pinnedGridIndex: 5,
+    pinnedGridIndex: 14,
   },
   // Isabel: same setup as Jenish (no scribing, no x-ray, not a manager),
   // standing default Support/rooming for Bethesda.
@@ -206,7 +206,7 @@ const STAFF: {
     homeOffice: "BETHESDA",
     dedicatedProviderInitials: null,
     defaultRoomingOffice: "BETHESDA",
-    pinnedGridIndex: 13,
+    pinnedGridIndex: 9,
   },
   {
     name: "Jenish",
@@ -218,13 +218,13 @@ const STAFF: {
     defaultRoomingOffice: "GERMANTOWN",
     pinnedGridIndex: 15,
   },
-  { name: "Cindy", kind: "XRAY", canScribe: false, color: "hsl(298, 45%, 86%)", homeOffice: "BETHESDA", dedicatedProviderInitials: null, defaultXrayOffice: "BETHESDA", pinnedGridIndex: 3 },
-  { name: "Shelby", kind: "XRAY", canScribe: false, color: "hsl(332, 58%, 86%)", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null, defaultXrayOffice: "GERMANTOWN", pinnedGridIndex: 7 },
+  { name: "Cindy", kind: "XRAY", canScribe: false, color: "hsl(298, 45%, 86%)", homeOffice: "BETHESDA", dedicatedProviderInitials: null, defaultXrayOffice: "BETHESDA", pinnedGridIndex: 1 },
+  { name: "Shelby", kind: "XRAY", canScribe: false, color: "hsl(332, 58%, 86%)", homeOffice: "GERMANTOWN", dedicatedProviderInitials: null, defaultXrayOffice: "GERMANTOWN", pinnedGridIndex: 13 },
   // Brian and Jessica are PA-Cs (see PROVIDERS/SCHEDULES above for their clinic
   // schedule) but also get a Staff row so they can pick themselves in the app
   // and self-log their own absences, same as the rest of the staff.
-  { name: "Brian, PA-C", kind: "GENERAL", canScribe: false, color: "hsl(15, 60%, 84%)", homeOffice: null, dedicatedProviderInitials: null, pinnedGridIndex: 2 },
-  { name: "Jessica, PA-C", kind: "GENERAL", canScribe: false, color: "hsl(345, 55%, 86%)", homeOffice: null, dedicatedProviderInitials: null, pinnedGridIndex: 14 },
+  { name: "Brian, PA-C", kind: "GENERAL", canScribe: false, color: "hsl(15, 60%, 84%)", homeOffice: null, dedicatedProviderInitials: null, pinnedGridIndex: 7 },
+  { name: "Jessica, PA-C", kind: "GENERAL", canScribe: false, color: "hsl(345, 55%, 86%)", homeOffice: null, dedicatedProviderInitials: null, pinnedGridIndex: 11 },
   // Lester floats between both offices, only accessible for X-ray when
   // either Cindy or Shelby is out — not office-locked like Mark/Charlie.
   {
