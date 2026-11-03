@@ -53,9 +53,7 @@ export async function POST(req: NextRequest) {
   try {
     await sendPush(
       sub,
-      notice
-        ? { ...notice, title: `Preview. ${notice.title}` }
-        : { title: "CFA Schedule", body: "You're set up. No changes coming up in the next two weeks.", url: "/" },
+      notice ?? { title: "CFA Schedule", body: "You're set up. No changes coming up in the next two weeks.", url: "/" },
     );
   } catch (e) {
     const err = e as { statusCode?: number; body?: string; message?: string };
