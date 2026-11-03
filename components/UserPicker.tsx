@@ -7,6 +7,8 @@ import { buildGridCurves, cellCenterPct, cellClipPath, GRID_SLOTS, gridColorInde
 // Names fill at most this share of their tile's width (the longest name
 // sets the size for all of them).
 const LABEL_WIDTH_SHARE = 0.8;
+// ...but never bigger than this, so names stay sensible on a big screen.
+const MAX_LABEL_PX = 25;
 const MEASURE_PX = 100;
 const LABEL_TYPE = "font-black uppercase tracking-wide";
 
@@ -107,7 +109,7 @@ export default function UserPicker() {
         const tileWidth = (window.innerWidth * cellCenterPct(cell.row, cell.col).width) / 100;
         size = Math.min(size, (LABEL_WIDTH_SHARE * tileWidth * MEASURE_PX) / width100);
       });
-      size = Math.min(size, (window.innerHeight / ROWS) * 0.5);
+      size = Math.min(size, (window.innerHeight / ROWS) * 0.5, MAX_LABEL_PX);
       if (Number.isFinite(size)) setFontPx(Math.floor(size));
       setGridSize((prev) =>
         prev.width === window.innerWidth && prev.height === window.innerHeight ? prev : { width: window.innerWidth, height: window.innerHeight },
