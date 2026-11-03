@@ -3,7 +3,7 @@
 import { useEffect, useState, type ComponentType, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { effectiveMonday, effectiveScheduleDate, firstOfMonth } from "@/lib/date";
+import { effectiveMonday, effectiveScheduleDate } from "@/lib/date";
 import { CalendarIcon, ClipboardIcon, HomeIcon } from "@/components/icons";
 import { useWhoAmI } from "@/lib/whoami";
 import type { SwapRequestView } from "@/lib/swap";
@@ -43,7 +43,7 @@ export default function BottomNav() {
   const scheduleHref = incoming.length > 0 ? `/schedule/${incoming[0].date}` : `/schedule/${effectiveScheduleDate()}`;
 
   const tabs: Tab[] = [
-    { key: "schedule", href: `/calendar/staff/month/${firstOfMonth(effectiveScheduleDate())}`, match: "/calendar", label: "Schedule", Icon: CalendarIcon },
+    { key: "schedule", href: `/calendar/staff/week/${effectiveMonday()}`, match: "/calendar", label: "Schedule", Icon: CalendarIcon },
     { key: "home", href: scheduleHref, match: "/schedule", label: "Home", Icon: HomeIcon, primary: true, badge: incoming.length },
     { key: "me", href: `/my-schedule/${effectiveMonday()}`, match: "/my-schedule", label: "Me", Icon: ClipboardIcon },
   ];

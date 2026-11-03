@@ -122,8 +122,8 @@ export default function CalendarWhoToggle({
   // Switching between Providers/Staff keeps whatever granularity (month or
   // week) you're already looking at — only a brand-new visit (this toggle
   // not rendered yet, so no subView to read) falls back to guessing from
-  // screen width. The footer's own Schedule tab link is what actually resets
-  // to staff+month; this toggle should never second-guess it.
+  // screen width. The footer's own Schedule tab link is what starts a visit
+  // on staff+week; this toggle should never second-guess it.
   const useWeek = subView === "week" || (subView === undefined && !isDesktop());
 
   function goToProviders() {

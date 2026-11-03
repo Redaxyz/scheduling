@@ -622,7 +622,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
         defaultXrayOffice: optedInStaffIds.has(s.id) ? (templateSlotFor(s.id, half)?.role === "XRAY" ? templateSlotFor(s.id, half)!.office : null) : s.defaultXrayOffice,
       }));
       const open = isOfficeOpen(office, half);
-      const xrayEligible = open ? computeXrayEligible(office, half, xrayEligibilityStaff, isStaffAbsent, isStaffAssigned, isOverridden) : [];
+      const allXrayEligible = open ? computeXrayEligible(office, half, xrayEligibilityStaff, isStaffAbsent, isStaffAssigned, isOverridden) : [];
 
       const rooming = open
         ? [
@@ -639,6 +639,10 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
             ...autoTemplateEntries.filter((e) => e.role === "XRAY"),
           ]
         : [];
+      // A floating backup anyone can add (Lester) is only offered when this
+      // office's x-ray spot is empty; with a tech already there he'd just be
+      // in the way. Everyone else keeps their normal eligibility.
+      const xrayEligible = xray.length > 0 ? allXrayEligible.filter((s) => !s.addableByAnyone) : allXrayEligible;
       const staffCount = providers.filter((p) => p.scribe).length + rooming.length + xray.length;
 
       halves[half][office] = {
