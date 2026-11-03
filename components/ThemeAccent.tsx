@@ -2,15 +2,21 @@
 
 import { useEffect } from "react";
 import { useWhoAmI } from "@/lib/whoami";
+import { signinTileColor } from "@/lib/signinGrid";
 
-/** Drives the --theme-accent CSS var from the active person's color, the
- * same trick the GOAT app uses to tint its whole UI per logged-in profile. */
+const DEFAULT_ACCENT = "#94a3b8";
+
+/** Drives the --theme-accent CSS var from the active person's sign-in tile
+ * color (dark blue, light blue, orange or navy), so the whole app is tinted
+ * to match the tile they tapped. Falls back to their own profile color if
+ * they somehow have no tile. */
 export default function ThemeAccent() {
-  const { current } = useWhoAmI();
+  const { current, staffList } = useWhoAmI();
 
   useEffect(() => {
-    document.documentElement.style.setProperty("--theme-accent", current?.color ?? "#94a3b8");
-  }, [current]);
+    const accent = current ? (signinTileColor(staffList, current.id) ?? current.color) : DEFAULT_ACCENT;
+    document.documentElement.style.setProperty("--theme-accent", accent);
+  }, [current, staffList]);
 
   return null;
 }

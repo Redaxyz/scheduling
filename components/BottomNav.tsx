@@ -111,7 +111,7 @@ export default function BottomNav() {
             className="flex flex-1 flex-col items-center gap-1 py-2 text-xs font-bold opacity-60 transition-opacity hover:opacity-100"
           >
             <span className="flex h-5 w-5 items-center justify-center">
-              <span className="h-3 w-3 rounded-full" style={{ background: current.color }} />
+              <span className="h-3 w-3 rounded-full" style={{ background: "var(--theme-accent)" }} />
             </span>
             <span className="max-w-[4.5rem] truncate">{current.name}</span>
           </button>

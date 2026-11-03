@@ -2,7 +2,8 @@
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useWhoAmI, type StaffOption } from "@/lib/whoami";
-import { buildGridCurves, cellCenterPct, cellClipPath, GRID_SLOTS, gridColorIndexes, ROWS } from "@/lib/zigzagGrid";
+import { buildGridCurves, cellCenterPct, cellClipPath, ROWS } from "@/lib/zigzagGrid";
+import { layoutSigninCells, tileColor, type SigninCell } from "@/lib/signinGrid";
 
 // Names fill at most this share of their tile's width (the longest name
 // sets the size for all of them).
@@ -41,15 +42,8 @@ function useTweener() {
 }
 
 type Phase = "idle" | "grow" | "hold" | "fade";
-type Cell = { staff: StaffOption; row: number; col: number };
-
-// Straight from the CAO pin logo. Colored by position, not per person, and
-// arranged so no two touching tiles ever share a color (see gridColorIndexes).
-const CAO_PALETTE = ["#1878b4", "#4fb3e8", "#f5871f", "#333f4c"];
-const CELL_COLORS = gridColorIndexes(CAO_PALETTE.length);
-function modernCellColor(row: number, col: number) {
-  return CAO_PALETTE[CELL_COLORS.get(`${row}:${col}`) ?? 0];
-}
+type Cell = SigninCell;
+const modernCellColor = tileColor;
 
 export default function UserPicker() {
   const { staffList, setCurrentId } = useWhoAmI();
@@ -68,30 +62,8 @@ export default function UserPicker() {
   const [gridSize, setGridSize] = useState({ width: 1280, height: 800 });
   const curves = useMemo(() => buildGridCurves(gridSize), [gridSize]);
 
-  // Alphabetical, slot by slot in GRID_SLOTS order (column 0 top to
-  // bottom, then column 1, ...) — except anyone with a
-  // pinnedGridIndex, who's fixed at that exact slot; everyone else fills
-  // the remaining slots around them, still in alphabetical order.
-  const cells: Cell[] = useMemo(() => {
-    const sorted = [...staffList].sort((a, b) => a.name.localeCompare(b.name));
-    const pinned = sorted.filter((s) => s.pinnedGridIndex !== null);
-    const unpinned = sorted.filter((s) => s.pinnedGridIndex === null);
-
-    // One slot per grid cell. Anyone past the last cell isn't shown, so
-    // change ROW_COLS in lib/zigzagGrid.ts whenever the headcount changes.
-    const slots: (StaffOption | undefined)[] = new Array(GRID_SLOTS.length);
-    for (const p of pinned) {
-      if (p.pinnedGridIndex! >= 0 && p.pinnedGridIndex! < slots.length) slots[p.pinnedGridIndex!] = p;
-    }
-    let next = 0;
-    for (let i = 0; i < slots.length && next < unpinned.length; i++) {
-      if (!slots[i]) slots[i] = unpinned[next++];
-    }
-
-    return slots
-      .map((staff, i) => (staff ? { staff, ...GRID_SLOTS[i] } : null))
-      .filter((c): c is Cell => c !== null);
-  }, [staffList]);
+  // Who's in which tile: see lib/signinGrid.ts.
+  const cells: Cell[] = useMemo(() => layoutSigninCells(staffList), [staffList]);
 
   // One font size for every name: the biggest at which each name fits in
   // 80% of its own tile's width (and half its height). Measured from hidden

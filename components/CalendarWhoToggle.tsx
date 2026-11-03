@@ -60,7 +60,9 @@ function SlidingPair({
       {indicator && (
         <span
           className="absolute inset-y-1 rounded-[4px] transition-all duration-200 ease-out"
-          style={{ left: indicator.left, width: indicator.width, background: "var(--theme-accent)" }}
+          // Blended with white so the dark label on top stays readable
+          // even when the accent is a deep blue or navy.
+          style={{ left: indicator.left, width: indicator.width, background: "color-mix(in srgb, var(--theme-accent) 35%, white)" }}
         />
       )}
       {options.map((opt) => {
