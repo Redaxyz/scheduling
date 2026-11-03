@@ -1,8 +1,14 @@
 "use client";
 
-import { Fragment, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useWhoAmI, type StaffOption } from "@/lib/whoami";
-import { buildGridCurves, cellCenterPct, cellClipPath, GRID_SLOTS, gridColorIndexes } from "@/lib/zigzagGrid";
+import { buildGridCurves, cellCenterPct, cellClipPath, GRID_SLOTS, gridColorIndexes, ROWS } from "@/lib/zigzagGrid";
+
+// Names fill at most this share of their tile's width (the longest name
+// sets the size for all of them).
+const LABEL_WIDTH_SHARE = 0.8;
+const MEASURE_PX = 100;
+const LABEL_TYPE = "font-black uppercase tracking-wide";
 
 const GROW_MS = 480;
 const HOLD_MS = 120;
@@ -82,6 +88,31 @@ export default function UserPicker() {
       .filter((c): c is Cell => c !== null);
   }, [staffList]);
 
+  // One font size for every name: the biggest at which each name fits in
+  // 80% of its own tile's width (and half its height). Measured from hidden
+  // copies of the labels rendered at 100px, since letter widths vary.
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [fontPx, setFontPx] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    function fit() {
+      const spans = measureRef.current ? ([...measureRef.current.children] as HTMLElement[]) : [];
+      let size = Infinity;
+      spans.forEach((el, i) => {
+        const cell = cells[i];
+        const width100 = el.getBoundingClientRect().width;
+        if (!cell || !width100) return;
+        const tileWidth = (window.innerWidth * cellCenterPct(cell.row, cell.col).width) / 100;
+        size = Math.min(size, (LABEL_WIDTH_SHARE * tileWidth * MEASURE_PX) / width100);
+      });
+      size = Math.min(size, (window.innerHeight / ROWS) * 0.5);
+      if (Number.isFinite(size)) setFontPx(Math.floor(size));
+    }
+    fit();
+    document.fonts?.ready.then(fit).catch(() => {});
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [cells]);
+
   if (cells.length === 0) {
     return <div className="fixed inset-0 z-50 bg-[#0b0f14]" />;
   }
@@ -107,15 +138,27 @@ export default function UserPicker() {
     });
   }
 
-  const labelClass = "absolute font-black uppercase tracking-wide text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)]";
-  const labelStyle = { fontSize: "clamp(0.7rem, 1.6vw, 1rem)", whiteSpace: "nowrap" as const };
+  const labelClass = `absolute ${LABEL_TYPE} text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)]`;
+  const labelStyle = {
+    fontSize: fontPx ?? "clamp(0.7rem, 1.6vw, 1rem)",
+    lineHeight: 1,
+    whiteSpace: "nowrap" as const,
+    // Hidden until measured, so names don't flash small then jump big.
+    visibility: fontPx == null ? ("hidden" as const) : undefined,
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden select-none bg-[#0b0f14]">
+      <div ref={measureRef} aria-hidden className="pointer-events-none invisible fixed left-0 top-0">
+        {cells.map((cell) => (
+          <span key={cell.staff.id} className={`block w-max ${LABEL_TYPE}`} style={{ fontSize: MEASURE_PX, lineHeight: 1, whiteSpace: "nowrap" }}>
+            {cell.staff.name}
+          </span>
+        ))}
+      </div>
       {phase === "idle" && (
         <div
-          className="pointer-events-none absolute left-1/2 top-6 z-10 -translate-x-1/2 text-lg font-black uppercase tracking-[0.3em] sm:text-xl"
-          style={{ backgroundImage: "linear-gradient(135deg, #4fb3e8, #f5871f)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}
+          className="pointer-events-none absolute left-1/2 top-6 z-10 -translate-x-1/2 whitespace-nowrap text-lg font-black uppercase tracking-[0.3em] text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)] sm:text-xl"
         >
           CFA Ortho
         </div>
@@ -149,24 +192,9 @@ export default function UserPicker() {
                 top: `${center.y}%`,
                 transform: "translate(-50%, -50%)",
                 ...labelStyle,
-                // A long name (e.g. "Jessica, PA-C") wraps inside its own
-                // tile on a narrow phone instead of spilling into the next.
-                whiteSpace: "normal",
-                textAlign: "center",
-                width: "max-content",
-                maxWidth: `calc(${center.width}vw - 12px)`,
               }}
             >
-              {/* Only ever break after a comma, never inside "PA-C". */}
-              {cell.staff.name.split(", ").map((part, i, parts) => (
-                <Fragment key={i}>
-                  <span className="whitespace-nowrap">
-                    {part}
-                    {i < parts.length - 1 && ","}
-                  </span>
-                  {i < parts.length - 1 && " "}
-                </Fragment>
-              ))}
+              {cell.staff.name}
             </span>
           </button>
           );
