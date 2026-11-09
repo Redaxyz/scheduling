@@ -1,8 +1,12 @@
-// The iPhone Duo unfolded: a touchscreen at least 560 points across in both
-// directions, but smaller than an iPad. Regular iPhones are narrower, turned
-// sideways they're shorter, and iPads are bigger. There the dock moves from
-// the bottom to the right edge (the `side-dock:` variant in
-// tailwind.config.ts and the matching rules in app/globals.css, which repeats
-// this query since plain CSS can't import it).
-export const SIDE_DOCK_MEDIA =
-  "(pointer: coarse) and (min-width: 560px) and (max-width: 1000px) and (min-height: 560px) and (max-height: 1000px)";
+// The iPhone Duo keeps its status bar (clock, Wi-Fi) in a strip down the
+// right edge, open or closed, and the dock goes in that strip. It's told
+// apart by shape: about 2:3, squarer than any other iPhone, and smaller than
+// an iPad. The server can't measure the screen, so the browser leaves this
+// cookie for it (components/DockMode.tsx).
+export const DOCK_COOKIE = "dock";
+
+export function looksLikeDuo(): boolean {
+  const long = Math.max(screen.width, screen.height);
+  const short = Math.min(screen.width, screen.height);
+  return navigator.maxTouchPoints > 0 && long <= 1100 && short / long >= 0.6;
+}

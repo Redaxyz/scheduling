@@ -1,35 +1,51 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
+import { cookies } from "next/headers";
 import "./globals.css";
 import { WhoAmIProvider } from "@/lib/whoami";
 import BottomNav from "@/components/BottomNav";
 import AppGate from "@/components/AppGate";
 import ThemeAccent from "@/components/ThemeAccent";
 import { NotificationPrompt } from "@/components/NotificationSetup";
+import DockMode from "@/components/DockMode";
+import { DOCK_COOKIE } from "@/lib/sideDock";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "MOS Schedule",
-  description: "Daily staffing schedule for Bethesda and Germantown offices",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Schedule",
-  },
-};
+// On the iPhone Duo (see lib/sideDock.ts) the page is let under the status
+// bar, so the dock can use the empty strip it otherwise leaves on the right.
+async function isDuo() {
+  return (await cookies()).get(DOCK_COOKIE)?.value === "side";
+}
 
-export const viewport: Viewport = {
-  themeColor: "#94a3b8",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "MOS Schedule",
+    description: "Daily staffing schedule for Bethesda and Germantown offices",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: (await isDuo()) ? "black-translucent" : "default",
+      title: "Schedule",
+    },
+  };
+}
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export async function generateViewport(): Promise<Viewport> {
+  return {
+    themeColor: "#94a3b8",
+    ...((await isDuo()) ? { viewportFit: "cover" as const } : {}),
+  };
+}
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const duo = await isDuo();
   return (
-    <html lang="en" className={`${geistSans.variable} antialiased`}>
+    <html lang="en" className={`${geistSans.variable} antialiased`} data-cover={duo ? "" : undefined} data-dock={duo ? "side" : undefined}>
       <body className="flex min-h-dvh flex-col">
+        <DockMode />
         <WhoAmIProvider>
           <ThemeAccent />
           <AppGate />

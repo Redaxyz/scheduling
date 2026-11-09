@@ -1,5 +1,3 @@
-import { SIDE_DOCK_MEDIA } from "./sideDock";
-
 // The bottom nav's raised "Home" button pokes above the nav bar's own box
 // via a negative margin (see BottomNav.tsx) — a plain getBoundingClientRect
 // on #bottom-nav only measures its own padding/content box, not that
@@ -9,7 +7,7 @@ import { SIDE_DOCK_MEDIA } from "./sideDock";
 // of the whole nav area, raised button included.
 export function getBottomNavHeight(): number {
   const bottomNav = document.getElementById("bottom-nav");
-  if (!bottomNav || window.matchMedia(SIDE_DOCK_MEDIA).matches) return 0;
+  if (!bottomNav || document.documentElement.dataset.dock === "side") return 0;
   const navTop = bottomNav.getBoundingClientRect().top;
   const raised = document.getElementById("bottom-nav-raised");
   const raisedTop = raised ? raised.getBoundingClientRect().top : navTop;

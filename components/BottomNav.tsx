@@ -51,10 +51,10 @@ export default function BottomNav() {
   return (
     <nav
       id="bottom-nav"
-      className="accent-border-soft fixed inset-x-0 bottom-0 z-40 border-t-2 bg-white side-dock:inset-x-auto side-dock:bottom-auto side-dock:right-0 side-dock:top-1/2 side-dock:-translate-y-1/2"
+      className="accent-border-soft fixed inset-x-0 bottom-0 z-40 border-t-2 bg-white side-dock:left-auto side-dock:right-0 side-dock:bottom-[calc(env(safe-area-inset-bottom)+1rem)] side-dock:w-[env(safe-area-inset-right)]"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="mx-auto flex max-w-6xl items-start side-dock:flex-col side-dock:items-center side-dock:py-2">
+      <div className="mx-auto flex max-w-6xl items-start side-dock:w-full side-dock:flex-col side-dock:items-center side-dock:py-2">
         {tabs.map((tab) => {
           const active = pathname.startsWith(tab.match);
           return (
@@ -62,7 +62,7 @@ export default function BottomNav() {
               key={tab.key}
               href={tab.href}
               aria-label={tab.label}
-              className={`flex flex-1 flex-col items-center gap-1 py-2 text-xs font-bold transition-opacity side-dock:w-[4.5rem] side-dock:flex-none side-dock:py-2.5 ${
+              className={`flex flex-1 flex-col items-center gap-1 py-2 text-xs font-bold transition-opacity side-dock:w-full side-dock:flex-none side-dock:py-2.5 ${
                 tab.primary ? "" : active ? "opacity-100" : "opacity-60 hover:opacity-100"
               }`}
             >
@@ -108,7 +108,7 @@ export default function BottomNav() {
             onClick={() => setCurrentId(null)}
             aria-label="Switch person"
             title="Not you? Tap to switch"
-            className="flex flex-1 flex-col items-center gap-1 py-2 text-xs font-bold opacity-60 transition-opacity hover:opacity-100 side-dock:w-[4.5rem] side-dock:flex-none side-dock:py-2.5"
+            className="flex flex-1 flex-col items-center gap-1 py-2 text-xs font-bold opacity-60 transition-opacity hover:opacity-100 side-dock:w-full side-dock:flex-none side-dock:py-2.5"
           >
             <span className="flex h-5 w-5 items-center justify-center">
               <span className="h-3 w-3 rounded-full" style={{ background: "var(--theme-accent)" }} />
