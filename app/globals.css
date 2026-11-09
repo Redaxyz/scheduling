@@ -100,6 +100,28 @@ textarea:focus {
    base component sets it as an inline style). Matched by id (not its
    border classes, which change if the button's ever resized) — the same
    id lib/bottomNav.ts uses to find its true top edge. */
+/* On the iPhone Duo unfolded (see lib/sideDock.ts) the dock stands on the
+   right edge instead, and the page gives up that strip so nothing sits
+   under it. .full-bleed is the edge-to-edge width for the pages that break
+   out of <main>, minus that strip. */
+:root {
+  --dock-w: 0px;
+}
+.full-bleed {
+  width: calc(100vw - var(--dock-w));
+}
+/* Same query as SIDE_DOCK_MEDIA in lib/sideDock.ts. */
+@media (pointer: coarse) and (min-width: 560px) and (max-width: 1000px) and (min-height: 560px) and (max-height: 1000px) {
+  :root {
+    --dock-w: 5.5rem;
+  }
+  body {
+    padding-right: var(--dock-w);
+  }
+  #bottom-nav {
+    padding: 0.375rem calc(0.375rem + env(safe-area-inset-right)) 0.375rem 0.375rem;
+  }
+}
 #bottom-nav-raised {
   border-color: #fff !important;
   background: linear-gradient(135deg, var(--cao-blue), var(--cao-orange)) !important;

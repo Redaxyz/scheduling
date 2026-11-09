@@ -80,7 +80,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
     // stopping at the edge of that padding — min-h-dvh (not a JS
     // measurement) is what makes the split run the full screen height even
     // on a short day, growing further on its own if content needs more.
-    <div className="relative left-1/2 -mt-4 -mb-28 min-h-dvh w-screen -translate-x-1/2">
+    <div className="full-bleed relative left-1/2 -mt-4 -mb-28 min-h-dvh -translate-x-1/2 side-dock:-mb-4">
       <AutoRefresh intervalMs={20000} stale={{ kind: "day", period: date }} />
 
       {/* A separate full-height background layer behind everything, split
@@ -122,8 +122,8 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
       </div>
 
       {/* max-lg:pb-28 keeps the bottom nav from covering the end of the
-          stacked offices on a phone. */}
-      <div className="relative z-10 flex flex-col max-lg:pb-28 lg:flex-row lg:items-stretch">
+          stacked offices on a phone, unless the nav is off to the side. */}
+      <div className="relative z-10 flex flex-col max-lg:pb-28 side-dock:pb-0 lg:flex-row lg:items-stretch">
         {OFFICES.map((office) => (
           <OfficeHalf
             key={office}

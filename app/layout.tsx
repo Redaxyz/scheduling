@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ThemeAccent />
           <AppGate />
           <NotificationPrompt />
-          <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-4 pb-28">{children}</main>
+          <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-4 pb-28 side-dock:pb-4">{children}</main>
           <BottomNav />
         </WhoAmIProvider>
       </body>

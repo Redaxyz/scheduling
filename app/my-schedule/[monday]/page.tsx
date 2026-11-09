@@ -49,7 +49,7 @@ export default async function MySchedulePage({ params }: { params: Promise<{ mon
         />
       </div>
 
-      <div className="relative left-1/2 w-screen -translate-x-1/2">
+      <div className="full-bleed relative left-1/2 -translate-x-1/2">
         <FullHeightFrame reserveBelow={72} heightScale={0.92}>
           <ModernMyScheduleView rows={rows} />
         </FullHeightFrame>
