@@ -209,7 +209,17 @@ html[data-dock="side"] #dock > .dock-surface > * {
    safe-area insets hold back (zero almost everywhere, so this is just
    100vw — the exceptions are a sideways phone and the iPhone Duo's rail). */
 .w-bleed {
-  width: calc(var(--vw, 100vw) - var(--sa-left) - var(--sa-right));
+  width: calc(100vw - var(--sa-left) - var(--sa-right));
+}
+/* On a phone <main> is already full width (the body pads the insets), so a
+   full-bleed block is just <main> plus its own px-4 sides: pure layout, no
+   measured width. A measured one could catch the old width mid-rotation,
+   make the page wider than the screen, and leave iOS zoomed out with the
+   dock no longer fixed. */
+@media (max-width: 500px), (max-width: 1023px) and (max-height: 500px) {
+  .w-bleed {
+    width: calc(100% + 2rem);
+  }
 }
 
 /* The dock's Home chip always gets the full brand gradient, regardless of

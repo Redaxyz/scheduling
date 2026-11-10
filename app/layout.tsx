@@ -37,6 +37,9 @@ export async function generateMetadata(): Promise<Metadata> {
 export async function generateViewport(): Promise<Viewport> {
   return {
     themeColor: "#94a3b8",
+    // Never zoomed out past the page's own width: a zoomed-out page is where
+    // a fixed bar starts scrolling along with everything else.
+    minimumScale: 1,
     ...((await isDuo()) ? { viewportFit: "cover" as const } : {}),
   };
 }

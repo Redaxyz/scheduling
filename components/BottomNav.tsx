@@ -79,12 +79,14 @@ export default function BottomNav() {
       if (!nav) return;
       root.style.setProperty("--main-pb", `${Math.round(nav.getBoundingClientRect().height) + 12}px`);
 
-      // On a phone, full-bleed blocks (.w-bleed) size from the page's real
-      // laid-out width instead of 100vw. In an iOS home-screen app 100vw can
-      // come out wider than what's actually on screen, and since those
-      // blocks center themselves, the extra spills off the LEFT edge where
-      // it can't be scrolled back into view.
-      if (phone.matches) root.style.setProperty("--vw", `${root.clientWidth}px`);
+      // On a phone, the Home title sizes itself from the width actually on
+      // screen (in an iOS home-screen app 100vw can come out wider). Read
+      // from the visual viewport, not the page: the page's width can be
+      // stretched by its own content mid-rotation, and feeding that back in
+      // is what used to leave the page too wide and the dock adrift.
+      // (Full-bleed blocks don't depend on this; see .w-bleed in globals.css.)
+      const vv = window.visualViewport;
+      if (phone.matches && vv) root.style.setProperty("--vw", `${Math.round(vv.width * vv.scale)}px`);
       else root.style.removeProperty("--vw");
     }
     update();
