@@ -1,7 +1,18 @@
 {
   "framework": "nextjs",
   "crons": [
-    { "path": "/api/cron/change-notices", "schedule": "0 21 * * *" },
-    { "path": "/api/cron/change-notices", "schedule": "0 22 * * *" }
-  ]
+    {
+      "path": "/api/cron/change-notices",
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/change-notices",
+      "schedule": "0 22 * * *"
+    }
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "autofix-log": false
+    }
+  }
 }

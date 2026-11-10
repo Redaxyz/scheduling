@@ -8,6 +8,7 @@ import AppGate from "@/components/AppGate";
 import ThemeAccent from "@/components/ThemeAccent";
 import { NotificationPrompt } from "@/components/NotificationSetup";
 import DockMode from "@/components/DockMode";
+import ErrorReporter from "@/components/ErrorReporter";
 import { DOCK_COOKIE } from "@/lib/sideDock";
 
 const geistSans = Geist({
@@ -46,6 +47,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" className={`${geistSans.variable} antialiased`} data-cover={duo ? "" : undefined} data-dock={duo ? "side" : undefined}>
       <body className="flex min-h-dvh flex-col">
         <DockMode />
+        <ErrorReporter />
         <WhoAmIProvider>
           <ThemeAccent />
           <AppGate />
