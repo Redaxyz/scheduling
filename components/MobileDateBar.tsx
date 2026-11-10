@@ -1,21 +1,125 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { calendarMonthOf, mondayOf, nearestBusinessDayOnOrAfter } from "@/lib/date";
+import {
+  addDays,
+  addMonths,
+  calendarMonthOf,
+  easternToday,
+  firstOfMonth,
+  formatMonthLabel,
+  mondayOf,
+  nearestBusinessDayOnOrAfter,
+  weekDates,
+} from "@/lib/date";
 
 // What a date picked from the calendar gets rounded to before navigating:
 // the day itself (Home), the Monday of its week, or the 1st of its month.
-// Weekends roll forward to Monday first, same as everywhere else — the
-// native picker can't disable them.
 type Snap = "day" | "week" | "month";
 
 function snapDate(picked: string, snap: Snap): string {
   if (snap === "month") return calendarMonthOf(nearestBusinessDayOnOrAfter(picked));
   const day = nearestBusinessDayOnOrAfter(picked);
   return snap === "week" ? mondayOf(day) : day;
+}
+
+// Mon–Fri rows covering every weekday of the calendar month.
+function monthRows(month: string): string[][] {
+  const last = addDays(addMonths(month, 1), -1);
+  const rows: string[][] = [];
+  for (let monday = mondayOf(nearestBusinessDayOnOrAfter(month)); monday <= last; monday = addDays(monday, 7)) {
+    rows.push(weekDates(monday));
+  }
+  return rows;
+}
+
+const PANEL_GAP = 8;
+const PANEL_MAX_WIDTH = 320;
+
+// The app's own month calendar, opening upward from the date bar. The
+// phone's native date picker anchors itself below whatever opened it, which
+// down here put it off the bottom of the screen.
+function CalendarPanel({ value, snap, anchor, onPick, onClose }: { value: string; snap: Snap; anchor: HTMLElement; onPick: (date: string) => void; onClose: () => void }) {
+  const [month, setMonth] = useState(firstOfMonth(value));
+  const [position, setPosition] = useState<{ left: number; bottom: number; width: number } | null>(null);
+  const today = easternToday();
+  const valueWeek = mondayOf(nearestBusinessDayOnOrAfter(value));
+
+  useLayoutEffect(() => {
+    function place() {
+      const rect = anchor.getBoundingClientRect();
+      const width = Math.min(PANEL_MAX_WIDTH, window.innerWidth - 2 * PANEL_GAP);
+      const left = Math.min(Math.max(PANEL_GAP, rect.left + rect.width / 2 - width / 2), window.innerWidth - width - PANEL_GAP);
+      setPosition({ left, bottom: window.innerHeight - rect.top + PANEL_GAP, width });
+    }
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [anchor]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const monthArrow = "flex h-9 w-9 items-center justify-center rounded-full text-base font-bold hover:bg-slate-900/5 active:bg-slate-900/10";
+
+  return createPortal(
+    // The backdrop catches a tap anywhere else, closing the calendar
+    // instead of pressing whatever is underneath.
+    <div className="fixed inset-0 z-50" onClick={onClose}>
+      {position && (
+        <div
+          role="dialog"
+          aria-label="Choose a date"
+          onClick={(e) => e.stopPropagation()}
+          className="nav-surface accent-border fixed rounded-2xl border-2 p-3 text-slate-800"
+          style={{ left: position.left, bottom: position.bottom, width: position.width }}
+        >
+          <div className="mb-2 flex items-center justify-between">
+            <button type="button" aria-label="Previous month" onClick={() => setMonth(addMonths(month, -1))} className={monthArrow}>
+              ←
+            </button>
+            <span className="text-sm font-extrabold">{formatMonthLabel(month)}</span>
+            <button type="button" aria-label="Next month" onClick={() => setMonth(addMonths(month, 1))} className={monthArrow}>
+              →
+            </button>
+          </div>
+          <div className="grid grid-cols-5 gap-1 text-center">
+            {["M", "T", "W", "Th", "F"].map((d) => (
+              <span key={d} className="pb-1 text-[10px] font-bold uppercase tracking-wider opacity-40">
+                {d}
+              </span>
+            ))}
+            {monthRows(month).map((row) =>
+              row.map((date) => {
+                const inMonth = firstOfMonth(date) === month;
+                const selected = snap === "day" ? date === value : snap === "week" && mondayOf(date) === valueWeek;
+                return (
+                  <button
+                    key={date}
+                    type="button"
+                    onClick={() => onPick(date)}
+                    aria-current={date === today ? "date" : undefined}
+                    className={`h-10 rounded-lg text-sm font-bold transition-colors ${
+                      selected ? "bg-slate-900 text-white" : "hover:bg-[color-mix(in_srgb,var(--theme-accent)_18%,white)]"
+                    } ${inMonth ? "" : "opacity-35"} ${date === today && !selected ? "accent-border border-2" : ""}`}
+                  >
+                    {Number(date.slice(8))}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>,
+    document.body
+  );
 }
 
 // The date navigation at the bottom of the screen: ← the current
@@ -51,8 +155,9 @@ export default function MobileDateBar({
   nextLabel: string;
 }) {
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const [slot, setSlot] = useState<HTMLElement | null>(null);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => setSlot(document.getElementById("date-nav-slot")), []);
 
@@ -75,17 +180,22 @@ export default function MobileDateBar({
       className="hidden px-2 pb-1.5 pt-3 phone:block dockrow:block dockrow:shrink-0 dockrow:px-0 dockrow:py-2.5"
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="skew-track nav-surface accent-border mx-auto flex h-11 w-full max-w-md items-stretch border-2 font-bold text-slate-800 dockrow:h-12 dockrow:w-80">
+      <div
+        ref={trackRef}
+        className="skew-track nav-surface accent-border mx-auto flex h-11 w-full max-w-md items-stretch border-2 font-bold text-slate-800 dockrow:h-12 dockrow:w-80"
+      >
         <Link href={prevHref} aria-label={prevLabel} title={prevLabel} className={arrowClass}>
           <span className="skew-label">←</span>
         </Link>
         {divider}
 
-        {/* The label is the button. The real control is a native date input
-            stretched invisibly over it: tapping it is what opens the
-            picker on iOS. Browsers that only open theirs from the little
-            calendar icon get an explicit showPicker() instead. */}
-        <div className={`${segClass} relative min-w-0 flex-1 hover:bg-[color-mix(in_srgb,var(--theme-accent)_14%,white)]`}>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          className={`${segClass} min-w-0 flex-1 hover:bg-[color-mix(in_srgb,var(--theme-accent)_14%,white)]`}
+        >
           {/* .skew-label sets display itself, so the row layout lives on an
               inner span. */}
           <span className="skew-label min-w-0 px-3 text-sm">
@@ -96,30 +206,25 @@ export default function MobileDateBar({
               </svg>
             </span>
           </span>
-          <input
-            ref={inputRef}
-            type="date"
-            value={value}
-            aria-label="Choose a date"
-            onClick={() => {
-              try {
-                inputRef.current?.showPicker?.();
-              } catch {
-                // Already open, or not allowed here — the native tap handles it.
-              }
-            }}
-            onChange={(e) => {
-              if (e.target.value) router.push(`${basePath}${snapDate(e.target.value, snap)}`);
-            }}
-            className="absolute inset-0 h-full w-full cursor-pointer appearance-none opacity-0"
-          />
-        </div>
+        </button>
 
         {divider}
         <Link href={nextHref} aria-label={nextLabel} title={nextLabel} className={arrowClass}>
           <span className="skew-label">→</span>
         </Link>
       </div>
+      {open && trackRef.current && (
+        <CalendarPanel
+          value={value}
+          snap={snap}
+          anchor={trackRef.current}
+          onClose={() => setOpen(false)}
+          onPick={(date) => {
+            setOpen(false);
+            router.push(`${basePath}${snapDate(date, snap)}`);
+          }}
+        />
+      )}
     </div>,
     slot
   );
