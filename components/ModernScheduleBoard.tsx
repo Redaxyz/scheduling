@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { DaySchedule, FreeStaffMember, PositionRef, ProviderCell } from "@/lib/schedule";
 import type { SwapRequestView } from "@/lib/swap";
-import { effectiveScheduleDate, formatLong } from "@/lib/date";
-import { HALVES, HALF_LABELS, OFFICES, OFFICE_LABELS, WEEKDAY_LABELS, type Half, type Office, type Role } from "@/lib/types";
+import { effectiveScheduleDate, formatDayShort, formatLong, nextBusinessDay, previousBusinessDay } from "@/lib/date";
+import { HALVES, HALF_LABELS, OFFICES, OFFICE_LABELS, type Half, type Office, type Role } from "@/lib/types";
 import { useWhoAmI } from "@/lib/whoami";
 import AutoRefresh from "@/components/AutoRefresh";
 import ScheduleDateNav from "@/components/ScheduleDateNav";
+import MobileDateBar from "@/components/MobileDateBar";
 import DayNote, { type DayNoteData } from "@/components/DayNote";
 import { DropZone, Pill, SwapControl, TakeRoleButton, lateTag, moveStaff, postJSON, type DropTarget } from "@/components/scheduleShared";
 
@@ -64,66 +65,75 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
     { label: "Out of office", names: day.ooo.map((s) => s.name) },
   ].filter((row) => row.names.length > 0);
 
-  // On a phone the two offices stack, so whichever one is actually "yours"
-  // should land on top instead of always defaulting to Bethesda-then-
-  // Germantown — that ordering only matters once flex-col kicks in, so it's
-  // undone again at the lg breakpoint where the two sit side by side anyway.
-  const mobileFirst: Office = current?.homeOffice === "GERMANTOWN" ? "GERMANTOWN" : "BETHESDA";
-
-  const weekdayLabel = day.weekday !== null ? WEEKDAY_LABELS[day.weekday] : "Weekend";
+  // Bethesda always comes first — on top when the offices stack (phone),
+  // on the left when they sit side by side — so the title and note above
+  // always sit on white.
   const isToday = date === effectiveScheduleDate();
-  const titleColor = mobileFirst === "GERMANTOWN" ? "text-white lg:text-slate-900" : "text-slate-900";
+  const titleColor = "text-slate-900";
 
   return (
-    // -mt-4/-mb-28 cancel <main>'s own py-4/pb-28 (see app/layout.tsx) so
+    // -mt-4/-mb-[--main-pb] cancel <main>'s own padding (see app/layout.tsx) so
     // this reaches the true top and bottom of the viewport instead of
     // stopping at the edge of that padding — min-h-dvh (not a JS
     // measurement) is what makes the split run the full screen height even
     // on a short day, growing further on its own if content needs more.
-    <div className="full-bleed relative left-1/2 -mt-4 -mb-28 min-h-dvh -translate-x-1/2 side-dock:-mb-4">
+    // Its own pb-[--main-pb] then keeps the last of the content (the
+    // "Not assigned yet" / "Out of office" lines) clear of the dock, while
+    // the background still runs behind it to the bottom edge.
+    <div className="relative left-1/2 -mb-[var(--main-pb)] -mt-4 min-h-dvh w-bleed -translate-x-1/2 pb-[var(--main-pb)]">
       <AutoRefresh intervalMs={20000} stale={{ kind: "day", period: date }} />
+      <MobileDateBar
+        label={formatDayShort(date)}
+        value={date}
+        basePath="/schedule/"
+        snap="day"
+        prevHref={`/schedule/${previousBusinessDay(date)}`}
+        nextHref={`/schedule/${nextBusinessDay(date)}`}
+        prevLabel="Previous day"
+        nextLabel="Next day"
+      />
 
       {/* A separate full-height background layer behind everything, split
           the same way as the content — so the white/black still runs the
           full screen even though the actual content above (including the
           "not assigned" line) now sits at its own natural height near the
           top instead of being stretched or pinned to the very bottom. */}
-      <div className="absolute inset-0 z-0 flex flex-col lg:flex-row">
+      <div className="absolute inset-0 z-0 flex flex-col lg:flex-row unfolded:flex-row">
         {OFFICES.map((office) => (
           <div
             key={office}
-            className={`flex-1 ${office === mobileFirst ? "order-1 lg:order-none" : "order-2 lg:order-none"} ${
-              office === "GERMANTOWN" ? "bg-[#0b0f14]" : "bg-white"
-            }`}
+            className={`flex-1 ${office === "GERMANTOWN" ? "bg-[#0b0f14]" : "bg-white"}`}
           />
         ))}
       </div>
 
-      {/* Floats over the split instead of sitting in its own bar above it —
-          on desktop the title is over Bethesda/white (left) and the date-nav
-          over Germantown/black (right). On a phone the offices stack, so
-          both sit over whichever office is on top — white for Bethesda,
-          black for Germantown — and their text color follows that. */}
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-4 sm:px-10">
-        <div>
-          <h1 className={`text-xl font-extrabold tracking-tight ${titleColor}`}>
-            {weekdayLabel} — {formatLong(date)}
-          </h1>
+      {/* Floats over the split instead of sitting in its own bar above it.
+          Side by side (computer, unfolded Duo) it's a two-column grid that
+          matches the offices below, so the title stays over Bethesda/white
+          on the left and — on a tablet, the one place the header still has
+          date controls — those sit over Germantown/black on the right. On a
+          phone the offices stack and it all sits over Bethesda. */}
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-4 sm:px-10 lg:grid lg:grid-cols-2 lg:gap-x-20 unfolded:grid unfolded:grid-cols-2 unfolded:gap-x-20">
+        <div className="min-w-0">
+          {/* One line, always — .home-date-title shrinks the font to fit
+              the white part of the screen rather than wrapping. */}
+          <h1 className={`home-date-title font-extrabold tracking-tight ${titleColor}`}>{formatLong(date)}</h1>
           {!isToday && (
-            <Link href={`/schedule/${effectiveScheduleDate()}`} className="accent-text text-sm font-bold hover:underline">
+            <Link href={`/schedule/${effectiveScheduleDate()}`} className="accent-text mr-3 text-sm font-bold hover:underline">
               Jump to today
             </Link>
           )}
           <DayNote key={date} date={date} initial={note} textClass={titleColor} />
         </div>
-        <div className={mobileFirst === "GERMANTOWN" ? "text-white" : "text-slate-900 lg:text-white"}>
+        {/* Tablets only — everywhere else MobileDateBar, down by the dock,
+            replaces it. */}
+        <div className="text-slate-900 phone:hidden dockrow:hidden lg:justify-self-end lg:text-white">
+
           <ScheduleDateNav date={date} />
         </div>
       </div>
 
-      {/* max-lg:pb-28 keeps the bottom nav from covering the end of the
-          stacked offices on a phone, unless the nav is off to the side. */}
-      <div className="relative z-10 flex flex-col max-lg:pb-28 side-dock:pb-0 lg:flex-row lg:items-stretch">
+      <div className="relative z-10 flex flex-col lg:flex-row lg:items-stretch unfolded:flex-row unfolded:items-stretch">
         {OFFICES.map((office) => (
           <OfficeHalf
             key={office}
@@ -135,13 +145,12 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
             isManager={isManager}
             swapRequests={swapRequests}
             onChanged={refresh}
-            mobileOrderClass={office === mobileFirst ? "order-1 lg:order-none" : "order-2 lg:order-none"}
             footer={
               office === "GERMANTOWN" &&
               rosterRows.length > 0 && (
                 // On a phone the offices stack, so the seam-straddling rows
                 // below can't work; they sit at the end of Germantown instead.
-                <div className="mt-10 space-y-4 border-t border-white/10 pt-6 lg:hidden">
+                <div className="mt-10 space-y-4 border-t border-white/10 pt-6 lg:hidden unfolded:hidden">
                   {rosterRows.map((row) => (
                     <div key={row.label}>
                       <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">{row.label}</div>
@@ -161,7 +170,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
           is everyone absent the whole day (they're never in "not assigned",
           which only lists people who are in). */}
       {rosterRows.length > 0 && (
-        <div className="relative z-10 space-y-1.5 pb-6 max-lg:hidden">
+        <div className="relative z-10 space-y-1.5 pb-3 max-lg:hidden unfolded:!block">
           {rosterRows.map((row) => (
             <div key={row.label} className="flex">
               <div className="flex w-1/2 justify-end pr-3 sm:pr-4">
@@ -187,7 +196,6 @@ function OfficeHalf({
   isManager,
   swapRequests,
   onChanged,
-  mobileOrderClass,
   footer,
 }: {
   date: string;
@@ -198,7 +206,6 @@ function OfficeHalf({
   isManager: boolean;
   swapRequests: SwapRequestView[];
   onChanged: () => void;
-  mobileOrderClass: string;
   footer?: ReactNode;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -240,7 +247,7 @@ function OfficeHalf({
 
   return (
     <div
-      className={`flex-1 px-6 pb-8 pt-20 sm:px-10 sm:pb-12 sm:pt-24 ${mobileOrderClass} ${dark ? "bg-[#0b0f14] text-white" : "bg-white text-slate-900"}`}
+      className={`flex-1 px-6 pb-8 pt-3 sm:px-10 sm:pb-12 sm:pt-4 ${dark ? "bg-[#0b0f14] text-white" : "bg-white text-slate-900"}`}
     >
       <div className={`mb-8 flex items-baseline justify-between border-b pb-4 ${dark ? "border-white/10" : "border-slate-200"}`}>
         <h2 className="text-2xl font-black uppercase tracking-tight sm:text-3xl">{OFFICE_LABELS[office]}</h2>

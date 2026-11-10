@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getProviderMonthCalendar } from "@/lib/calendar";
-import { addMonths, effectiveScheduleDate, firstOfMonth, formatMonthLabel, monthWeekdays } from "@/lib/date";
+import { addMonths, calendarMonthOf, effectiveScheduleDate, firstOfMonth, formatMonthLabel, monthWeekdays } from "@/lib/date";
 import { getWorkingHolidays } from "@/lib/workingHolidays";
 import ProviderCalendarGrid, { ProviderLegend } from "@/components/ProviderCalendarGrid";
 import CalendarWhoToggle from "@/components/CalendarWhoToggle";
 import MobileWeekRedirect from "@/components/MobileWeekRedirect";
 import CalendarNavLinks from "@/components/CalendarNavLinks";
+import MobileDateBar from "@/components/MobileDateBar";
 
 // Reads live assignment/absence data on every load — see the note on
 // app/schedule/[date]/page.tsx.
@@ -26,17 +27,28 @@ export default async function CalendarProvidersMonthPage({ params }: { params: P
 
   const dates = monthWeekdays(month);
   const [rows, workingHolidays] = await Promise.all([getProviderMonthCalendar(month), getWorkingHolidays(dates)]);
-  const isThisMonth = month === firstOfMonth(effectiveScheduleDate());
+  const isThisMonth = month === calendarMonthOf(effectiveScheduleDate());
 
   return (
-    <div className="full-bleed relative left-1/2 -translate-x-1/2">
+    <div className="relative left-1/2 w-bleed -translate-x-1/2">
       <MobileWeekRedirect who="providers" month={month} />
       <div className="mx-auto max-w-[1600px] space-y-1.5 px-4 sm:px-8">
+        <MobileDateBar
+          label={formatMonthLabel(month)}
+          value={month}
+          basePath="/calendar/providers/month/"
+          snap="month"
+          prevHref={`/calendar/providers/month/${addMonths(month, -1)}`}
+          nextHref={`/calendar/providers/month/${addMonths(month, 1)}`}
+          prevLabel="Previous month"
+          nextLabel="Next month"
+        />
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <h1 className="flex flex-wrap items-baseline gap-x-2 text-base font-extrabold tracking-tight">
-            {formatMonthLabel(month)}
+            {/* On a phone the date bar above the dock already shows this. */}
+            <span className="phone:sr-only">{formatMonthLabel(month)}</span>
             {!isThisMonth && (
-              <Link href={`/calendar/providers/month/${firstOfMonth(effectiveScheduleDate())}`} className="accent-text text-xs font-bold hover:underline">
+              <Link href={`/calendar/providers/month/${calendarMonthOf(effectiveScheduleDate())}`} className="accent-text text-xs font-bold hover:underline">
                 Jump to this month
               </Link>
             )}
@@ -44,7 +56,7 @@ export default async function CalendarProvidersMonthPage({ params }: { params: P
               Edit weekly templates →
             </Link>
           </h1>
-          <div className="flex items-center gap-2 max-lg:w-full max-lg:justify-between lg:flex-wrap">
+          <div className="flex items-center gap-2 max-lg:w-full max-lg:justify-between phone:order-first phone:w-auto unfolded:order-first unfolded:!w-auto lg:flex-wrap">
             <CalendarWhoToggle who="providers" anchorDate={month} providersView="month" />
             <CalendarNavLinks
               prevHref={`/calendar/providers/month/${addMonths(month, -1)}`}

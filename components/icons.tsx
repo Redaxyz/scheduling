@@ -39,6 +39,16 @@ export function ClipboardIcon({ className, style }: IconProps) {
   );
 }
 
+// Head and shoulders — "me".
+export function PersonIcon({ className, style }: IconProps) {
+  return (
+    <svg {...base} className={className} style={style}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4.5 20.5c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5" />
+    </svg>
+  );
+}
+
 export function QuadrantGridIcon({ className, style }: IconProps) {
   return (
     <svg {...base} className={className} style={style}>

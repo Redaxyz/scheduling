@@ -6,6 +6,7 @@ import { getWorkingHolidays } from "@/lib/workingHolidays";
 import ProviderCalendarGrid, { ProviderLegend } from "@/components/ProviderCalendarGrid";
 import CalendarWhoToggle from "@/components/CalendarWhoToggle";
 import CalendarNavLinks from "@/components/CalendarNavLinks";
+import MobileDateBar from "@/components/MobileDateBar";
 
 // Reads live assignment/absence data on every load — see the note on
 // app/schedule/[date]/page.tsx.
@@ -28,11 +29,24 @@ export default async function CalendarProvidersWeekPage({ params }: { params: Pr
   const isThisWeek = monday === effectiveMonday();
 
   return (
-    <div className="full-bleed relative left-1/2 -translate-x-1/2">
+    <div className="relative left-1/2 w-bleed -translate-x-1/2">
       <div className="mx-auto max-w-[1600px] space-y-1.5 px-4 sm:px-8">
+        <MobileDateBar
+          label={`${formatShort(dates[0])} – ${formatShort(dates[dates.length - 1])}`}
+          value={monday}
+          basePath="/calendar/providers/week/"
+          snap="week"
+          prevHref={`/calendar/providers/week/${addDays(monday, -7)}`}
+          nextHref={`/calendar/providers/week/${addDays(monday, 7)}`}
+          prevLabel="Previous week"
+          nextLabel="Next week"
+        />
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <h1 className="flex flex-wrap items-baseline gap-x-2 text-base font-extrabold tracking-tight">
-            {formatShort(dates[0])} – {formatShort(dates[dates.length - 1])}
+            {/* On a phone the date bar above the dock already shows this. */}
+            <span className="phone:sr-only">
+              {formatShort(dates[0])} – {formatShort(dates[dates.length - 1])}
+            </span>
             {!isThisWeek && (
               <Link href={`/calendar/providers/week/${effectiveMonday()}`} className="accent-text text-xs font-bold hover:underline">
                 Jump to this week
@@ -42,7 +56,7 @@ export default async function CalendarProvidersWeekPage({ params }: { params: Pr
               Edit weekly templates →
             </Link>
           </h1>
-          <div className="flex items-center gap-2 max-lg:w-full max-lg:justify-between lg:flex-wrap">
+          <div className="flex items-center gap-2 max-lg:w-full max-lg:justify-between phone:order-first phone:w-auto unfolded:order-first unfolded:!w-auto lg:flex-wrap">
             <CalendarWhoToggle who="providers" anchorDate={monday} providersView="week" />
             <CalendarNavLinks
               prevHref={`/calendar/providers/week/${addDays(monday, -7)}`}

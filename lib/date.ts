@@ -141,6 +141,13 @@ export function formatShort(dateStr: string): string {
   return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
+// "Mon, Nov 9" — the day label on the phone's date bar.
+export function formatDayShort(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+}
+
 export function firstOfMonth(dateStr: string): string {
   const [y, m] = dateStr.split("-").map(Number);
   return `${y}-${String(m).padStart(2, "0")}-01`;
@@ -152,14 +159,26 @@ export function addMonths(firstOfMonthStr: string, delta: number): string {
   return dt.toISOString().slice(0, 10);
 }
 
-// All weekday (Mon-Fri) dates in the month starting at firstOfMonthStr.
+// The month view is made of whole Mon–Fri weeks, and each week belongs to
+// the month its Friday falls in — so a month always ends on its last
+// Friday, with no stray Monday (e.g. Nov 30, 2026) hanging off the end. A
+// week that straddles two months shows up once, in the month of its
+// Friday: Nov 30–Dec 4 opens December. Every weekday is in exactly one
+// month view.
+export function calendarMonthOf(dateStr: string): string {
+  return firstOfMonth(addDays(mondayOf(dateStr), 4));
+}
+
+// Every weekday in the month view starting at firstOfMonthStr (see
+// calendarMonthOf): from the Monday of the week of its first Friday through
+// its last Friday.
 export function monthWeekdays(firstOfMonthStr: string): string[] {
-  const [y, m] = firstOfMonthStr.split("-").map(Number);
-  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const first = firstOfMonth(firstOfMonthStr);
+  let friday = first;
+  while (weekdayIndex(friday) !== 4) friday = addDays(friday, 1);
   const dates: string[] = [];
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    if (isWeekday(dateStr)) dates.push(dateStr);
+  for (let monday = addDays(friday, -4); calendarMonthOf(monday) === first; monday = addDays(monday, 7)) {
+    dates.push(...weekDates(monday));
   }
   return dates;
 }

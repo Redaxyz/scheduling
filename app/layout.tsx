@@ -50,7 +50,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <ThemeAccent />
           <AppGate />
           <NotificationPrompt />
-          <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-4 pb-28 side-dock:pb-4">{children}</main>
+          {/* --main-pb is the measured height of the bottom chrome (see
+              BottomNav), so nothing ends up hidden behind it. */}
+          <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-[var(--main-pb)] pt-4">{children}</main>
           <BottomNav />
         </WhoAmIProvider>
       </body>

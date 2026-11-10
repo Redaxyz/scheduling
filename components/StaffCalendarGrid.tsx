@@ -23,6 +23,8 @@ const STATUS_LABEL: Record<StaffDayStatus, string> = {
 };
 
 const WEEKDAY_LETTERS = ["M", "T", "W", "Th", "F"];
+// What each half-day box says: M for morning, A for afternoon.
+const HALF_LETTER = { AM: "M", PM: "A" } as const;
 
 // Leaving before the standard end of day — its own color so it reads
 // differently from the orange of coming in late.
@@ -178,7 +180,11 @@ export default function StaffCalendarGrid({
   // the box inside it, gets real width instead of a tiny centered square.
   // Box heights themselves are set inline (see dynamicBigHeight/
   // dynamicThinHeight above) rather than via fixed Tailwind classes.
-  const cellPad = "px-0.5 py-1";
+  // 1.5px all round, so neighbouring days and staff rows end up 3px apart.
+  // h-px on the cell + h-full on what's inside lets the colored boxes stretch
+  // to fill however tall the row actually is (the name column can make it
+  // taller than the computed box height).
+  const cellPad = "h-px p-[1.5px]";
   const labelWidthClass = dense ? "w-16" : "w-20";
 
   // Your own row first — no hunting for your name in an alphabetical list —
@@ -231,8 +237,8 @@ export default function StaffCalendarGrid({
   // the overflow that kept showing up. Baked into the row-height math
   // below instead of just padding the safety margin, so it scales
   // correctly regardless of how many staff there are.
-  const bigPadPx = 8; // py-1 = 0.25rem top+bottom
-  const thinPadPx = 8; // every row uses the same py-1 cell padding now
+  const bigPadPx = 3; // 1.5px top + bottom
+  const thinPadPx = 3; // every row uses the same cell padding
   const isManagerView = current?.isManager ?? false;
   // A manager's every row is "big"; everyone else only has their own —
   // computed here (not inside the effect) so the effect can depend on
@@ -403,7 +409,7 @@ export default function StaffCalendarGrid({
                         } ${togglingHoliday === date ? "opacity-40" : ""} ${dense ? "px-1 py-1 text-[10px]" : "px-1 py-1 text-sm"} ${
                           inCurrentWeek ? "cal-current-week" : ""
                         } ${isToday ? "cal-today-header" : ""}`}
-                        style={holiday ? { color: holidayColor } : undefined}
+                        style={holiday ? { color: holidayColor, ...(isWorkingHoliday ? {} : { width: "2.75rem" }) } : undefined}
                         title={
                           holiday
                             ? `${holiday} — ${isWorkingHoliday ? "clinic open; tap to mark as off" : "clinic closed; tap to mark as a working day"}`
@@ -498,10 +504,14 @@ export default function StaffCalendarGrid({
                         }));
                         return (
                           <td key={date} className={tdClass}>
-                            {merged && !editable ? (
+                            {holiday ? (
+                              // A closed holiday is the same for everyone all day: one
+                              // plain block, no M/A split.
+                              <div className="h-full w-full rounded-[4px]" style={{ minHeight: boxHeight, background: holidayColor ?? undefined }} title={label} />
+                            ) : merged && !editable ? (
                               <div
-                                className="flex w-full items-center justify-center rounded-md"
-                                style={{ height: boxHeight, background: mergedColor }}
+                                className="flex h-full w-full items-center justify-center rounded-[4px]"
+                                style={{ minHeight: boxHeight, background: mergedColor }}
                                 title={label}
                               >
                                 <span className={textClass}>{mergedText}</span>
@@ -515,22 +525,25 @@ export default function StaffCalendarGrid({
                                 }}
                                 aria-label={`${label} (tap to mark the whole day out)`}
                                 title={`${label} (tap to mark the whole day out)`}
-                                className="flex w-full items-center justify-center rounded-md transition active:scale-95"
-                                style={{ height: boxHeight, background: mergedColor }}
+                                className="flex h-full w-full items-center justify-center rounded-[4px] transition active:scale-95"
+                                style={{ minHeight: boxHeight, background: mergedColor }}
                               >
                                 <span className={textClass}>{mergedText}</span>
                               </button>
                             ) : (
-                              <div className="flex w-full gap-0.5">
+                              <div className="flex h-full w-full gap-0.5" style={{ minHeight: boxHeight }}>
+                                {/* Its own min-height too: Safari can resolve h-full inside a
+                                    table cell to almost nothing, and the cell then centers that
+                                    sliver, pushing the boxes down by half a row. */}
                                 {halves.map(({ half, out, fill, text }) =>
                                   !editable ? (
                                     <div
                                       key={half}
-                                      className="flex min-w-0 flex-1 items-center justify-center rounded-md"
-                                      style={{ height: boxHeight, background: fill }}
+                                      className="flex min-w-0 flex-1 items-center justify-center rounded-[4px]"
+                                      style={{ minHeight: boxHeight, background: fill }}
                                       title={label}
                                     >
-                                      <span className={textClass}>{bare(text) || half}</span>
+                                      <span className={textClass}>{bare(text) || HALF_LETTER[half]}</span>
                                     </div>
                                   ) : (
                                   <button
@@ -540,10 +553,10 @@ export default function StaffCalendarGrid({
                                     disabled={pending === `${row.staffId}:${date}:${half}`}
                                     aria-label={`${label} (tap to toggle ${half === "AM" ? "morning" : "afternoon"})`}
                                     title={`${label} (tap to toggle ${half === "AM" ? "morning" : "afternoon"})`}
-                                    className="flex min-w-0 flex-1 items-center justify-center rounded-md transition active:scale-95 disabled:opacity-40"
-                                    style={{ height: boxHeight, background: fill }}
+                                    className="flex min-w-0 flex-1 items-center justify-center rounded-[4px] transition active:scale-95 disabled:opacity-40"
+                                    style={{ minHeight: boxHeight, background: fill }}
                                   >
-                                    <span className={textClass}>{bare(text) || half}</span>
+                                    <span className={textClass}>{bare(text) || HALF_LETTER[half]}</span>
                                   </button>
                                   )
                                 )}

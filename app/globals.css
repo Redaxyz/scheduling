@@ -15,9 +15,23 @@
   --cao-blue-light: #4fb3e8;
   --cao-orange: #f5871f;
   --cao-navy: #333f4c;
+  /* The screen's safe-area insets (only non-zero because the viewport is
+     viewport-fit=cover, see app/layout.tsx). Read through these variables
+     rather than env() directly so there's one place to reason about them. */
+  --sa-left: env(safe-area-inset-left, 0px);
+  --sa-right: env(safe-area-inset-right, 0px);
+  --sa-bottom: env(safe-area-inset-bottom, 0px);
+  /* Room <main> leaves at the bottom for the dock. On a phone BottomNav
+     replaces this with the measured height of the dock + date bar. */
+  --main-pb: 7rem;
 }
 
 body {
+  /* Keeps everything out from under a sideways phone's notch — and, on the
+     iPhone Duo's outer screen, out of the side rail, which reports itself as
+     a large right inset. The dock then moves INTO that rail (below). */
+  padding-left: var(--sa-left);
+  padding-right: var(--sa-right);
   background: #fafafa;
   color: #334155;
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
@@ -76,44 +90,31 @@ textarea:focus {
    --theme-accent itself, so they can't bleed CAO blue/orange into
    anything else. ============================================ */
 
-/* Floating glass dock instead of an edge-to-edge bar — outer element keeps
-   its full bounding height (via padding, not margin) so FullHeightFrame's
-   runtime measurement of #bottom-nav still reserves the right amount of
-   space above it. */
+/* #bottom-nav is the whole fixed block at the bottom of the screen: the
+   dock, and on a phone the date bar stacked above it. It keeps its full
+   bounding height (padding, not margin — set in BottomNav.tsx) so the
+   runtime measurements of it (lib/bottomNav.ts) reserve the right amount
+   of space above it. */
 #bottom-nav {
-  background: transparent;
-  border-top: none;
-  padding: 0.375rem 0.75rem calc(0.375rem + env(safe-area-inset-bottom));
+  left: var(--sa-left);
+  right: var(--sa-right);
 }
-#bottom-nav > div {
-  background: rgba(255, 255, 255, 0.82);
+/* The one surface shared by the dock and the date control beside/above it
+   (BottomNav, MobileDateBar): frosted white — they float over whatever is
+   scrolled beneath them, so they can't be see-through — with the same soft
+   shadow. Shape and border come from each component (slanted track, accent
+   border), so the two read as one set. */
+.nav-surface {
+  background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(18px) saturate(1.4);
   -webkit-backdrop-filter: blur(18px) saturate(1.4);
-  border-radius: 9999px;
-  border: 1px solid rgba(24, 120, 180, 0.14);
   box-shadow:
-    0 20px 40px -16px rgba(24, 120, 180, 0.28),
-    0 4px 14px rgba(15, 23, 42, 0.06);
+    0 12px 28px -14px rgba(24, 120, 180, 0.4),
+    0 2px 8px rgba(15, 23, 42, 0.05);
 }
-/* The raised Home button always gets the full brand gradient, regardless
-   of whose --theme-accent is set (it's forced with !important since the
-   base component sets it as an inline style). Matched by id (not its
-   border classes, which change if the button's ever resized) — the same
-   id lib/bottomNav.ts uses to find its true top edge. */
 /* On the iPhone Duo (see lib/sideDock.ts) the page runs under the status
    bar. Each edge iOS reserves is padded and painted dark, since the status
-   icons turn white there; the dock sits in the right-hand strip. .full-bleed
-   is the edge-to-edge width for the pages that break out of <main>, less
-   those strips. */
-:root {
-  --side-insets: 0px;
-}
-.full-bleed {
-  width: calc(100vw - var(--side-insets));
-}
-html[data-cover] {
-  --side-insets: calc(env(safe-area-inset-left) + env(safe-area-inset-right));
-}
+   icons turn white there; the dock sits in the right-hand strip (below). */
 html[data-cover] body {
   padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
 }
@@ -137,15 +138,86 @@ html[data-cover] body::before {
   inset: 0 auto 0 0;
   width: env(safe-area-inset-left);
 }
-html[data-dock="side"] #bottom-nav {
-  padding: 0 0.25rem;
+
+/* Home's date title: always one line, and always inside the white
+   (Bethesda) part of the screen — the full width on a phone, the left half
+   once the offices sit side by side. Rather than wrapping or running into
+   the black half, it shrinks: the font is the space available divided by
+   ~17em, which fits the longest date there is ("Wednesday, September 30,
+   2026"), capped at its normal size. The subtracted rems are the page's
+   side padding (px-6 / sm:px-10) and, side by side, the gap at the seam. */
+.home-date-title {
+  white-space: nowrap;
+  font-size: min(1.25rem, calc((var(--vw, 100vw) - 3rem) / 17));
 }
+@media (min-width: 640px) {
+  .home-date-title {
+    font-size: min(1.25rem, calc((var(--vw, 100vw) - 5rem) / 17));
+  }
+}
+@media (min-width: 1024px),
+  (pointer: coarse) and (min-width: 600px) and (max-width: 1023px) and (min-height: 501px) and (max-height: 960px) {
+  .home-date-title {
+    font-size: min(1.25rem, calc((var(--vw, 100vw) / 2 - 5rem) / 17));
+  }
+}
+
+/* iPhone Duo, open or closed: iOS keeps its status bar in a strip down the
+   right edge. DockMode (see lib/sideDock.ts) flags the page with
+   data-dock="side" when it finds that strip, and the dock stands up inside
+   it — bottom-aligned, where a native app's tab bar goes, clear of the
+   clock at the top. That leaves the bottom of the screen to the date bar
+   alone, centered. */
+html[data-dock="side"] #bottom-nav {
+  padding: 0;
+}
+html[data-dock="side"] #bottom-nav > div {
+  justify-content: center;
+}
+html[data-dock="side"] #date-nav-slot > * {
+  /* Same tap-swallowing band above the pill as on any phone (pt-3). */
+  padding: 0.75rem 0.5rem max(0.25rem, calc(var(--sa-bottom) - 14px));
+}
+html[data-dock="side"] #dock {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--sa-right);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: max(0.5rem, var(--sa-bottom));
+}
+html[data-dock="side"] #dock > .dock-surface {
+  flex-direction: column;
+  align-items: stretch;
+  width: min(4.25rem, calc(100% - 0.5rem));
+  margin: 0;
+  padding: 0.25rem 0;
+  border-width: 2px;
+  border-radius: 0.75rem;
+}
+html[data-dock="side"] #dock > .dock-surface > * {
+  flex: none;
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}
+
+/* The width of a full-bleed block: the whole screen minus whatever the
+   safe-area insets hold back (zero almost everywhere, so this is just
+   100vw — the exceptions are a sideways phone and the iPhone Duo's rail). */
+.w-bleed {
+  width: calc(var(--vw, 100vw) - var(--sa-left) - var(--sa-right));
+}
+
+/* The dock's Home chip always gets the full brand gradient, regardless of
+   whose --theme-accent is set (it's forced with !important since the base
+   component sets it as an inline style). */
 #bottom-nav-raised {
-  border-color: #fff !important;
   background: linear-gradient(135deg, var(--cao-blue), var(--cao-orange)) !important;
-  box-shadow:
-    0 10px 26px -8px rgba(245, 135, 31, 0.55),
-    0 10px 26px -10px rgba(24, 120, 180, 0.55);
+  box-shadow: 0 4px 10px -4px rgba(245, 135, 31, 0.6);
 }
 
 /* Modern Home page's AM/PM columns (ModernScheduleBoard): named grid areas
@@ -239,4 +311,41 @@ html[data-dock="side"] #bottom-nav {
   justify-content: center;
   transform: skewX(-12deg);
   border-radius: 6px;
+}
+
+/* Phones only (same test as PHONE_QUERY in lib/phone.ts):
+   - Nothing may make the page wider than the screen. When something does,
+     iOS lets the whole page slide sideways and fixed things (the dock, the
+     date bar) stop lining up with the screen's edges.
+   - No rubber-band bounce past the top or bottom of the page — iOS drags
+     the bottom bar along with that bounce, which reads as the dock jumping
+     up the screen at random. */
+@media (max-width: 500px), (max-width: 1023px) and (max-height: 500px) {
+  html,
+  body {
+    overflow-x: clip;
+    overscroll-behavior-y: none;
+  }
+}
+
+/* iPhone Duo opened up (same test as UNFOLDED_QUERY in lib/phone.ts): the
+   Home page puts the offices side by side like on a computer, but each
+   half is only ~335px wide in portrait — too narrow for its own AM/PM
+   columns, so those stack within each office instead. */
+@media (pointer: coarse) and (min-width: 600px) and (max-width: 899px) and (min-height: 501px) and (max-height: 960px) {
+  .modern-half-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "am-label"
+      "am-providers"
+      "am-rooming"
+      "am-xray"
+      "pm-label"
+      "pm-providers"
+      "pm-rooming"
+      "pm-xray";
+  }
+  .modern-half-divider {
+    display: none;
+  }
 }

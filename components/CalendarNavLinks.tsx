@@ -17,7 +17,9 @@ export default function CalendarNavLinks({
   nextLabel: string;
 }) {
   return (
-    <div className="flex shrink-0 gap-1.5 text-xs font-bold lg:gap-2 lg:text-sm">
+    // Hidden wherever MobileDateBar (down by the dock) does this job: phones,
+    // computers and the unfolded Duo — i.e. only tablets still show these.
+    <div className="flex shrink-0 gap-1.5 text-xs font-bold phone:hidden dockrow:hidden lg:gap-2 lg:text-sm">
       <Link href={prevHref} className="skew-btn accent-border border-2 px-3 py-2 lg:px-4">
         <span className="skew-label">
           ← <span className="lg:hidden">Previous</span>

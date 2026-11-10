@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getWeekScheduleForAllStaff } from "@/lib/schedule";
-import { addDays, effectiveMonday, mondayOf } from "@/lib/date";
+import { addDays, effectiveMonday, formatShort, mondayOf } from "@/lib/date";
 import ModernMyScheduleView from "@/components/ModernMyScheduleView";
 import FullHeightFrame from "@/components/FullHeightFrame";
 import AutoRefresh from "@/components/AutoRefresh";
 import MyTemplateEditor from "@/components/MyTemplateEditor";
 import CalendarNavLinks from "@/components/CalendarNavLinks";
+import MobileDateBar from "@/components/MobileDateBar";
 import MyScheduleHeading from "@/components/MyScheduleHeading";
 import NotificationSetup from "@/components/NotificationSetup";
 
@@ -32,6 +33,16 @@ export default async function MySchedulePage({ params }: { params: Promise<{ mon
   return (
     <div className="space-y-2">
       <AutoRefresh stale={{ kind: "week", period: monday }} />
+      <MobileDateBar
+        label={`${formatShort(monday)} – ${formatShort(addDays(monday, 4))}`}
+        value={monday}
+        basePath="/my-schedule/"
+        snap="week"
+        prevHref={`/my-schedule/${addDays(monday, -7)}`}
+        nextHref={`/my-schedule/${addDays(monday, 7)}`}
+        prevLabel="Previous week"
+        nextLabel="Next week"
+      />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <MyScheduleHeading />
@@ -49,7 +60,7 @@ export default async function MySchedulePage({ params }: { params: Promise<{ mon
         />
       </div>
 
-      <div className="full-bleed relative left-1/2 -translate-x-1/2">
+      <div className="relative left-1/2 w-bleed -translate-x-1/2">
         <FullHeightFrame reserveBelow={72} heightScale={0.92}>
           <ModernMyScheduleView rows={rows} />
         </FullHeightFrame>

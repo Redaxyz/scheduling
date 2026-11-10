@@ -1,14 +1,22 @@
-// The bottom nav's raised "Home" button pokes above the nav bar's own box
-// via a negative margin (see BottomNav.tsx) — a plain getBoundingClientRect
-// on #bottom-nav only measures its own padding/content box, not that
-// overhang, so anything computing "how much space does the footer take"
-// from the nav element alone underestimates it and lets content render
-// underneath the raised button. This finds the true topmost visual pixel
-// of the whole nav area, raised button included.
+// How much of the bottom of the screen the fixed chrome takes up — the dock
+// plus, on a phone, the date bar stacked on top of it (both live inside
+// #bottom-nav, see BottomNav.tsx).
+//
+// On a computer/tablet the raised "Home" button pokes above the dock's own
+// box via a negative margin — a plain getBoundingClientRect on #bottom-nav
+// doesn't include that overhang, so this takes whichever is higher.
+//
+// On the iPhone Duo the dock moves into the status-bar strip down the right
+// edge (html[data-dock="side"], see lib/sideDock.ts), so it takes no height
+// at all and its buttons mustn't be counted; only the date bar is left at
+// the bottom.
 export function getBottomNavHeight(): number {
   const bottomNav = document.getElementById("bottom-nav");
-  if (!bottomNav || document.documentElement.dataset.dock === "side") return 0;
-  const navTop = bottomNav.getBoundingClientRect().top;
+  if (!bottomNav) return 0;
+  const navRect = bottomNav.getBoundingClientRect();
+  if (navRect.height === 0) return 0;
+  const navTop = navRect.top;
+  if (document.documentElement.dataset.dock === "side") return Math.max(0, window.innerHeight - navTop);
   const raised = document.getElementById("bottom-nav-raised");
   const raisedTop = raised ? raised.getBoundingClientRect().top : navTop;
   const top = Math.min(navTop, raisedTop);
