@@ -405,9 +405,11 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
     }
 
     for (const office of OFFICES) {
-      const activeSlots = scheduleSlots.filter(
-        (s) => s.office === office && s.half === half && !isProviderAbsent(s.providerId, half)
-      );
+      // Physicians (named "Dr. ...") list before the PAs.
+      const isPA = (s: (typeof scheduleSlots)[number]) => !s.provider.name.startsWith("Dr.");
+      const activeSlots = scheduleSlots
+        .filter((s) => s.office === office && s.half === half && !isProviderAbsent(s.providerId, half))
+        .sort((a, b) => Number(isPA(a)) - Number(isPA(b)));
 
       const providers: ProviderCell[] = activeSlots.map((s) => {
         const explicitSub = assignments.find(
