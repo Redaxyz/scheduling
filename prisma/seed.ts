@@ -143,8 +143,8 @@ const STAFF: {
   // 12 pastels evenly spaced around the hue wheel so every person reads as
   // a clearly different color while staying soft/mellow.
   // pinnedGridIndex values below lay out the sign-in picker (4 rows x 4
-  // cols for now, column-major: index = col*4 + row; see ROW_COLS in
-  // lib/zigzagGrid.ts) in this exact arrangement:
+  // cols for now, column-major: index = col*4 + row; see the layouts in
+  // lib/signinGrid.ts) in this exact arrangement:
   //   Row1: Anna, Ben, Emma, Hope
   //   Row2: Cindy, Jen, Isabel, Shelby
   //   Row3: Mark, Joanna, Reda, Charlie

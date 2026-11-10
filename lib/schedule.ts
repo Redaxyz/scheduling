@@ -1,6 +1,7 @@
 import { prisma } from "./prisma";
 import { weekDates, weekdayIndex } from "./date";
 import { arriveNote, leaveNote } from "./timing";
+import { worksOn } from "./staffDates";
 import { HALVES, OFFICES, SCRIBE_PRIORITY, type Half, type Office, type Role } from "./types";
 
 export type ProviderCell = {
@@ -251,7 +252,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
     scheduleSlots,
     providerAbsences,
     providerAutoOverrides,
-    staff,
+    allStaff,
     staffAbsences,
     allAssignments,
     scribeFallbacks,
@@ -295,7 +296,8 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
   // comes back if a provider returns.
   const isOfficeOpen = (office: string, half: string) =>
     scheduleSlots.some((s) => s.office === office && s.half === half && !isProviderAbsent(s.providerId, half as Half));
-  const assignments = allAssignments.filter((a) => isOfficeOpen(a.office, a.half));
+  const staff = allStaff.filter((s) => worksOn(s.name, date));
+  const assignments = allAssignments.filter((a) => isOfficeOpen(a.office, a.half) && worksOn(a.staff.name, date));
 
   const isStaffAbsent = (staffId: string, half: Half) =>
     staffAbsences.some((a) => a.staffId === staffId && absenceMatches(half, a.half));
@@ -834,7 +836,7 @@ function blankCell(isOut: boolean, lateMinutes: number | null): MyScheduleCell {
 export async function getWeekScheduleForAllStaff(mondayStr: string): Promise<MyScheduleRow[]> {
   const dates = weekDates(mondayStr);
 
-  const [staff, allScheduleSlots, providerAbsences, providerAutoOverrides, staffAbsences, scribeFallbacks, providers, allStaffTemplateSlots, days] =
+  const [allStaff, allScheduleSlots, providerAbsences, providerAutoOverrides, staffAbsences, scribeFallbacks, providers, allStaffTemplateSlots, days] =
     await Promise.all([
       prisma.staff.findMany({ where: { active: true, usesApp: true }, orderBy: { name: "asc" } }),
       prisma.providerScheduleSlot.findMany(),
@@ -846,6 +848,7 @@ export async function getWeekScheduleForAllStaff(mondayStr: string): Promise<MyS
       prisma.staffScheduleSlot.findMany(),
       Promise.all(dates.map((date) => getDaySchedule(date))),
     ]);
+  const staff = allStaff.filter((s) => worksOn(s.name, dates[0]));
   const optedInStaffIds = new Set(allStaffTemplateSlots.map((t) => t.staffId));
 
   // A PA-C (or similar) who logs in as staff but is actually scheduled as a

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { easternToday } from "@/lib/date";
+import { worksOn } from "@/lib/staffDates";
 
 export async function GET() {
   const staff = await prisma.staff.findMany({
@@ -7,5 +9,6 @@ export async function GET() {
     include: { dedicatedProvider: true },
     orderBy: { name: "asc" },
   });
-  return NextResponse.json(staff);
+  const today = easternToday();
+  return NextResponse.json(staff.filter((s) => worksOn(s.name, today)));
 }

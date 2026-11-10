@@ -491,6 +491,7 @@ export default function StaffCalendarGrid({
                         }`;
                         const textClass = `text-[10px] font-extrabold leading-none ${holiday ? "text-slate-700" : "text-white/90"}`;
                         const boxHeight = isMe ? dynamicBigHeight : dynamicThinHeight;
+                        if (cell.gone) return <td key={date} className={tdClass} />;
 
                         // Left box = morning, right box = afternoon — except a merged
                         // day, which is one wide box. Everyone sees the same boxes;

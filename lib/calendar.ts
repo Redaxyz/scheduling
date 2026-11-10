@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { worksOn } from "./staffDates";
 import { monthWeekdays, weekDates, weekdayIndex } from "./date";
 import { HALVES, type Half, type Office } from "./types";
 
@@ -89,6 +90,8 @@ export type StaffDayCell = {
   // Custom coming-in / leaving times ("HH:MM") from a CUSTOM row, if any.
   arriveAt: string | null;
   leaveAt: string | null;
+  // Past their last day (see lib/staffDates.ts): drawn as an empty cell.
+  gone: boolean;
 };
 
 export type StaffCalendarRow = {
@@ -108,7 +111,7 @@ async function getStaffCalendarForDates(dates: string[]): Promise<StaffCalendarR
   // Provider's exact name — they're already on the Providers calendar, so
   // listing them here too would just be a duplicate row.
   const providerNames = new Set(providers.map((p) => p.name));
-  const staff = allStaff.filter((s) => !providerNames.has(s.name));
+  const staff = allStaff.filter((s) => !providerNames.has(s.name) && worksOn(s.name, dates[0]));
 
   return staff.map((s) => {
     const days = {} as Record<string, StaffDayCell>;
@@ -125,6 +128,7 @@ async function getStaffCalendarForDates(dates: string[]): Promise<StaffCalendarR
         pmOut: hasPM,
         arriveAt: customRow?.arriveAt ?? null,
         leaveAt: customRow?.leaveAt ?? null,
+        gone: !worksOn(s.name, date),
       };
     }
     return { staffId: s.id, name: s.name, color: s.color, days };

@@ -2,8 +2,8 @@
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useWhoAmI, type StaffOption } from "@/lib/whoami";
-import { buildGridCurves, cellCenterPct, cellClipPath, ROWS } from "@/lib/zigzagGrid";
-import { layoutSigninCells, tileColor, type SigninCell } from "@/lib/signinGrid";
+import { buildGridCurves, cellCenterPct, cellClipPath } from "@/lib/zigzagGrid";
+import { layoutSigninCells, signinLayout, tileColor, type SigninCell } from "@/lib/signinGrid";
 
 // Names fill at most this share of their tile's width (the longest name
 // sets the size for all of them).
@@ -43,7 +43,6 @@ function useTweener() {
 
 type Phase = "idle" | "grow" | "hold" | "fade";
 type Cell = SigninCell;
-const modernCellColor = tileColor;
 
 export default function UserPicker() {
   const { staffList, setCurrentId } = useWhoAmI();
@@ -60,10 +59,13 @@ export default function UserPicker() {
   // The grid fills the window; seams are rebuilt for its real pixel size so
   // teeth stay the same size both ways (see lib/zigzagGrid.ts).
   const [gridSize, setGridSize] = useState({ width: 1280, height: 800 });
-  const curves = useMemo(() => buildGridCurves(gridSize), [gridSize]);
+  const layout = useMemo(() => signinLayout(staffList), [staffList]);
+  const { grid } = layout;
+  const curves = useMemo(() => buildGridCurves(grid, gridSize), [grid, gridSize]);
 
   // Who's in which tile: see lib/signinGrid.ts.
   const cells: Cell[] = useMemo(() => layoutSigninCells(staffList), [staffList]);
+  const cellColor = (cell: Cell) => tileColor(layout, cell.row, cell.col);
 
   // One font size for every name: the biggest at which each name fits in
   // 80% of its own tile's width (and half its height). Measured from hidden
@@ -78,10 +80,10 @@ export default function UserPicker() {
         const cell = cells[i];
         const width100 = el.getBoundingClientRect().width;
         if (!cell || !width100) return;
-        const tileWidth = (window.innerWidth * cellCenterPct(cell.row, cell.col).width) / 100;
+        const tileWidth = (window.innerWidth * cellCenterPct(grid, cell.row, cell.col).width) / 100;
         size = Math.min(size, (LABEL_WIDTH_SHARE * tileWidth * MEASURE_PX) / width100);
       });
-      size = Math.min(size, (window.innerHeight / ROWS) * 0.5, MAX_LABEL_PX);
+      size = Math.min(size, (window.innerHeight / grid.rows) * 0.5, MAX_LABEL_PX);
       if (Number.isFinite(size)) setFontPx(Math.floor(size));
       setGridSize((prev) =>
         prev.width === window.innerWidth && prev.height === window.innerHeight ? prev : { width: window.innerWidth, height: window.innerHeight },
@@ -91,7 +93,7 @@ export default function UserPicker() {
     document.fonts?.ready.then(fit).catch(() => {});
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
-  }, [cells]);
+  }, [cells, grid]);
 
   if (cells.length === 0) {
     return <div className="fixed inset-0 z-50 bg-[#0b0f14]" />;
@@ -101,13 +103,13 @@ export default function UserPicker() {
 
   function pick(cell: Cell) {
     if (phase !== "idle") return;
-    const center = cellCenterPct(cell.row, cell.col);
+    const center = cellCenterPct(grid, cell.row, cell.col);
     setOrigin({
       x: (center.x / 100) * window.innerWidth,
       y: (center.y / 100) * window.innerHeight,
     });
     setPicked(cell.staff);
-    setPickedColor(modernCellColor(cell.row, cell.col));
+    setPickedColor(cellColor(cell));
     setPhase("grow");
     grow.run(0, maxRadius(), GROW_MS, setRadius, () => {
       setPhase("hold");
@@ -146,7 +148,7 @@ export default function UserPicker() {
 
       {phase !== "fade" &&
         cells.map((cell) => {
-          const center = cellCenterPct(cell.row, cell.col);
+          const center = cellCenterPct(grid, cell.row, cell.col);
           return (
           <button
             key={cell.staff.id}
@@ -158,8 +160,8 @@ export default function UserPicker() {
             tabIndex={phase === "idle" ? 0 : -1}
             className="absolute inset-0 h-full w-full transition duration-200"
             style={{
-              clipPath: cellClipPath(cell.row, cell.col, curves),
-              background: modernCellColor(cell.row, cell.col),
+              clipPath: cellClipPath(grid, cell.row, cell.col, curves),
+              background: cellColor(cell),
               pointerEvents: phase === "idle" ? "auto" : "none",
               opacity: phase === "idle" && hoveredId && hoveredId !== cell.staff.id ? 0.5 : 1,
               filter: hoveredId === cell.staff.id ? "brightness(1.1)" : undefined,

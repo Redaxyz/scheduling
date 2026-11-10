@@ -11,6 +11,7 @@ import { useWhoAmI } from "@/lib/whoami";
 import AutoRefresh from "@/components/AutoRefresh";
 import ScheduleDateNav from "@/components/ScheduleDateNav";
 import MobileDateBar from "@/components/MobileDateBar";
+import { doctorColor, supportPill } from "@/lib/homeColors";
 import DayNote, { type DayNoteData } from "@/components/DayNote";
 import { DropZone, Pill, SwapControl, TakeRoleButton, lateTag, moveStaff, postJSON, type DropTarget } from "@/components/scheduleShared";
 
@@ -408,10 +409,11 @@ function ProviderRow({
       : run(() => postJSON("/api/auto-override", "POST", { staffId: cell.scribe!.staffId, date, half }));
 
   const hoverClass = "ring-2 ring-[var(--theme-accent)]";
+  const doctor = doctorColor(cell.provider.name);
 
   return (
     <DropZone active={isManager} onDrop={onDropStaff} hoverClassName={hoverClass} className={`flex flex-wrap items-center gap-2 py-1 ${dark ? "border-b border-white/10" : "border-b border-slate-100"}`}>
-      <span className="truncate text-sm font-extrabold">
+      <span className="truncate text-sm font-extrabold" style={doctor ? { color: dark ? doctor.onDark : doctor.onLight } : undefined}>
         {cell.provider.name}
         {cell.provider.lateMinutes && (
           <span className={`ml-1 font-bold ${dark ? "text-amber-400" : "text-amber-600"}`}>{lateTag(cell.provider.lateMinutes)}</span>
@@ -422,7 +424,8 @@ function ProviderRow({
         <span className="flex flex-wrap items-center gap-1.5">
           <Pill
             name={cell.scribe.name}
-            color={cell.scribe.color}
+            color={doctor?.pill ?? cell.scribe.color}
+            textClassName={doctor ? "text-black" : undefined}
             lateMinutes={cell.scribe.lateMinutes}
             timing={cell.scribe.timing}
             substitute={cell.scribe.substitute}
@@ -540,7 +543,8 @@ function RoleSection({
               <span key={c.id} className="flex items-center gap-1">
                 <Pill
                   name={c.providerName ? `${c.name} — ${c.providerName}` : c.name}
-                  color={c.color}
+                  color={supportPill(c.name, dark)?.color ?? c.color}
+                  textClassName={supportPill(c.name, dark)?.textClassName}
                   lateMinutes={c.lateMinutes}
                   timing={c.timing}
                   draggable={isManager}

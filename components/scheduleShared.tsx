@@ -107,6 +107,7 @@ export function Pill({
   onRemove,
   leading,
   size = "sm",
+  textClassName = "text-slate-700",
 }: {
   name: string;
   color: string;
@@ -122,6 +123,7 @@ export function Pill({
   // inside the pill, instead of as a separate element next to it.
   leading?: ReactNode;
   size?: "sm" | "md";
+  textClassName?: string;
 }) {
   function onDragStart(e: DragEvent) {
     if (!position) return;
@@ -136,7 +138,7 @@ export function Pill({
       draggable={draggable}
       onDragStart={onDragStart}
       title={draggable ? `Drag ${name} to move them` : name}
-      className={`inline-flex max-w-full items-center gap-1 truncate rounded-full font-bold text-slate-700 ${sizeClass} ${
+      className={`inline-flex max-w-full items-center gap-1 truncate rounded-full font-bold ${textClassName} ${sizeClass} ${
         leading ? "pl-1" : "pl-2.5"
       } ${onRemove ? "pr-0.5" : "pr-2.5"} ${draggable ? "cursor-grab active:cursor-grabbing" : ""} ${
         substitute ? "ring-2 ring-amber-500 ring-offset-1" : ""
@@ -157,7 +159,7 @@ export function Pill({
           onClick={onRemove}
           aria-label={`Remove ${name}`}
           title={`Remove ${name}`}
-          className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full leading-none text-slate-700/70 transition hover:bg-black/10 hover:text-slate-900"
+          className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full leading-none opacity-70 transition hover:bg-slate-500/20 hover:opacity-100"
         >
           ×
         </button>
