@@ -19,7 +19,7 @@ export function doctorColor(name: string): DoctorColor | null {
 
 // Support staff are plain black or white instead: a black pill on the white
 // side, a white one on the black side.
-const SUPPORT_STAFF = new Set(["Charlie", "Jenish", "JB", "Isabel", "Shelby", "Cindy"]);
+const SUPPORT_STAFF = new Set(["Charlie", "Jenish", "JB", "Isabel", "Mark", "Shelby", "Cindy"]);
 
 export function supportPill(name: string, dark: boolean): { color: string; textClassName: string } | null {
   if (!SUPPORT_STAFF.has(name)) return null;
