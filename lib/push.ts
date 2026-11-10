@@ -4,7 +4,7 @@ import { addDays, weekdayIndex } from "./date";
 import { getDaySchedule, getUsualPosition, findStaffPosition, type DaySchedule, type UsualPosition } from "./schedule";
 import { getWorkingHolidays } from "./workingHolidays";
 import { isFederalHoliday } from "./holidays";
-import { HALVES, HALF_LABELS, NOTIFIED_STAFF, OFFICE_LABELS, type Half, type Role } from "./types";
+import { HALVES, HALF_LABELS, OFFICE_LABELS, type Half, type Role } from "./types";
 
 // Push services require a contact address on every send; the site itself will do.
 const VAPID_SUBJECT = "https://scheduling-chi-navy.vercel.app";
@@ -98,7 +98,8 @@ export async function findNextChangeNotice(staffId: string, fromDate: string, da
 
 export async function sendChangeNotices(date: string) {
   const staff = await prisma.staff.findMany({
-    where: { name: { in: NOTIFIED_STAFF }, active: true },
+    // Everyone who has turned notifications on, on any device.
+    where: { active: true, pushSubscriptions: { some: {} } },
     include: { pushSubscriptions: true },
   });
 

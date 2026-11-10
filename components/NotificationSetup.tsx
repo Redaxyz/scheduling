@@ -3,7 +3,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useWhoAmI } from "@/lib/whoami";
 import { detectDevice, type Device, type DeviceKind } from "@/lib/device";
-import { NOTIFIED_STAFF } from "@/lib/types";
 import { DockIcon, HomeIcon, InstallIcon, MenuIcon, MoreHorizontalIcon, MoreVerticalIcon, PlusSquareIcon, ShareIcon } from "@/components/icons";
 
 type SetupState = "on" | "off" | "blocked";
@@ -263,7 +262,7 @@ function useSetup() {
   const { current } = useWhoAmI();
   const [device, setDevice] = useState<Device | null>(null);
   const [state, setState] = useState<SetupState | null>(null);
-  const eligible = Boolean(current && NOTIFIED_STAFF.includes(current.name));
+  const eligible = Boolean(current);
 
   useEffect(() => {
     if (!eligible) return;

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { easternToday } from "@/lib/date";
 import { findNextChangeNotice, sendPush } from "@/lib/push";
-import { NOTIFIED_STAFF } from "@/lib/types";
 
 // Saves this phone for the nightly change alerts, then sends it a preview of
 // the next one coming up. Only ever posts to the browser vendors' own push
@@ -31,8 +30,8 @@ export async function POST(req: NextRequest) {
   const { staffId, subscription } = body ?? {};
 
   const staff = typeof staffId === "string" ? await prisma.staff.findUnique({ where: { id: staffId } }) : null;
-  if (!staff || !NOTIFIED_STAFF.includes(staff.name)) {
-    return NextResponse.json({ error: "Notifications aren't available for this person yet" }, { status: 403 });
+  if (!staff || !staff.active) {
+    return NextResponse.json({ error: "Couldn't find you on the staff list" }, { status: 403 });
   }
   if (!isPushEndpoint(subscription?.endpoint) || typeof subscription?.keys?.p256dh !== "string" || typeof subscription?.keys?.auth !== "string") {
     return NextResponse.json({ error: "Invalid subscription" }, { status: 400 });
