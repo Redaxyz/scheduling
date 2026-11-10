@@ -43,8 +43,8 @@ export default async function CalendarStaffMonthPage({ params }: { params: Promi
           prevLabel="Previous month"
           nextLabel="Next month"
         />
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <h1 className="flex flex-wrap items-baseline gap-x-2 text-base font-extrabold tracking-tight">
+        <div className="flex items-center justify-between gap-x-3">
+          <h1 className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-base font-extrabold tracking-tight">
             {/* On a phone the date bar above the dock already shows this. */}
             <span className="phone:sr-only">{formatMonthLabel(month)}</span>
             {!isThisMonth && (
@@ -53,7 +53,7 @@ export default async function CalendarStaffMonthPage({ params }: { params: Promi
               </Link>
             )}
           </h1>
-          <div className="flex items-center gap-2 max-lg:w-full max-lg:justify-between phone:order-first phone:w-auto unfolded:order-first unfolded:!w-auto lg:flex-wrap">
+          <div className="flex shrink-0 items-center gap-2 phone:order-first unfolded:order-first">
             <CalendarWhoToggle who="staff" anchorDate={month} staffView="month" />
             <CalendarNavLinks
               prevHref={`/calendar/staff/month/${addMonths(month, -1)}`}

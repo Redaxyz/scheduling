@@ -41,8 +41,8 @@ export default async function CalendarProvidersWeekPage({ params }: { params: Pr
           prevLabel="Previous week"
           nextLabel="Next week"
         />
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <h1 className="flex flex-wrap items-baseline gap-x-2 text-base font-extrabold tracking-tight">
+        <div className="flex items-center justify-between gap-x-3">
+          <h1 className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-base font-extrabold tracking-tight">
             {/* On a phone the date bar above the dock already shows this. */}
             <span className="phone:sr-only">
               {formatShort(dates[0])} – {formatShort(dates[dates.length - 1])}
@@ -56,7 +56,7 @@ export default async function CalendarProvidersWeekPage({ params }: { params: Pr
               Edit weekly templates →
             </Link>
           </h1>
-          <div className="flex items-center gap-2 max-lg:w-full max-lg:justify-between phone:order-first phone:w-auto unfolded:order-first unfolded:!w-auto lg:flex-wrap">
+          <div className="flex shrink-0 items-center gap-2 phone:order-first unfolded:order-first">
             <CalendarWhoToggle who="providers" anchorDate={monday} providersView="week" />
             <CalendarNavLinks
               prevHref={`/calendar/providers/week/${addDays(monday, -7)}`}

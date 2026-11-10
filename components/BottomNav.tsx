@@ -213,7 +213,7 @@ export default function BottomNav() {
   // with just enough padding under the labels to clear the home indicator
   // — there the slant lives on the active slab and the Home chip instead.
   const itemClass =
-    "relative flex flex-1 items-center justify-center text-sm font-bold transition-opacity phone:pb-1 phone:pt-1.5 phone:text-[10px] phone:leading-none";
+    "relative flex flex-1 items-center justify-center text-sm font-bold transition-opacity dockrow:px-2.5 phone:pb-1 phone:pt-1.5 phone:text-[10px] phone:leading-none";
   const innerClass = "relative flex items-center gap-2 skew-x-12 phone:skew-x-0 phone:flex-col phone:gap-1";
 
   return (
@@ -229,9 +229,12 @@ export default function BottomNav() {
       {/* Where a page's MobileDateBar lands (it portals itself in here), so
           the date bar and the dock are one block: laid out with no gap to
           guess at, and measured together. */}
-      <div id="date-nav-slot" className="dockrow:shrink-0" />
+      {/* The dock never gets narrower than its contents (so the name isn't cut
+          off); when space runs short, the date bar gives way instead, down
+          to a minimum of its own. */}
+      <div id="date-nav-slot" className="dockrow:w-80 dockrow:min-w-[10rem] dockrow:shrink" />
 
-      <nav id="dock" aria-label="Main" className="dockrow:min-w-0 dockrow:flex-1">
+      <nav id="dock" aria-label="Main" className="dockrow:min-w-max dockrow:flex-1">
         <div className="dock-surface nav-surface accent-border flex h-12 -skew-x-12 items-stretch overflow-hidden rounded-md border-2 p-0 phone:h-auto phone:skew-x-0 phone:rounded-b-none phone:rounded-t-[1.25rem] phone:border-x-0 phone:border-b-0 phone:pb-[max(0.25rem,calc(var(--sa-bottom)_-_16px))]">
           {tabs.map((tab) => {
             const active = pathname.startsWith(tab.match);
@@ -249,12 +252,12 @@ export default function BottomNav() {
                   {tab.primary ? (
                     <span
                       id="bottom-nav-raised"
-                      className="relative flex h-7 w-10 items-center justify-center rounded-[5px] text-white phone:h-6 phone:w-9 phone:-skew-x-12"
+                      className="relative flex h-7 w-10 -skew-x-12 items-center justify-center rounded-[5px] text-white phone:h-6 phone:w-9"
                       style={{ background: "var(--theme-accent)" }}
                     >
-                      <tab.Icon className="h-4 w-4 phone:skew-x-12" />
+                      <tab.Icon className="h-4 w-4 skew-x-12" />
                       {Boolean(tab.badge) && (
-                        <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[9px] font-extrabold text-white phone:skew-x-12">
+                        <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[9px] font-extrabold text-white skew-x-12">
                           {tab.badge}
                         </span>
                       )}
@@ -283,7 +286,7 @@ export default function BottomNav() {
                 <span className="flex h-5 w-5 items-center justify-center">
                   <span className="h-3 w-3 rounded-full" style={{ background: "var(--theme-accent)" }} />
                 </span>
-                <span className="max-w-[6rem] truncate phone:max-w-[3.25rem] phone:pb-px">{current.name}</span>
+                <span className="whitespace-nowrap phone:max-w-full phone:truncate phone:pb-px">{current.name}</span>
               </span>
             </button>
           )}

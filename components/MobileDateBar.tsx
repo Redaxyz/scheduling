@@ -177,12 +177,12 @@ export default function MobileDateBar({
   // underneath.
   return createPortal(
     <div
-      className="hidden px-2 pb-1.5 pt-3 phone:block dockrow:block dockrow:shrink-0 dockrow:px-0 dockrow:py-2.5"
+      className="hidden px-2 pb-1.5 pt-3 phone:block dockrow:block dockrow:px-0 dockrow:py-2.5"
       onClick={(e) => e.stopPropagation()}
     >
       <div
         ref={trackRef}
-        className="skew-track nav-surface accent-border mx-auto flex h-11 w-full max-w-md items-stretch border-2 font-bold text-slate-800 dockrow:h-12 dockrow:w-80"
+        className="skew-track nav-surface accent-border mx-auto flex h-11 w-full max-w-md items-stretch border-2 font-bold text-slate-800 dockrow:h-12"
       >
         <Link href={prevHref} aria-label={prevLabel} title={prevLabel} className={arrowClass}>
           <span className="skew-label">←</span>
