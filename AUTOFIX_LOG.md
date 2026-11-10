@@ -1,1 +1,2 @@
 - #1 (updated 2026-11-10T15:25:48Z): setup test alert, not a real bug
+- #2 (updated 2026-11-10T16:24:55Z): ChunkLoadError after a deploy or flaky network (stale cached chunk), not a code bug
