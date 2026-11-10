@@ -1,16 +1,16 @@
 // Colors that tie each doctor to their scribe on Home: the doctor's name is
 // written in their color, and whoever is scribing for them gets a pill
-// filled with it. Names are a deeper shade on the white (Bethesda) side and
-// a lighter one on the black (Germantown) side, so yellow stays readable.
+// filled with it. All pastel; names are a touch deeper on the white
+// (Bethesda) side than on the black (Germantown) side so they stay readable.
 type DoctorColor = { onLight: string; onDark: string; pill: string };
 
 const DOCTOR_COLORS: Record<string, DoctorColor> = {
-  "Dr. Christoforetti": { onLight: "#2563eb", onDark: "#60a5fa", pill: "#93c5fd" }, // blue
-  "Dr. Raffo": { onLight: "#dc2626", onDark: "#f87171", pill: "#fca5a5" }, // red
-  "Dr. Fitzgibbons": { onLight: "#a16207", onDark: "#facc15", pill: "#fde047" }, // yellow
-  "Dr. Feldman": { onLight: "#9333ea", onDark: "#c084fc", pill: "#d8b4fe" }, // purple
-  "Dr. Gardiner": { onLight: "#ea580c", onDark: "#fb923c", pill: "#fdba74" }, // orange
-  "Dr. McCormick": { onLight: "#16a34a", onDark: "#4ade80", pill: "#86efac" }, // green
+  "Dr. Christoforetti": { onLight: "#6b9be0", onDark: "#a9c9f5", pill: "#c6dcf9" }, // blue
+  "Dr. Raffo": { onLight: "#e07a7a", onDark: "#f5b0b0", pill: "#f8cccc" }, // red
+  "Dr. Fitzgibbons": { onLight: "#c9a227", onDark: "#f3dc8a", pill: "#f8e9a8" }, // yellow
+  "Dr. Feldman": { onLight: "#a385d6", onDark: "#cdb8ef", pill: "#e0d2f5" }, // purple
+  "Dr. Gardiner": { onLight: "#e3955a", onDark: "#f6c39b", pill: "#f9d8bd" }, // orange
+  "Dr. McCormick": { onLight: "#5fae7a", onDark: "#a8dbb7", pill: "#c9ead2" }, // green
 };
 
 export function doctorColor(name: string): DoctorColor | null {
