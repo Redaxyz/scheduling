@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { SlidingPair } from "@/components/CalendarWhoToggle";
 import { useRouter } from "next/navigation";
 import type { StaffCalendarRow, StaffDayStatus } from "@/lib/calendar";
 import { effectiveMonday, effectiveScheduleDate, mondayOf, nearestBusinessDayOnOrAfter, todayStr, weekdayIndex } from "@/lib/date";
@@ -325,20 +326,21 @@ export default function StaffCalendarGrid({
   const dynamicThinHeight = dynamicHeights?.thin ?? niceThin;
 
   const lateBox = current && (
-    <div className="accent-border-soft flex flex-col gap-2 rounded-2xl border-2 p-2 text-sm">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="accent-border inline-flex overflow-hidden rounded-full border-2 text-xs font-bold">
-          {(["ARRIVE", "LEAVE"] as const).map((kind) => (
-            <button
-              key={kind}
-              type="button"
-              onClick={() => setChangeKind(kind)}
-              className={`px-3 py-1 transition ${changeKind === kind ? "accent-bg-soft" : "opacity-50"}`}
-            >
-              {kind === "ARRIVE" ? "Coming in late" : "Leaving early"}
-            </button>
-          ))}
-        </div>
+    // The choices wrap on the left; Save stands the full height of the box
+    // on the right.
+    <div className="accent-border-soft flex items-stretch gap-2 rounded-2xl border-2 p-2 text-sm">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+        {/* The same sliding slanted switch as Providers/Staff above. */}
+        <SlidingPair
+          trackClassName="skew-track accent-border border-2 p-0.5 text-xs font-bold"
+          segClassName="skew-seg whitespace-nowrap px-2 py-1"
+          activeKey={changeKind}
+          options={(["ARRIVE", "LEAVE"] as const).map((kind) => ({
+            key: kind,
+            label: kind === "ARRIVE" ? "Coming in late" : "Leaving early",
+            onClick: () => setChangeKind(kind),
+          }))}
+        />
         <label className="flex items-center gap-1.5 font-bold">
           <span className="inline-block w-[3.2em] opacity-60">{changeKind === "ARRIVE" ? "In at" : "Out at"}</span>
           <input
@@ -356,15 +358,15 @@ export default function StaffCalendarGrid({
           }}
           className="accent-border-soft rounded-full border-2 bg-transparent px-3 py-0.5 text-xs font-bold outline-none"
         />
-        <button
-          type="button"
-          onClick={saveChange}
-          disabled={savingChange}
-          className="accent-border rounded-full border-2 px-4 py-0.5 font-bold transition active:scale-95 disabled:opacity-40"
-        >
-          Save
-        </button>
       </div>
+      <button
+        type="button"
+        onClick={saveChange}
+        disabled={savingChange}
+        className="shrink-0 self-stretch rounded-xl bg-slate-900 px-3.5 font-bold text-white transition active:scale-95 disabled:opacity-40"
+      >
+        Save
+      </button>
     </div>
   );
 

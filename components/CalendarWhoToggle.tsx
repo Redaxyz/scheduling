@@ -44,7 +44,7 @@ function ShortLabel({ full, short }: { full: string; short: string }) {
 // way on the page you're leaving; the page you land on then mounts fresh,
 // already in its final (settled) position, same as this component always
 // has on a brand new page load.
-function SlidingPair({
+export function SlidingPair({
   trackClassName,
   segClassName,
   activeKey,

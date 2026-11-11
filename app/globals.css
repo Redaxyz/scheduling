@@ -245,10 +245,7 @@ html[data-dock="side"] #dock .dock-name {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-html[data-dock="side"] #dock .active-slab {
-  inset: 2px 5px;
-  transform: skewX(-12deg);
-}
+
 
 /* The width of a full-bleed block: the whole screen minus whatever the
    safe-area insets hold back (zero almost everywhere, so this is just

@@ -11,15 +11,14 @@ import type { SwapRequestView } from "@/lib/swap";
 
 const INCOMING_SWAP_POLL_MS = 15000;
 
-// The tinted slab behind the active tab — the same tint as the active side
-// of the Providers/Staff switch. On a computer it fills the tab (and is
-// slanted along with the whole dock); on a phone it slants on its own.
+// A light-blue fill behind the active tab, edge to edge across its whole
+// area (no slant of its own; the dock's outline still slants on a computer).
 function ActiveSlab() {
   return (
     <span
       aria-hidden
-      className="active-slab absolute inset-1 rounded-[4px] phone:inset-x-3 phone:inset-y-0.5 phone:-skew-x-12"
-      style={{ background: "color-mix(in srgb, var(--theme-accent) 30%, white)" }}
+      className="active-slab absolute inset-0"
+      style={{ background: "color-mix(in srgb, var(--cao-blue-light) 28%, var(--page-bg))" }}
     />
   );
 }
