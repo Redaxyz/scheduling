@@ -190,7 +190,7 @@ export default function MobileDateBar({
   // so the two read as a matched pair. A press lights a segment with the
   // same tint the dock uses for its active tab.
   const segClass = "skew-seg transition-colors active:bg-[color-mix(in_srgb,var(--theme-accent)_30%,white)]";
-  const arrowClass = `${segClass} w-12 shrink-0 text-base side-dock:h-9 side-dock:w-full hover:bg-[color-mix(in_srgb,var(--theme-accent)_14%,white)]`;
+  const arrowClass = `${segClass} w-12 shrink-0 text-base side-dock:h-11 side-dock:w-full side-dock:text-lg hover:bg-[color-mix(in_srgb,var(--theme-accent)_14%,white)]`;
   const divider = <span aria-hidden className="my-2.5 w-0.5 shrink-0 rounded-full side-dock:mx-2.5 side-dock:my-0 side-dock:h-0.5 side-dock:w-auto bg-[color-mix(in_srgb,var(--theme-accent)_40%,#cbd5e1)]" />;
 
   // The outer wrapper is a transparent "buffer zone": a band a bit taller
@@ -204,7 +204,7 @@ export default function MobileDateBar({
     >
       <div
         ref={trackRef}
-        className="skew-track nav-surface accent-border mx-auto flex h-11 w-full max-w-md items-stretch border-2 font-bold text-slate-800 dockrow:h-12 side-dock:h-auto side-dock:min-h-0 side-dock:w-[min(4.25rem,calc(100%-0.5rem))] side-dock:flex-col side-dock:rounded-xl side-dock:[transform:none]"
+        className="skew-track nav-surface accent-border mx-auto flex h-11 w-full max-w-md items-stretch border-2 font-bold text-slate-800 dockrow:h-12 side-dock:h-auto side-dock:min-h-0 side-dock:w-[calc(100%-0.375rem)] side-dock:flex-col side-dock:rounded-xl side-dock:[transform:none]"
       >
         <Link href={prevHref} aria-label={prevLabel} title={prevLabel} className={arrowClass}>
           <span className="skew-label">←</span>
@@ -229,7 +229,7 @@ export default function MobileDateBar({
             </span>
           </span>
           {/* In the Duo's narrow side strip: just the numbers, stacked. */}
-          <span className="hidden flex-col items-center text-xs leading-tight side-dock:flex">
+          <span className="hidden flex-col items-center text-sm leading-tight side-dock:flex">
             {stripLabel(value, snap).map((line, i) => (
               <span key={i}>{line}</span>
             ))}
