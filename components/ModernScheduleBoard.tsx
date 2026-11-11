@@ -57,14 +57,9 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
     loadSwapRequests();
   }
 
-  // Unlike the classic board (which lists this per half), the modern layout
-  // folds AM and PM into one summary line — so anyone unassigned for both
-  // halves needs deduping here, or they'd otherwise print twice.
-  const unassignedLine = Array.from(new Map(HALVES.flatMap((half) => day.unassigned[half]).map((s) => [s.id, s.name])).values());
-  const rosterRows = [
-    { label: "Not assigned yet", names: unassignedLine },
-    { label: "Out of office", names: day.ooo.map((s) => s.name) },
-  ].filter((row) => row.names.length > 0);
+  // Who's out for the day. (Anyone in but not placed yet isn't listed: the
+  // "Add" buttons in each section already offer them.)
+  const rosterRows = [{ label: "Out of office", names: day.ooo.map((s) => s.name) }].filter((row) => row.names.length > 0);
 
   // Bethesda always comes first — on top when the offices stack (phone),
   // on the left when they sit side by side — so the title and note above
