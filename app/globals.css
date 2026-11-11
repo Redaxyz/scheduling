@@ -255,25 +255,22 @@ html[data-dock="side"] #dock > .dock-surface > * > span:last-child {
   max-width: 100%;
   transform: none;
 }
-/* The colored Home chip is a straight band across the dock's full width,
-   no slant, edge to edge like the active-tab fill. */
-html[data-dock="side"] #dock > .dock-surface > *:has(#bottom-nav-raised) {
-  padding-left: 0;
-  padding-right: 0;
-}
+/* No colored chip in the strip: Home is a plain icon like its neighbors. */
 html[data-dock="side"] #bottom-nav-raised {
-  width: 100%;
-  height: 2.5rem;
+  width: auto;
+  height: auto;
+  background: none !important;
+  box-shadow: none;
   border-radius: 0;
   transform: none;
-}
-html[data-dock="side"] #bottom-nav-raised svg,
-html[data-dock="side"] #bottom-nav-raised > span {
-  transform: none;
+  color: inherit;
 }
 html[data-dock="side"] #bottom-nav-raised svg {
-  width: 1.3rem;
-  height: 1.3rem;
+  transform: none;
+}
+/* ...and, like them, greyed out unless it's the page you're on. */
+html[data-dock="side"] #dock .dock-surface > a:has(#bottom-nav-raised):not([aria-current]) {
+  color: #64748b;
 }
 html[data-dock="side"] #dock .dock-name {
   max-width: 100%;
