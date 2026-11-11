@@ -255,15 +255,25 @@ html[data-dock="side"] #dock > .dock-surface > * > span:last-child {
   max-width: 100%;
   transform: none;
 }
-/* The colored Home chip spans its button (its slant keeps it a hair in
-   from either edge). */
+/* The colored Home chip is a straight band across the dock's full width,
+   no slant, edge to edge like the active-tab fill. */
+html[data-dock="side"] #dock > .dock-surface > *:has(#bottom-nav-raised) {
+  padding-left: 0;
+  padding-right: 0;
+}
 html[data-dock="side"] #bottom-nav-raised {
-  width: calc(100% - 0.75rem);
-  height: 2.25rem;
+  width: 100%;
+  height: 2.5rem;
+  border-radius: 0;
+  transform: none;
+}
+html[data-dock="side"] #bottom-nav-raised svg,
+html[data-dock="side"] #bottom-nav-raised > span {
+  transform: none;
 }
 html[data-dock="side"] #bottom-nav-raised svg {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.3rem;
+  height: 1.3rem;
 }
 html[data-dock="side"] #dock .dock-name {
   max-width: 100%;
