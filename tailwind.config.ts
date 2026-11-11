@@ -5,7 +5,10 @@ import { DOCK_ROW_QUERY, PHONE_QUERY, UNFOLDED_QUERY } from "./lib/phone";
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
-    extend: {},
+    extend: {
+      // The app's one page color (see --page-bg in app/globals.css).
+      colors: { page: "var(--page-bg)" },
+    },
   },
   plugins: [
     // `phone:`, `unfolded:` and `dockrow:` (see lib/phone.ts) — variants rather than

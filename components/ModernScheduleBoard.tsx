@@ -103,7 +103,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
         {OFFICES.map((office) => (
           <div
             key={office}
-            className={`flex-1 ${office === "GERMANTOWN" ? "bg-[#0b0f14]" : "bg-white"}`}
+            className={`flex-1 ${office === "GERMANTOWN" ? "strip-dark-home bg-[#0b0f14]" : "bg-page"}`}
           />
         ))}
       </div>
@@ -248,7 +248,7 @@ function OfficeHalf({
 
   return (
     <div
-      className={`flex-1 px-6 pb-8 pt-3 sm:px-10 sm:pb-12 sm:pt-4 ${dark ? "bg-[#0b0f14] text-white" : "bg-white text-slate-900"}`}
+      className={`flex-1 px-6 pb-8 pt-3 sm:px-10 sm:pb-12 sm:pt-4 ${dark ? "strip-dark bg-[#0b0f14] text-white" : "bg-page text-slate-900"}`}
     >
       <div className={`mb-8 flex items-baseline justify-between border-b pb-4 ${dark ? "border-white/10" : "border-slate-200"}`}>
         <h2 className="text-2xl font-black uppercase tracking-tight sm:text-3xl">{OFFICE_LABELS[office]}</h2>

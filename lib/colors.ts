@@ -2,7 +2,7 @@
 // "off" each get one consistent color everywhere they're shown, rather than
 // different components picking their own.
 export const OFFICE_COLOR = {
-  BETHESDA: "#ffffff", // white
+  BETHESDA: "var(--page-bg)", // the app's cream (see app/globals.css)
   GERMANTOWN: "#0f172a", // near-black
 } as const;
 

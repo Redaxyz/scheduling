@@ -7,16 +7,15 @@
 // doesn't include that overhang, so this takes whichever is higher.
 //
 // On the iPhone Duo the dock moves into the status-bar strip down the right
-// edge (html[data-dock="side"], see lib/sideDock.ts), so it takes no height
-// at all and its buttons mustn't be counted; only the date bar is left at
-// the bottom.
+// edge (html[data-dock="side"], see lib/sideDock.ts) along with the date
+// bar, so nothing at the bottom of the screen is taken.
 export function getBottomNavHeight(): number {
   const bottomNav = document.getElementById("bottom-nav");
   if (!bottomNav) return 0;
   const navRect = bottomNav.getBoundingClientRect();
   if (navRect.height === 0) return 0;
   const navTop = navRect.top;
-  if (document.documentElement.dataset.dock === "side") return Math.max(0, window.innerHeight - navTop);
+  if (document.documentElement.dataset.dock === "side") return 0;
   const raised = document.getElementById("bottom-nav-raised");
   const raisedTop = raised ? raised.getBoundingClientRect().top : navTop;
   const top = Math.min(navTop, raisedTop);

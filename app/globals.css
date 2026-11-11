@@ -15,6 +15,10 @@
   --cao-blue-light: #4fb3e8;
   --cao-orange: #f5871f;
   --cao-navy: #333f4c;
+  /* The one background color for every page (and Home's Bethesda half, and
+     the calendars' sticky name column): a soft cream rather than pure white.
+     Tailwind's `bg-page` is this. */
+  --page-bg: #fbf8f1;
   /* The screen's safe-area insets (only non-zero because the viewport is
      viewport-fit=cover, see app/layout.tsx). Read through these variables
      rather than env() directly so there's one place to reason about them. */
@@ -32,7 +36,7 @@ body {
      a large right inset. The dock then moves INTO that rail (below). */
   padding-left: var(--sa-left);
   padding-right: var(--sa-right);
-  background: #fafafa;
+  background: var(--page-bg);
   color: #334155;
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
@@ -50,10 +54,10 @@ body {
   border-color: color-mix(in srgb, var(--theme-accent) 40%, #cbd5e1);
 }
 .accent-bg-soft {
-  background-color: color-mix(in srgb, var(--theme-accent) 16%, white);
+  background-color: color-mix(in srgb, var(--theme-accent) 16%, var(--page-bg));
 }
 .accent-bg-softer {
-  background-color: color-mix(in srgb, var(--theme-accent) 9%, white);
+  background-color: color-mix(in srgb, var(--theme-accent) 9%, var(--page-bg));
 }
 .accent-text {
   color: color-mix(in srgb, var(--theme-accent) 65%, #334155);
@@ -65,10 +69,10 @@ body {
    a much more saturated marker on today's own column so it reads at a glance
    even inside that wash. */
 .cal-current-week {
-  background-color: color-mix(in srgb, var(--theme-accent) 7%, white);
+  background-color: color-mix(in srgb, var(--theme-accent) 7%, var(--page-bg));
 }
 .cal-today-header {
-  background-color: color-mix(in srgb, var(--theme-accent) 30%, white) !important;
+  background-color: color-mix(in srgb, var(--theme-accent) 30%, var(--page-bg)) !important;
   box-shadow: inset 0 -3px 0 0 color-mix(in srgb, var(--theme-accent) 80%, #334155);
   opacity: 1 !important;
 }
@@ -105,7 +109,7 @@ textarea:focus {
    shadow. Shape and border come from each component (slanted track, accent
    border), so the two read as one set. */
 .nav-surface {
-  background: rgba(255, 255, 255, 0.88);
+  background: color-mix(in srgb, var(--page-bg) 88%, transparent);
   backdrop-filter: blur(18px) saturate(1.4);
   -webkit-backdrop-filter: blur(18px) saturate(1.4);
   box-shadow:
@@ -113,30 +117,40 @@ textarea:focus {
     0 2px 8px rgba(15, 23, 42, 0.05);
 }
 /* On the iPhone Duo (see lib/sideDock.ts) the page runs under the status
-   bar. Each edge iOS reserves is padded and painted dark, since the status
-   icons turn white there; the dock sits in the right-hand strip (below). */
+   bar. Content is padded clear of each edge iOS reserves, but the strip
+   itself takes the color of the page beside it: the cream page shows
+   through on its own, and the black (Germantown) areas reach into it with
+   a copy of themselves shifted right by the strip's width (.strip-dark).
+   The dock and date bar stand in the right-hand strip (below). */
 html[data-cover] body {
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  padding: env(safe-area-inset-top) var(--sa-right) 0 var(--sa-left);
 }
-html[data-cover]::before,
-html[data-cover]::after,
-html[data-cover] body::before {
+html[data-cover]::before {
   content: "";
   position: fixed;
   z-index: 35;
-  background: #0b0f14;
-}
-html[data-cover]::before {
   inset: 0 0 auto 0;
   height: env(safe-area-inset-top);
+  background: var(--page-bg);
 }
-html[data-cover]::after {
-  inset: 0 0 0 auto;
-  width: env(safe-area-inset-right);
+/* A dark block that runs to the strip, plus the bottom padding below it
+   (the last thing on a phone's Home is Germantown). */
+html[data-cover] .strip-dark {
+  box-shadow:
+    var(--sa-right) 0 0 0 #0b0f14,
+    var(--sa-right) var(--main-pb) 0 0 #0b0f14;
 }
-html[data-cover] body::before {
-  inset: 0 auto 0 0;
-  width: env(safe-area-inset-left);
+/* A dark block whose right edge is the strip, and nothing more (the Me
+   tab's Germantown afternoons). */
+html[data-cover] .strip-dark-beside {
+  box-shadow: var(--sa-right) 0 0 0 #0f172a;
+}
+/* Offices side by side (the unfolded Duo): Germantown's full-height
+   background is the whole right edge. */
+@media (pointer: coarse) and (min-width: 600px) and (max-width: 1023px) and (min-height: 501px) and (max-height: 960px) {
+  html[data-cover] .strip-dark-home {
+    box-shadow: var(--sa-right) 0 0 0 #0b0f14;
+  }
 }
 
 /* Home's date title: always one line, and always inside the white
@@ -164,45 +178,76 @@ html[data-cover] body::before {
 
 /* iPhone Duo, open or closed: iOS keeps its status bar in a strip down the
    right edge. DockMode (see lib/sideDock.ts) flags the page with
-   data-dock="side" when it finds that strip, and the dock stands up inside
-   it — bottom-aligned, where a native app's tab bar goes, clear of the
-   clock at the top. That leaves the bottom of the screen to the date bar
-   alone, centered. */
+   data-dock="side" when it finds that strip, and the whole bottom bar
+   stands up inside it: the date bar on top of the dock, bottom-aligned
+   (where a native app's tab bar goes), clear of the clock and Wi-Fi at the
+   top. Both screens get the same strip layout, whatever the phone/computer
+   styling underneath (fixed heights, slants, side-by-side rows) says. */
 html[data-dock="side"] #bottom-nav {
-  padding: 0;
+  top: 0;
+  bottom: 0;
+  left: auto;
+  right: 0;
+  width: var(--sa-right);
+  padding: calc(env(safe-area-inset-top) + 4.5rem) 0 max(0.5rem, var(--sa-bottom));
+  transform: none;
 }
 html[data-dock="side"] #bottom-nav > div {
-  justify-content: center;
-}
-html[data-dock="side"] #date-nav-slot > * {
-  /* Same tap-swallowing band above the pill as on any phone (pt-3). */
-  padding: 0.75rem 0.5rem max(0.25rem, calc(var(--sa-bottom) - 14px));
-}
-html[data-dock="side"] #dock {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: var(--sa-right);
-  display: flex;
+  height: 100%;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  padding-bottom: max(0.5rem, var(--sa-bottom));
+  gap: 0.5rem;
+}
+/* The date bar gives up height first on a short screen. */
+html[data-dock="side"] #date-nav-slot {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  flex: 0 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+html[data-dock="side"] #dock {
+  display: flex;
+  justify-content: center;
+  flex: none;
+  width: 100%;
+  min-width: 0;
 }
 html[data-dock="side"] #dock > .dock-surface {
   flex-direction: column;
   align-items: stretch;
   width: min(4.25rem, calc(100% - 0.5rem));
+  height: auto;
   margin: 0;
   padding: 0.25rem 0;
   border-width: 2px;
   border-radius: 0.75rem;
+  transform: none;
 }
 html[data-dock="side"] #dock > .dock-surface > * {
   flex: none;
-  padding-top: 0.4rem;
-  padding-bottom: 0.4rem;
+  padding: 0.45rem 0.125rem;
+  font-size: 10px;
+  line-height: 1;
+}
+/* Each button's contents: icon over label, upright. */
+html[data-dock="side"] #dock > .dock-surface > * > span:last-child {
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: 100%;
+  transform: none;
+}
+html[data-dock="side"] #dock .dock-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html[data-dock="side"] #dock .active-slab {
+  inset: 2px 5px;
+  transform: skewX(-12deg);
 }
 
 /* The width of a full-bleed block: the whole screen minus whatever the

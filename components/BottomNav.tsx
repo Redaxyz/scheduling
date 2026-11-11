@@ -18,7 +18,7 @@ function ActiveSlab() {
   return (
     <span
       aria-hidden
-      className="absolute inset-1 rounded-[4px] phone:inset-x-3 phone:inset-y-0.5 phone:-skew-x-12"
+      className="active-slab absolute inset-1 rounded-[4px] phone:inset-x-3 phone:inset-y-0.5 phone:-skew-x-12"
       style={{ background: "color-mix(in srgb, var(--theme-accent) 30%, white)" }}
     />
   );
@@ -77,7 +77,9 @@ export default function BottomNav() {
 
     function update() {
       if (!nav) return;
-      root.style.setProperty("--main-pb", `${Math.round(nav.getBoundingClientRect().height) + 12}px`);
+      // In the Duo's side strip nothing sits at the bottom of the screen.
+      const sideDock = root.dataset.dock === "side";
+      root.style.setProperty("--main-pb", sideDock ? "24px" : `${Math.round(nav.getBoundingClientRect().height) + 12}px`);
 
       // On a phone, the Home title sizes itself from the width actually on
       // screen (in an iOS home-screen app 100vw can come out wider). Read
@@ -288,7 +290,7 @@ export default function BottomNav() {
                 <span className="flex h-5 w-5 items-center justify-center">
                   <span className="h-3 w-3 rounded-full" style={{ background: "var(--theme-accent)" }} />
                 </span>
-                <span className="whitespace-nowrap phone:max-w-full phone:truncate phone:pb-px">{current.name}</span>
+                <span className="dock-name whitespace-nowrap phone:max-w-full phone:truncate phone:pb-px">{current.name}</span>
               </span>
             </button>
           )}

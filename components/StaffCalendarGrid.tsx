@@ -388,7 +388,7 @@ export default function StaffCalendarGrid({
               <thead ref={theadRef} className="sticky top-0 z-20">
                 <tr>
                   <th
-                    className={`accent-border-soft sticky left-0 z-30 border-b-2 border-r-2 bg-white px-1.5 py-1 text-left font-extrabold tracking-tight ${labelWidthClass}`}
+                    className={`accent-border-soft sticky left-0 z-30 border-b-2 border-r-2 bg-page px-1.5 py-1 text-left font-extrabold tracking-tight ${labelWidthClass}`}
                   >
                     Staff
                   </th>
@@ -440,7 +440,7 @@ export default function StaffCalendarGrid({
                     >
                       <td
                         className={`accent-border-soft sticky left-0 z-10 truncate border-r-2 px-1.5 py-1.5 text-sm ${
-                          isMe ? "accent-bg-soft font-extrabold" : "bg-white font-bold"
+                          isMe ? "accent-bg-soft font-extrabold" : "bg-page font-bold"
                         }`}
                       >
                         {row.name}

@@ -51,6 +51,12 @@ function CalendarPanel({ value, snap, anchor, onPick, onClose }: { value: string
   useLayoutEffect(() => {
     function place() {
       const rect = anchor.getBoundingClientRect();
+      if (document.documentElement.dataset.dock === "side") {
+        // Up in the Duo's side strip: open to its left, bottoms lined up.
+        const width = Math.min(PANEL_MAX_WIDTH, rect.left - 2 * PANEL_GAP);
+        setPosition({ left: rect.left - PANEL_GAP - width, bottom: Math.max(PANEL_GAP, window.innerHeight - rect.bottom), width });
+        return;
+      }
       const width = Math.min(PANEL_MAX_WIDTH, window.innerWidth - 2 * PANEL_GAP);
       const left = Math.min(Math.max(PANEL_GAP, rect.left + rect.width / 2 - width / 2), window.innerWidth - width - PANEL_GAP);
       setPosition({ left, bottom: window.innerHeight - rect.top + PANEL_GAP, width });
@@ -168,8 +174,8 @@ export default function MobileDateBar({
   // so the two read as a matched pair. A press lights a segment with the
   // same tint the dock uses for its active tab.
   const segClass = "skew-seg transition-colors active:bg-[color-mix(in_srgb,var(--theme-accent)_30%,white)]";
-  const arrowClass = `${segClass} w-12 shrink-0 text-base hover:bg-[color-mix(in_srgb,var(--theme-accent)_14%,white)]`;
-  const divider = <span aria-hidden className="my-2.5 w-0.5 shrink-0 rounded-full bg-[color-mix(in_srgb,var(--theme-accent)_40%,#cbd5e1)]" />;
+  const arrowClass = `${segClass} w-12 shrink-0 text-base side-dock:h-9 side-dock:w-full hover:bg-[color-mix(in_srgb,var(--theme-accent)_14%,white)]`;
+  const divider = <span aria-hidden className="my-2.5 w-0.5 shrink-0 rounded-full side-dock:mx-2.5 side-dock:my-0 side-dock:h-0.5 side-dock:w-auto bg-[color-mix(in_srgb,var(--theme-accent)_40%,#cbd5e1)]" />;
 
   // The outer wrapper is a transparent "buffer zone": a band a bit taller
   // than the buttons that swallows taps. A near-miss lands here and does
@@ -177,15 +183,15 @@ export default function MobileDateBar({
   // underneath.
   return createPortal(
     <div
-      className="hidden px-2 pb-1.5 pt-3 phone:block dockrow:block dockrow:px-0 dockrow:py-2.5"
+      className="hidden px-2 pb-1.5 pt-3 phone:block dockrow:block dockrow:px-0 dockrow:py-2.5 side-dock:flex side-dock:min-h-0 side-dock:justify-center side-dock:p-0"
       onClick={(e) => e.stopPropagation()}
     >
       <div
         ref={trackRef}
-        className="skew-track nav-surface accent-border mx-auto flex h-11 w-full max-w-md items-stretch border-2 font-bold text-slate-800 dockrow:h-12"
+        className="skew-track nav-surface accent-border mx-auto flex h-11 w-full max-w-md items-stretch border-2 font-bold text-slate-800 dockrow:h-12 side-dock:h-auto side-dock:min-h-0 side-dock:w-[min(4.25rem,calc(100%-0.5rem))] side-dock:flex-col side-dock:rounded-xl side-dock:[transform:none]"
       >
         <Link href={prevHref} aria-label={prevLabel} title={prevLabel} className={arrowClass}>
-          <span className="skew-label">←</span>
+          <span className="skew-label side-dock:[transform:rotate(90deg)]">←</span>
         </Link>
         {divider}
 
@@ -194,14 +200,15 @@ export default function MobileDateBar({
           onClick={() => setOpen((o) => !o)}
           aria-haspopup="dialog"
           aria-expanded={open}
-          className={`${segClass} min-w-0 flex-1 hover:bg-[color-mix(in_srgb,var(--theme-accent)_14%,white)]`}
+          className={`${segClass} min-w-0 flex-1 side-dock:min-h-0 side-dock:overflow-hidden side-dock:py-2.5 hover:bg-[color-mix(in_srgb,var(--theme-accent)_14%,white)]`}
         >
           {/* .skew-label sets display itself, so the row layout lives on an
               inner span. */}
-          <span className="skew-label min-w-0 px-3 text-sm">
-            <span className="flex min-w-0 items-center gap-1.5">
+          <span className="skew-label min-w-0 px-3 text-sm side-dock:max-h-full side-dock:min-h-0 side-dock:px-0 side-dock:[transform:none]">
+            {/* Upright in the Duo's side strip, reading top to bottom. */}
+            <span className="flex min-w-0 items-center gap-1.5 side-dock:max-h-full side-dock:[writing-mode:vertical-rl]">
               <span className="truncate">{label}</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0 opacity-40">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0 opacity-40 side-dock:hidden">
                 <path d="m6 9.5 6 6 6-6" />
               </svg>
             </span>
@@ -210,7 +217,7 @@ export default function MobileDateBar({
 
         {divider}
         <Link href={nextHref} aria-label={nextLabel} title={nextLabel} className={arrowClass}>
-          <span className="skew-label">→</span>
+          <span className="skew-label side-dock:[transform:rotate(90deg)]">→</span>
         </Link>
       </div>
       {open && trackRef.current && (

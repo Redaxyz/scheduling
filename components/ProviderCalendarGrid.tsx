@@ -225,7 +225,7 @@ export default function ProviderCalendarGrid({
           <tr>
             <th
               rowSpan={2}
-              className={`accent-border-soft sticky left-0 z-10 border-b-2 border-r-2 bg-white px-3 py-2 text-left align-bottom font-extrabold tracking-tight ${labelWidthClass}`}
+              className={`accent-border-soft sticky left-0 z-10 border-b-2 border-r-2 bg-page px-3 py-2 text-left align-bottom font-extrabold tracking-tight ${labelWidthClass}`}
             >
               Provider
             </th>
@@ -282,7 +282,7 @@ export default function ProviderCalendarGrid({
         <tbody>
           {rows.map((row) => (
             <tr key={row.providerId}>
-              <td className="accent-border-soft sticky left-0 z-10 truncate border-r-2 bg-white px-3 py-1.5 font-bold">{row.name}</td>
+              <td className="accent-border-soft sticky left-0 z-10 truncate border-r-2 bg-page px-3 py-1.5 font-bold">{row.name}</td>
               {dates.flatMap((date) =>
                 HALVES.map((half) => {
                   const cell = row.days[date][half];

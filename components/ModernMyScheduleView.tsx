@@ -24,12 +24,12 @@ function HalfPanel({ half, cell }: { half: (typeof HALVES)[number]; cell: MySche
 
   return (
     <div
-      className={`flex min-h-0 flex-1 flex-col justify-center gap-1 px-4 py-3 sm:px-8 ${dark ? "text-white" : light ? "text-slate-900" : "text-slate-400"}`}
+      className={`flex min-h-0 flex-1 flex-col justify-center gap-1 px-4 py-3 sm:px-8 ${dark ? "text-white" : light ? "text-slate-900" : "text-slate-400"} ${
+        // On the iPhone Duo the afternoon column meets the status bar strip.
+        dark && half === "PM" ? "strip-dark-beside" : ""
+      }`}
       style={{ background: cell.office ? OFFICE_COLOR[cell.office] : "#eef1f3" }}
     >
-      <div className={`text-[10px] font-bold uppercase tracking-[0.2em] ${dark ? "text-white/40" : light ? "text-slate-400" : "text-slate-400"}`}>
-        {HALF_LABELS[half]}
-      </div>
       {cell.isProvider && cell.office ? (
         <>
           <div className="text-lg font-black uppercase tracking-tight sm:text-xl">{OFFICE_LABELS[cell.office]}</div>
@@ -89,6 +89,16 @@ export default function ModernMyScheduleView({ rows }: { rows: MyScheduleRow[] }
   // MyScheduleViewSwitcher), so this just fills whatever width it's given.
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {/* Morning over the left column, Afternoon over the right, once for
+          the whole week rather than inside every panel. */}
+      <div className="flex shrink-0 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+        <div className="w-16 shrink-0 sm:w-24" />
+        {HALVES.map((half) => (
+          <div key={half} className="flex-1 px-4 pb-1.5 sm:px-8">
+            {HALF_LABELS[half]}
+          </div>
+        ))}
+      </div>
       {row.days.map((day) => {
         const isToday = day.date === today;
         return (
