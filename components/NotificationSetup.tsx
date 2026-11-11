@@ -503,20 +503,25 @@ export default function NotificationSetup() {
   const buttonClass = "accent-border rounded-full border-2 px-4 py-1 text-sm font-bold transition active:scale-95 disabled:opacity-40";
 
   return (
-    <div className="accent-border-soft rounded-2xl border-2 p-3">
-      <div className="mb-1 text-xs font-bold uppercase tracking-wide opacity-40">Notifications</div>
-      <p className="mb-2 text-sm font-bold">{state === "on" ? "On for this device" : state === "blocked" ? "Blocked on this device" : "Not set up on this device"}</p>
-      <div className="flex flex-wrap gap-2">
-        {state === "on" && (
-          <button type="button" onClick={test} disabled={testing} className={buttonClass}>
-            {testing ? "Sending…" : "Send a sample"}
+    <div className="accent-border-soft rounded-2xl border-2 px-3 py-2">
+      {/* One line: what's going on, and the buttons beside it. */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[10px] font-bold uppercase tracking-wide opacity-40">Notifications</div>
+          <p className="text-sm font-bold leading-tight">{state === "on" ? "On for this device" : state === "blocked" ? "Blocked on this device" : "Not set up on this device"}</p>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          {state === "on" && (
+            <button type="button" onClick={test} disabled={testing} className={buttonClass}>
+              {testing ? "Sending…" : "Test"}
+            </button>
+          )}
+          <button type="button" onClick={() => setOpen(true)} className={buttonClass}>
+            {state === "on" ? "Guide" : "Set up"}
           </button>
-        )}
-        <button type="button" onClick={() => setOpen(true)} className={buttonClass}>
-          {state === "on" ? "See the guide" : "Set up"}
-        </button>
+        </div>
       </div>
-      {status && <p className="mt-2 text-sm font-bold">{status}</p>}
+      {status && <p className="mt-1 text-sm font-bold">{status}</p>}
       {open && <SetupSheet onClose={() => setOpen(false)} setup={setup} />}
     </div>
   );

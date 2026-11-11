@@ -36,6 +36,22 @@ function monthRows(month: string): string[][] {
   return rows;
 }
 
+// The date as stacked lines for the Duo's side strip: "11/9", "–", "11/13"
+// for a week; "11/11" for a day; "11/26" (month/year) for a month.
+function numeric(date: string): string {
+  const [, m, d] = date.split("-").map(Number);
+  return `${m}/${d}`;
+}
+function stripLabel(value: string, snap: Snap): string[] {
+  if (snap === "day") return [numeric(value)];
+  if (snap === "week") {
+    const monday = mondayOf(nearestBusinessDayOnOrAfter(value));
+    return [numeric(monday), "–", numeric(addDays(monday, 4))];
+  }
+  const [y, m] = value.split("-");
+  return [`${Number(m)}/${y.slice(2)}`];
+}
+
 const PANEL_GAP = 8;
 const PANEL_MAX_WIDTH = 320;
 
@@ -191,7 +207,7 @@ export default function MobileDateBar({
         className="skew-track nav-surface accent-border mx-auto flex h-11 w-full max-w-md items-stretch border-2 font-bold text-slate-800 dockrow:h-12 side-dock:h-auto side-dock:min-h-0 side-dock:w-[min(4.25rem,calc(100%-0.5rem))] side-dock:flex-col side-dock:rounded-xl side-dock:[transform:none]"
       >
         <Link href={prevHref} aria-label={prevLabel} title={prevLabel} className={arrowClass}>
-          <span className="skew-label side-dock:[transform:rotate(90deg)]">←</span>
+          <span className="skew-label">←</span>
         </Link>
         {divider}
 
@@ -200,24 +216,29 @@ export default function MobileDateBar({
           onClick={() => setOpen((o) => !o)}
           aria-haspopup="dialog"
           aria-expanded={open}
-          className={`${segClass} min-w-0 flex-1 side-dock:min-h-0 side-dock:overflow-hidden side-dock:py-2.5 hover:bg-[color-mix(in_srgb,var(--theme-accent)_14%,white)]`}
+          className={`${segClass} min-w-0 flex-1 side-dock:min-h-0 side-dock:overflow-hidden side-dock:py-2 hover:bg-[color-mix(in_srgb,var(--theme-accent)_14%,white)]`}
         >
           {/* .skew-label sets display itself, so the row layout lives on an
               inner span. */}
-          <span className="skew-label min-w-0 px-3 text-sm side-dock:max-h-full side-dock:min-h-0 side-dock:px-0 side-dock:[transform:none]">
-            {/* Upright in the Duo's side strip, reading top to bottom. */}
-            <span className="flex min-w-0 items-center gap-1.5 side-dock:max-h-full side-dock:[writing-mode:vertical-rl]">
+          <span className="skew-label min-w-0 px-3 text-sm side-dock:hidden">
+            <span className="flex min-w-0 items-center gap-1.5">
               <span className="truncate">{label}</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0 opacity-40 side-dock:hidden">
                 <path d="m6 9.5 6 6 6-6" />
               </svg>
             </span>
           </span>
+          {/* In the Duo's narrow side strip: just the numbers, stacked. */}
+          <span className="hidden flex-col items-center text-xs leading-tight side-dock:flex">
+            {stripLabel(value, snap).map((line, i) => (
+              <span key={i}>{line}</span>
+            ))}
+          </span>
         </button>
 
         {divider}
         <Link href={nextHref} aria-label={nextLabel} title={nextLabel} className={arrowClass}>
-          <span className="skew-label side-dock:[transform:rotate(90deg)]">→</span>
+          <span className="skew-label">→</span>
         </Link>
       </div>
       {open && trackRef.current && (
