@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useWhoAmI, type StaffOption } from "@/lib/whoami";
 import { buildGridCurves, cellCenterPct, cellClipPath } from "@/lib/zigzagGrid";
 import { layoutSigninCells, signinLayout, tileColor, type SigninCell } from "@/lib/signinGrid";
@@ -12,6 +12,8 @@ const LABEL_WIDTH_SHARE = 0.8;
 const MAX_LABEL_PX = 25;
 const MEASURE_PX = 100;
 const LABEL_TYPE = "font-black uppercase tracking-wide";
+
+const PICKER_BG = "#0b0f14";
 
 const GROW_MS = 480;
 const HOLD_MS = 120;
@@ -94,6 +96,18 @@ export default function UserPicker() {
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
   }, [cells, grid]);
+
+  // While the picker is up the page's own background is its near-black, not
+  // the app's cream: in some orientations the iPhone Duo keeps a band along
+  // the top that the page can't draw in, and fills it with this color.
+  useEffect(() => {
+    const body = document.body;
+    const previous = body.style.backgroundColor;
+    body.style.backgroundColor = PICKER_BG;
+    return () => {
+      body.style.backgroundColor = previous;
+    };
+  }, []);
 
   if (cells.length === 0) {
     return <div className="fixed inset-0 z-50 bg-[#0b0f14]" />;
