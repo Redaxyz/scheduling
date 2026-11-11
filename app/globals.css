@@ -151,6 +151,13 @@ html[data-cover] .strip-dark-beside {
   html[data-cover] .strip-dark-home {
     box-shadow: var(--sa-right) 0 0 0 #0b0f14;
   }
+  /* ...and Bethesda takes exactly the left half of the whole screen, strip
+     included, so the two offices meet in the middle; Germantown gets the
+     rest and carries on into the strip. */
+  html[data-cover] .seam-left {
+    flex: 0 0 calc(50vw - var(--sa-left));
+    width: calc(50vw - var(--sa-left));
+  }
 }
 
 /* Home's date title: always one line, and always inside the white

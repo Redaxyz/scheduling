@@ -103,7 +103,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
         {OFFICES.map((office) => (
           <div
             key={office}
-            className={`flex-1 ${office === "GERMANTOWN" ? "strip-dark-home bg-[#0b0f14]" : "bg-page"}`}
+            className={`flex-1 ${office === "GERMANTOWN" ? "strip-dark-home bg-[#0b0f14]" : "seam-left bg-page"}`}
           />
         ))}
       </div>
@@ -174,7 +174,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
         <div className="relative z-10 space-y-1.5 pb-3 max-lg:hidden unfolded:!block">
           {rosterRows.map((row) => (
             <div key={row.label} className="flex">
-              <div className="flex w-1/2 justify-end pr-3 sm:pr-4">
+              <div className="seam-left flex w-1/2 justify-end pr-3 sm:pr-4">
                 <span className="text-[11px] font-bold uppercase tracking-widest text-slate-900/70">{row.label}</span>
               </div>
               <div className="flex w-1/2 justify-start pl-3 sm:pl-4">
@@ -248,7 +248,7 @@ function OfficeHalf({
 
   return (
     <div
-      className={`flex-1 px-6 pb-8 pt-3 sm:px-10 sm:pb-12 sm:pt-4 ${dark ? "strip-dark bg-[#0b0f14] text-white" : "bg-page text-slate-900"}`}
+      className={`flex-1 px-6 pb-8 pt-3 sm:px-10 sm:pb-12 sm:pt-4 ${dark ? "strip-dark bg-[#0b0f14] text-white" : "seam-left bg-page text-slate-900"}`}
     >
       <div className={`mb-8 flex items-baseline justify-between border-b pb-4 ${dark ? "border-white/10" : "border-slate-200"}`}>
         <h2 className="text-2xl font-black uppercase tracking-tight sm:text-3xl">{OFFICE_LABELS[office]}</h2>
@@ -279,7 +279,8 @@ function OfficeHalf({
                   {slot.providers.length === 0 ? (
                     <p className={`text-2xl font-black uppercase tracking-tight ${dark ? "text-white/25" : "text-slate-300"}`}>No office</p>
                   ) : (
-                    <div className="space-y-3">
+                    // Side by side when they fit, one per line when they don't.
+                    <div className="flex flex-wrap gap-x-6 gap-y-3">
                       {slot.providers.map((cell) => (
                         <ProviderRow
                           key={cell.provider.id}
@@ -412,7 +413,7 @@ function ProviderRow({
   const doctor = doctorColor(cell.provider.name);
 
   return (
-    <DropZone active={isManager} onDrop={onDropStaff} hoverClassName={hoverClass} className={`flex flex-wrap items-center gap-2 py-1 ${dark ? "border-b border-white/10" : "border-b border-slate-100"}`}>
+    <DropZone active={isManager} onDrop={onDropStaff} hoverClassName={hoverClass} className={`flex grow flex-wrap items-center gap-2 py-1 ${dark ? "border-b border-white/10" : "border-b border-slate-100"}`}>
       <span className="truncate text-sm font-extrabold" style={doctor ? { color: dark ? doctor.onDark : doctor.onLight } : undefined}>
         {cell.provider.name}
         {cell.provider.lateMinutes && (
