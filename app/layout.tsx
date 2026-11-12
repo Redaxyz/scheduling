@@ -9,6 +9,7 @@ import ThemeAccent from "@/components/ThemeAccent";
 import { NotificationPrompt } from "@/components/NotificationSetup";
 import DockMode from "@/components/DockMode";
 import ErrorReporter from "@/components/ErrorReporter";
+import DuoBandProbe from "@/components/DuoBandProbe";
 import { DOCK_COOKIE } from "@/lib/sideDock";
 
 const geistSans = Geist({
@@ -53,6 +54,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ErrorReporter />
         <WhoAmIProvider>
           <ThemeAccent />
+          <DuoBandProbe />
           <AppGate />
           <NotificationPrompt />
           {/* --main-pb is the measured height of the bottom chrome (see
