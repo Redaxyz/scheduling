@@ -76,7 +76,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
     // Its own pb-[--main-pb] then keeps the last of the content (the
     // "Not assigned yet" / "Out of office" lines) clear of the dock, while
     // the background still runs behind it to the bottom edge.
-    <div className="relative left-1/2 -mb-[var(--main-pb)] -mt-4 min-h-dvh w-bleed -translate-x-1/2 pb-[var(--main-pb)]">
+    <div className="relative left-1/2 -mb-[var(--main-pb)] -mt-4 min-h-dvh w-bleed -translate-x-1/2 pb-[var(--main-pb)] unfolded:side-dock:pb-0">
       <AutoRefresh intervalMs={20000} stale={{ kind: "day", period: date }} />
       <MobileDateBar
         label={formatDayShort(date)}
@@ -163,10 +163,10 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
       {/* Right below the content (the x-ray row), not pinned to the bottom
           of the full-height background — each half is exactly 50% wide so
           each label and its names meet right at the seam. "Out of office"
-          is everyone absent the whole day (they're never in "not assigned",
-          which only lists people who are in). */}
+          is everyone absent the whole day. On the open Duo the page ends 5px
+          under it, so Home fits one screen without scrolling. */}
       {rosterRows.length > 0 && (
-        <div className="relative z-10 space-y-1.5 pb-3 max-lg:hidden unfolded:!block">
+        <div className="relative z-10 space-y-1.5 pb-3 max-lg:hidden unfolded:!block unfolded:pb-[5px]">
           {rosterRows.map((row) => (
             <div key={row.label} className="flex">
               <div className="seam-left flex w-1/2 justify-end pr-3 sm:pr-4">
@@ -243,7 +243,7 @@ function OfficeHalf({
 
   return (
     <div
-      className={`flex-1 px-6 pb-8 pt-3 sm:px-10 sm:pb-12 sm:pt-4 ${dark ? "strip-dark bg-[#0b0f14] text-white" : "seam-left bg-page text-slate-900"}`}
+      className={`flex-1 px-6 pb-8 pt-3 sm:px-10 sm:pb-12 sm:pt-4 unfolded:pb-[5px] ${dark ? "strip-dark bg-[#0b0f14] text-white" : "seam-left bg-page text-slate-900"}`}
     >
       <div className={`mb-8 flex items-baseline justify-between border-b pb-4 ${dark ? "border-white/10" : "border-slate-200"}`}>
         <h2 className="text-2xl font-black uppercase tracking-tight sm:text-3xl">{OFFICE_LABELS[office]}</h2>
