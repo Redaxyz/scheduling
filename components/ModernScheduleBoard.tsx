@@ -11,7 +11,7 @@ import { useWhoAmI } from "@/lib/whoami";
 import AutoRefresh from "@/components/AutoRefresh";
 import ScheduleDateNav from "@/components/ScheduleDateNav";
 import MobileDateBar from "@/components/MobileDateBar";
-import { doctorColor, staffPill } from "@/lib/homeColors";
+import { doctorColor, MY_PILL, staffPill } from "@/lib/homeColors";
 import DayNote, { type DayNoteData } from "@/components/DayNote";
 import { DropZone, Pill, SwapControl, TakeRoleButton, lateTag, moveStaff, postJSON, type DropTarget } from "@/components/scheduleShared";
 
@@ -420,8 +420,8 @@ function ProviderRow({
         <span className="flex flex-wrap items-center gap-1.5">
           <Pill
             name={cell.scribe.name}
-            color={staffPill(cell.scribe.name, dark)?.color ?? cell.scribe.color}
-            textClassName={staffPill(cell.scribe.name, dark)?.textClassName}
+            color={(cell.scribe.staffId === currentId ? MY_PILL : staffPill(cell.scribe.name, dark))?.color ?? cell.scribe.color}
+            textClassName={(cell.scribe.staffId === currentId ? MY_PILL : staffPill(cell.scribe.name, dark))?.textClassName}
             lateMinutes={cell.scribe.lateMinutes}
             timing={cell.scribe.timing}
             substitute={cell.scribe.substitute}
@@ -539,8 +539,8 @@ function RoleSection({
               <span key={c.id} className="flex items-center gap-1">
                 <Pill
                   name={c.providerName ? `${c.name} — ${c.providerName}` : c.name}
-                  color={staffPill(c.name, dark)?.color ?? c.color}
-                  textClassName={staffPill(c.name, dark)?.textClassName}
+                  color={(c.staffId === currentId ? MY_PILL : staffPill(c.name, dark))?.color ?? c.color}
+                  textClassName={(c.staffId === currentId ? MY_PILL : staffPill(c.name, dark))?.textClassName}
                   lateMinutes={c.lateMinutes}
                   timing={c.timing}
                   draggable={isManager}

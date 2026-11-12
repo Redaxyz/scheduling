@@ -47,3 +47,7 @@ export function staffPill(name: string, dark: boolean): { color: string; textCla
   if (doctor) return { color: doctor.pill, textClassName: "text-black" };
   return supportPill(name, dark);
 }
+
+// The signed-in person's own pill, in the old Home button's brand gradient,
+// so you can find yourself at a glance.
+export const MY_PILL = { color: "linear-gradient(135deg, #1878b4, #f5871f)", textClassName: "text-white" };
