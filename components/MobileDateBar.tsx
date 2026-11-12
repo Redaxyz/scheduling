@@ -185,6 +185,7 @@ export default function MobileDateBar({
 
   if (!slot) return null;
 
+  // (Upright in the Duo's side strip it runs bottom to top: → on top, ← below.)
   // One slanted track split into three — ← | date | → — on the same
   // frosted surface, with the same accent border and height as the dock,
   // so the two read as a matched pair. A press lights a segment with the
@@ -204,7 +205,7 @@ export default function MobileDateBar({
     >
       <div
         ref={trackRef}
-        className="skew-track nav-surface accent-border mx-auto flex h-11 w-full max-w-md items-stretch border-2 font-bold text-slate-800 dockrow:h-12 side-dock:h-auto side-dock:min-h-0 side-dock:w-[calc(100%-0.375rem)] side-dock:flex-col side-dock:rounded-xl side-dock:[transform:none]"
+        className="skew-track nav-surface accent-border mx-auto flex h-11 w-full max-w-md items-stretch border-2 font-bold text-slate-800 dockrow:h-12 side-dock:h-auto side-dock:min-h-0 side-dock:w-[calc(100%-0.375rem)] side-dock:flex-col-reverse side-dock:rounded-xl side-dock:[transform:none]"
       >
         <Link href={prevHref} aria-label={prevLabel} title={prevLabel} className={arrowClass}>
           <span className="skew-label">←</span>
