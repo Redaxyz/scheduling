@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { DOCK_COOKIE, looksLikeDuo } from "@/lib/sideDock";
+import { UNFOLDED_QUERY } from "@/lib/phone";
 
 const hasCookie = () => document.cookie.split("; ").includes(`${DOCK_COOKIE}=side`);
 
@@ -47,7 +48,7 @@ export default function DockMode() {
     };
     const root = document.documentElement;
     retone();
-    const timer = window.setInterval(retone, 700);
+    const timer = window.setInterval(retone, 300);
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule);
     return () => {
@@ -63,20 +64,26 @@ export default function DockMode() {
   return null;
 }
 
-// Is the page just left of the strip, level with `el`'s middle, dark? Reads
-// the first solid background found there, skipping the strip's own parts.
+// Is a black part of the page level with `el`'s middle? The black areas that
+// reach the strip are tagged in the page itself (.strip-dark and friends,
+// see globals.css), so this just checks whether one of them spans that
+// height right now.
 function besideDark(el: HTMLElement): boolean {
-  const nav = document.getElementById("bottom-nav");
   const rect = el.getBoundingClientRect();
-  const x = (nav?.getBoundingClientRect().left ?? rect.left) - 2;
-  if (x < 0 || rect.height === 0) return false;
-  for (const under of document.elementsFromPoint(x, rect.top + rect.height / 2)) {
-    if (nav?.contains(under)) continue;
-    const match = getComputedStyle(under).backgroundColor.match(/[\d.]+/g);
-    if (!match) continue;
-    const [r, g, b, a = "1"] = match.map(Number).map(String);
-    if (Number(a) < 0.5) continue;
-    return (0.299 * Number(r) + 0.587 * Number(g) + 0.114 * Number(b)) / 255 < 0.35;
+  if (rect.height === 0) return false;
+  const y = rect.top + rect.height / 2;
+  const mainPb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--main-pb")) || 0;
+  const spans = (area: Element, extraBelow = 0) => {
+    const r = area.getBoundingClientRect();
+    return r.height > 0 && y >= r.top && y <= r.bottom + extraBelow;
+  };
+  // Germantown on Home (it also runs on through the bottom padding below it).
+  for (const area of document.querySelectorAll(".strip-dark")) if (spans(area, mainPb)) return true;
+  // Germantown afternoons on the Me tab.
+  for (const area of document.querySelectorAll(".strip-dark-beside")) if (spans(area)) return true;
+  // Home with the offices side by side: all of Germantown's half.
+  if (window.matchMedia(UNFOLDED_QUERY).matches) {
+    for (const area of document.querySelectorAll(".strip-dark-home")) if (spans(area)) return true;
   }
   return false;
 }
