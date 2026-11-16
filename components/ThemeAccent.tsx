@@ -15,7 +15,13 @@ export default function ThemeAccent() {
 
   useEffect(() => {
     const accent = current ? (signinTileColor(staffList, current.id) ?? current.color) : DEFAULT_ACCENT;
-    document.documentElement.style.setProperty("--theme-accent", accent);
+    const root = document.documentElement.style;
+    root.setProperty("--theme-accent", accent);
+    // The Duo strip's icons: brand orange for anyone on an orange tile, brand
+    // blue for everyone else (deep on cream, light beside black).
+    const orange = accent.toLowerCase() === "#f5871f";
+    root.setProperty("--strip-ink", orange ? "#d9690a" : "#1878b4");
+    root.setProperty("--strip-ink-light", orange ? "#f8a95c" : "#4fb3e8");
   }, [current, staffList]);
 
   return null;

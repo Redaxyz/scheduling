@@ -279,27 +279,36 @@ html[data-dock="side"] #dock .dock-name {
 }
 
 
-/* Beside a black part of the page (see DockMode), the dock and date bar in
-   the strip go black too, with white text and icons. */
+/* In the strip the dock and date bar are see-through, so they sit right on
+   the page: no surface, border or shadow, just icons and text in the
+   person's theme color, blue or orange (see ThemeAccent; deeper over cream,
+   lighter beside a black part of the page, see DockMode). The page you're on gets a faint tint. */
+html[data-dock="side"] #bottom-nav .nav-surface {
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  border-color: transparent;
+  color: var(--strip-ink, #1878b4);
+}
 html[data-dock="side"] #bottom-nav .nav-surface[data-tone="dark"] {
-  background: rgba(11, 15, 20, 0.9);
-  border-color: rgba(255, 255, 255, 0.28);
-  color: #ffffff;
+  color: var(--strip-ink-light, #4fb3e8);
 }
-html[data-dock="side"] #bottom-nav .nav-surface[data-tone="dark"] a,
-html[data-dock="side"] #bottom-nav .nav-surface[data-tone="dark"] button,
-html[data-dock="side"] #bottom-nav .nav-surface[data-tone="dark"] svg {
-  color: #ffffff !important;
+html[data-dock="side"] #bottom-nav .nav-surface a,
+html[data-dock="side"] #bottom-nav .nav-surface button,
+html[data-dock="side"] #bottom-nav .nav-surface svg {
+  color: inherit !important;
 }
-html[data-dock="side"] #bottom-nav .nav-surface[data-tone="dark"] > a:not([aria-current]),
-html[data-dock="side"] #bottom-nav .nav-surface[data-tone="dark"] > a:not([aria-current]) svg {
-  color: rgba(255, 255, 255, 0.6) !important;
+html[data-dock="side"] #dock .dock-surface > :not([aria-current]) {
+  opacity: 0.7;
 }
-html[data-dock="side"] #bottom-nav .nav-surface[data-tone="dark"] .active-slab {
-  background: color-mix(in srgb, var(--cao-blue-light) 35%, #0b0f14) !important;
+html[data-dock="side"] #bottom-nav .active-slab {
+  background: color-mix(in srgb, currentColor 16%, transparent) !important;
+  border-radius: 0.6rem;
 }
-html[data-dock="side"] #bottom-nav .nav-surface[data-tone="dark"] span[aria-hidden].rounded-full {
-  background: rgba(255, 255, 255, 0.3);
+html[data-dock="side"] #bottom-nav .nav-surface span[aria-hidden].rounded-full {
+  background: currentColor;
+  opacity: 0.3;
 }
 
 /* The width of a full-bleed block: the whole screen minus whatever the
