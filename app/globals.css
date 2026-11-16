@@ -279,6 +279,29 @@ html[data-dock="side"] #dock .dock-name {
 }
 
 
+/* Beside a black part of the page (see DockMode), the dock and date bar in
+   the strip go black too, with white text and icons. */
+html[data-dock="side"] #bottom-nav .nav-surface[data-tone="dark"] {
+  background: rgba(11, 15, 20, 0.9);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+html[data-dock="side"] #bottom-nav .nav-surface[data-tone="dark"] a,
+html[data-dock="side"] #bottom-nav .nav-surface[data-tone="dark"] button,
+html[data-dock="side"] #bottom-nav .nav-surface[data-tone="dark"] svg {
+  color: #ffffff !important;
+}
+html[data-dock="side"] #bottom-nav .nav-surface[data-tone="dark"] > a:not([aria-current]),
+html[data-dock="side"] #bottom-nav .nav-surface[data-tone="dark"] > a:not([aria-current]) svg {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+html[data-dock="side"] #bottom-nav .nav-surface[data-tone="dark"] .active-slab {
+  background: color-mix(in srgb, var(--cao-blue-light) 35%, #0b0f14) !important;
+}
+html[data-dock="side"] #bottom-nav .nav-surface[data-tone="dark"] span[aria-hidden].rounded-full {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 /* The width of a full-bleed block: the whole screen minus whatever the
    safe-area insets hold back (zero almost everywhere, so this is just
    100vw — the exceptions are a sideways phone and the iPhone Duo's rail). */
