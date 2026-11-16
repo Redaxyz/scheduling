@@ -29,6 +29,9 @@ type Props = {
 // Same data, same interactions (drag-to-reassign, remove, swap-request) as
 // the classic ScheduleBoard, just laid out as a continuous, low-chrome
 // column of names and dividers instead of a card per provider/role.
+// The standing Frederick placement (see rosterRows below).
+const FREDERICK = { weekday: 3, doctor: "Dr. McCormick", scribe: "Anna" }; // Thursday
+
 export default function ModernScheduleBoard({ date, day, freeStaff, note }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -59,7 +62,21 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
 
   // Who's out for the day. (Anyone in but not placed yet isn't listed: the
   // "Add" buttons in each section already offer them.)
-  const rosterRows = [{ label: "Out of office", names: day.ooo.map((s) => s.name) }].filter((row) => row.names.length > 0);
+  // Thursday afternoons Dr. McCormick works in Frederick with his scribe:
+  // the one placement outside Bethesda/Germantown, listed down here. Only
+  // when he isn't in either office that afternoon, and his scribe is named
+  // only if they're not out or placed somewhere here.
+  const pm = OFFICES.map((office) => day.halves.PM[office]);
+  const pmNames = pm.flatMap((slot) => [...slot.providers.flatMap((p) => (p.scribe ? [p.scribe.name] : [])), ...slot.rooming.map((c) => c.name), ...slot.xray.map((c) => c.name)]);
+  const inFrederick = day.weekday === FREDERICK.weekday && !pm.some((slot) => slot.providers.some((p) => p.provider.name === FREDERICK.doctor));
+  const frederickScribe = day.ooo.some((s) => s.name === FREDERICK.scribe) || pmNames.includes(FREDERICK.scribe) ? null : FREDERICK.scribe;
+  const rosterRows = [
+    { label: "Out of office", names: day.ooo.map((s) => s.name) },
+    {
+      label: "Frederick · afternoon",
+      names: inFrederick ? [`${frederickScribe ? `${frederickScribe}, s` : "S"}cribe for ${FREDERICK.doctor}`] : [],
+    },
+  ].filter((row) => row.names.length > 0);
 
   // Bethesda always comes first — on top when the offices stack (phone),
   // on the left when they sit side by side — so the title and note above
