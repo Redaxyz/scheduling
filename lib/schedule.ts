@@ -90,6 +90,23 @@ function absenceMatches(half: Half, absenceHalf: string) {
   return absenceHalf === "ALL" || absenceHalf === half;
 }
 
+// Staff rows can also be CUSTOM coming-in / leaving times. Those don't block
+// the half the person is partly there for, but they do take out a half the
+// person misses entirely: leaving at or before noon means no afternoon, and
+// coming in at or after noon means no morning.
+function staffAbsenceMatches(half: Half, row: { half: string; arriveAt: string | null; leaveAt: string | null }) {
+  if (absenceMatches(half, row.half)) return true;
+  if (row.half !== "CUSTOM") return false;
+  if (half === "PM") return row.leaveAt !== null && row.leaveAt <= "12:00";
+  return row.arriveAt !== null && row.arriveAt >= "12:00";
+}
+
+// Which half a staffer's leaving time shows in — "out 10:30" belongs on the
+// morning, "out 3:00" on the afternoon.
+function leaveHalf(leaveAt: string): Half {
+  return leaveAt <= "12:00" ? "AM" : "PM";
+}
+
 function scribeRank(name: string) {
   const i = SCRIBE_PRIORITY.indexOf(name);
   return i === -1 ? SCRIBE_PRIORITY.length : i;
@@ -300,7 +317,7 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
   const assignments = allAssignments.filter((a) => isOfficeOpen(a.office, a.half) && worksOn(a.staff.name, date));
 
   const isStaffAbsent = (staffId: string, half: Half) =>
-    staffAbsences.some((a) => a.staffId === staffId && absenceMatches(half, a.half));
+    staffAbsences.some((a) => a.staffId === staffId && staffAbsenceMatches(half, a));
   const isStaffAssigned = (staffId: string, half: Half) => assignments.some((a) => a.staffId === staffId && a.half === half);
   // A backup x-ray assignment doesn't use up the person's whole half the way
   // any other assignment would — Mark/Charlie's default rooming duty stays
@@ -695,7 +712,10 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
     .map((s) => ({ id: s.id, name: s.name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  return { date, weekday, halves, unassigned, reassignable, ooo };
+  const ownDoctorByStaffId: Record<string, string> = {};
+  for (const s of staff) if (s.dedicatedProvider) ownDoctorByStaffId[s.id] = s.dedicatedProvider.name;
+
+  return { date, weekday, halves, unassigned, reassignable, ooo, ownDoctorByStaffId };
 }
 
 // Which staff are free to self-place, per half. Anyone not absent, not
@@ -869,7 +889,7 @@ export async function getWeekScheduleForAllStaff(mondayStr: string): Promise<MyS
       const halves = {} as Record<Half, MyScheduleCell>;
 
       for (const half of HALVES) {
-        const isOut = staffAbsences.some((a) => a.staffId === s.id && a.date === date && absenceMatches(half, a.half));
+        const isOut = staffAbsences.some((a) => a.staffId === s.id && a.date === date && staffAbsenceMatches(half, a));
         // Running late only ever describes the start of the day, so it never
         // applies to the PM half (mirrors lateStaffMinutes in getDaySchedule).
         const lateMinutes =
@@ -993,8 +1013,10 @@ export async function getWeekScheduleForAllStaff(mondayStr: string): Promise<MyS
 
       const customRow = staffAbsences.find((a) => a.staffId === s.id && a.date === date && a.half === "CUSTOM");
       if (customRow) {
-        halves.AM.timing = arriveNote(customRow.arriveAt, customRow.lateMinutes);
-        halves.PM.timing = leaveNote(customRow.leaveAt);
+        const leave = customRow.leaveAt ? leaveNote(customRow.leaveAt) : null;
+        const leaveIn = customRow.leaveAt ? leaveHalf(customRow.leaveAt) : null;
+        halves.AM.timing = [arriveNote(customRow.arriveAt, customRow.lateMinutes), leaveIn === "AM" ? leave : null].filter(Boolean).join(" · ") || null;
+        halves.PM.timing = leaveIn === "PM" ? leave : null;
       }
 
       return { date, weekday, halves };
