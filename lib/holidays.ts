@@ -1,8 +1,11 @@
+import { addDays, weekdayIndex } from "./date";
+
 // U.S. federal holidays — computed per-year from calendar rules instead of a
 // hardcoded date table, so this stays correct for any year without needing
 // yearly maintenance. Purely a display concern (see StaffCalendarGrid /
-// ProviderCalendarGrid): a holiday still behaves like a normal weekday
-// everywhere else (templates, scheduling, day-nav) — it's just recolored
+// ProviderCalendarGrid), plus Home's day arrows skipping closed ones (see
+// nextOfficeDay below). Otherwise a holiday still behaves like a normal weekday
+// everywhere else (templates, scheduling) — it's just recolored
 // and labeled in the calendar grids, not removed like a weekend.
 
 function pad2(n: number): string {
@@ -79,3 +82,25 @@ export const HOLIDAY_COLOR = "#c4b5fd";
 // the clinic actually works (see HolidayOverride/api/holiday-overrides),
 // toggled by clicking the date header in the Staff/Provider calendar grids.
 export const WORKING_HOLIDAY_COLOR = "#579669";
+
+// Day-to-day stepping on Home skips closed holidays as well as weekends —
+// there's no office to look at. `workingHolidays` is the set of holiday
+// dates toggled open (see HolidayOverride); those still count as office days.
+function isOfficeDay(dateStr: string, workingHolidays: ReadonlySet<string>): boolean {
+  return weekdayIndex(dateStr) !== null && (!isFederalHoliday(dateStr) || workingHolidays.has(dateStr));
+}
+
+function stepOfficeDay(dateStr: string, delta: 1 | -1, workingHolidays: ReadonlySet<string>): string {
+  let d = addDays(dateStr, delta);
+  // Bounded: there's never more than a long weekend plus a couple of holidays in a row.
+  for (let i = 0; i < 14 && !isOfficeDay(d, workingHolidays); i++) d = addDays(d, delta);
+  return d;
+}
+
+export function nextOfficeDay(dateStr: string, workingHolidays: ReadonlySet<string>): string {
+  return stepOfficeDay(dateStr, 1, workingHolidays);
+}
+
+export function previousOfficeDay(dateStr: string, workingHolidays: ReadonlySet<string>): string {
+  return stepOfficeDay(dateStr, -1, workingHolidays);
+}

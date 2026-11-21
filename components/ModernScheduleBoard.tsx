@@ -5,13 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { DaySchedule, FreeStaffMember, PositionRef, ProviderCell } from "@/lib/schedule";
 import type { SwapRequestView } from "@/lib/swap";
-import { effectiveScheduleDate, formatDayShort, formatLong, nextBusinessDay, previousBusinessDay } from "@/lib/date";
+import { effectiveScheduleDate, formatDayShort, formatLong } from "@/lib/date";
+import { nextOfficeDay, previousOfficeDay } from "@/lib/holidays";
 import { HALVES, HALF_LABELS, OFFICES, OFFICE_LABELS, type Half, type Office, type Role } from "@/lib/types";
 import { useWhoAmI } from "@/lib/whoami";
 import AutoRefresh from "@/components/AutoRefresh";
 import ScheduleDateNav from "@/components/ScheduleDateNav";
 import MobileDateBar from "@/components/MobileDateBar";
-import { doctorColor, supportPill } from "@/lib/homeColors";
+import { doctorColor, staffPill } from "@/lib/homeColors";
 import DayNote, { type DayNoteData } from "@/components/DayNote";
 import { DropZone, Pill, SwapControl, TakeRoleButton, lateTag, moveStaff, postJSON, type DropTarget } from "@/components/scheduleShared";
 
@@ -22,6 +23,7 @@ type Props = {
   day: DaySchedule;
   freeStaff: Record<Half, FreeStaffMember[]>;
   note: DayNoteData;
+  workingHolidays: string[];
 };
 
 // The modern Home page: literally half the screen per office instead of a
@@ -29,7 +31,7 @@ type Props = {
 // Same data, same interactions (drag-to-reassign, remove, swap-request) as
 // the classic ScheduleBoard, just laid out as a continuous, low-chrome
 // column of names and dividers instead of a card per provider/role.
-export default function ModernScheduleBoard({ date, day, freeStaff, note }: Props) {
+export default function ModernScheduleBoard({ date, day, freeStaff, note, workingHolidays }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const { current } = useWhoAmI();
@@ -65,6 +67,9 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
   // on the left when they sit side by side — so the title and note above
   // always sit on white.
   const isToday = date === effectiveScheduleDate();
+  const working = new Set(workingHolidays);
+  const prevDate = previousOfficeDay(date, working);
+  const nextDate = nextOfficeDay(date, working);
   const titleColor = "text-slate-900";
 
   return (
@@ -83,8 +88,8 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
         value={date}
         basePath="/schedule/"
         snap="day"
-        prevHref={`/schedule/${previousBusinessDay(date)}`}
-        nextHref={`/schedule/${nextBusinessDay(date)}`}
+        prevHref={`/schedule/${prevDate}`}
+        nextHref={`/schedule/${nextDate}`}
         prevLabel="Previous day"
         nextLabel="Next day"
       />
@@ -125,7 +130,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
             replaces it. */}
         <div className="text-slate-900 phone:hidden dockrow:hidden lg:justify-self-end lg:text-white">
 
-          <ScheduleDateNav date={date} />
+          <ScheduleDateNav date={date} prevDate={prevDate} nextDate={nextDate} />
         </div>
       </div>
 
@@ -288,7 +293,7 @@ function OfficeHalf({
                           run={run}
                           currentId={currentId}
                           isManager={isManager}
-                          dark={dark}
+                          dark={dark} ownDoctorByStaffId={day.ownDoctorByStaffId}
                           swapRequests={swapRequests}
                           onToggleSwap={(p) => toggleSwap(half, p)}
                           onRespondSwap={respondSwap}
@@ -327,7 +332,7 @@ function OfficeHalf({
                         run={run}
                         currentId={currentId}
                         isManager={isManager}
-                        dark={dark}
+                        dark={dark} ownDoctorByStaffId={day.ownDoctorByStaffId}
                         swapRequests={swapRequests}
                         onToggleSwap={(p) => toggleSwap(half, p)}
                         onRespondSwap={respondSwap}
@@ -348,7 +353,7 @@ function OfficeHalf({
                         run={run}
                         currentId={currentId}
                         isManager={isManager}
-                        dark={dark}
+                        dark={dark} ownDoctorByStaffId={day.ownDoctorByStaffId}
                         swapRequests={swapRequests}
                         onToggleSwap={(p) => toggleSwap(half, p)}
                         onRespondSwap={respondSwap}
@@ -378,6 +383,7 @@ function ProviderRow({
   currentId,
   isManager,
   dark,
+  ownDoctorByStaffId,
   swapRequests,
   onToggleSwap,
   onRespondSwap,
@@ -393,6 +399,7 @@ function ProviderRow({
   currentId: string | null;
   isManager: boolean;
   dark: boolean;
+  ownDoctorByStaffId: Record<string, string>;
   swapRequests: SwapRequestView[];
   onToggleSwap: (position: { role: Role; providerId: string | null; staffId: string }) => void;
   onRespondSwap: (requestId: string, accept: boolean) => void;
@@ -406,6 +413,8 @@ function ProviderRow({
 
   const hoverClass = "ring-2 ring-[var(--theme-accent)]";
   const doctor = doctorColor(cell.provider.name);
+  // The scribe's own fixed color (their usual doctor's), not this doctor's.
+  const scribePill = cell.scribe ? staffPill(cell.scribe.name, ownDoctorByStaffId[cell.scribe.staffId], dark) : null;
 
   return (
     <DropZone active={isManager} onDrop={onDropStaff} hoverClassName={hoverClass} className={`flex grow flex-wrap items-center gap-2 py-1 ${dark ? "border-b border-white/10" : "border-b border-slate-100"}`}>
@@ -420,8 +429,8 @@ function ProviderRow({
         <span className="flex flex-wrap items-center gap-1.5">
           <Pill
             name={cell.scribe.name}
-            color={doctor?.pill ?? cell.scribe.color}
-            textClassName={doctor ? "text-black" : undefined}
+            color={scribePill?.color ?? cell.scribe.color}
+            textClassName={scribePill?.textClassName}
             lateMinutes={cell.scribe.lateMinutes}
             timing={cell.scribe.timing}
             substitute={cell.scribe.substitute}
@@ -484,6 +493,7 @@ function RoleSection({
   currentId,
   isManager,
   dark,
+  ownDoctorByStaffId,
   swapRequests,
   onToggleSwap,
   onRespondSwap,
@@ -511,6 +521,7 @@ function RoleSection({
   currentId: string | null;
   isManager: boolean;
   dark: boolean;
+  ownDoctorByStaffId: Record<string, string>;
   swapRequests: SwapRequestView[];
   onToggleSwap: (position: { role: Role; providerId: string | null; staffId: string }) => void;
   onRespondSwap: (requestId: string, accept: boolean) => void;
@@ -539,8 +550,8 @@ function RoleSection({
               <span key={c.id} className="flex items-center gap-1">
                 <Pill
                   name={c.providerName ? `${c.name} — ${c.providerName}` : c.name}
-                  color={supportPill(c.name, dark)?.color ?? c.color}
-                  textClassName={supportPill(c.name, dark)?.textClassName}
+                  color={staffPill(c.name, ownDoctorByStaffId[c.staffId], dark)?.color ?? c.color}
+                  textClassName={staffPill(c.name, ownDoctorByStaffId[c.staffId], dark)?.textClassName}
                   lateMinutes={c.lateMinutes}
                   timing={c.timing}
                   draggable={isManager}

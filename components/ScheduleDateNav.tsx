@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { nearestBusinessDayOnOrAfter, nextBusinessDay, previousBusinessDay } from "@/lib/date";
+import { nearestBusinessDayOnOrAfter } from "@/lib/date";
 
-export default function ScheduleDateNav({ date }: { date: string }) {
+// prevDate/nextDate come from the board, already skipping weekends and closed holidays.
+export default function ScheduleDateNav({ date, prevDate, nextDate }: { date: string; prevDate: string; nextDate: string }) {
   const router = useRouter();
 
   function go(d: string) {
@@ -17,7 +18,7 @@ export default function ScheduleDateNav({ date }: { date: string }) {
 
   return (
     <div className="flex items-center gap-2">
-      <button type="button" onClick={() => go(previousBusinessDay(date))} aria-label="Previous day" title="Previous day" className={btnClass}>
+      <button type="button" onClick={() => go(prevDate)} aria-label="Previous day" title="Previous day" className={btnClass}>
         <span className="skew-label">←</span>
       </button>
       {/* A native <input type="date"> can't have its own background/border
@@ -38,7 +39,7 @@ export default function ScheduleDateNav({ date }: { date: string }) {
           className="skew-label bg-transparent px-4 py-1.5 text-sm font-bold outline-none"
         />
       </div>
-      <button type="button" onClick={() => go(nextBusinessDay(date))} aria-label="Next day" title="Next day" className={btnClass}>
+      <button type="button" onClick={() => go(nextDate)} aria-label="Next day" title="Next day" className={btnClass}>
         <span className="skew-label">→</span>
       </button>
     </div>

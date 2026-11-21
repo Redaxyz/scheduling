@@ -1,7 +1,8 @@
-// Colors that tie each doctor to their scribe on Home: the doctor's name is
-// written in their color, and whoever is scribing for them gets a pill
-// filled with it. All pastel; names are a touch deeper on the white
-// (Bethesda) side than on the black (Germantown) side so they stay readable.
+// Colors that tie each doctor to their own scribe on Home: the doctor's name
+// is written in their color, and their usual scribe's pill is filled with
+// it — always, whoever that scribe is covering that day (see staffPill).
+// All pastel; names are a touch deeper on the white (Bethesda) side than on
+// the black (Germantown) side so they stay readable.
 type DoctorColor = { onLight: string; onDark: string; pill: string };
 
 const DOCTOR_COLORS: Record<string, DoctorColor> = {
@@ -24,4 +25,15 @@ const SUPPORT_STAFF = new Set(["Charlie", "Jenish", "JB", "Isabel", "Mark", "She
 export function supportPill(name: string, dark: boolean): { color: string; textClassName: string } | null {
   if (!SUPPORT_STAFF.has(name)) return null;
   return dark ? { color: "#ffffff", textClassName: "text-black" } : { color: "#000000", textClassName: "text-white" };
+}
+
+// The pill for a person anywhere on Home, fixed per person: a scribe always
+// wears their own doctor's color (`ownDoctorName`, from
+// DaySchedule.ownDoctorByStaffId) even while scribing for someone else or
+// rooming; support staff are black/white. Null = no fixed scheme, so the
+// caller falls back to the person's profile color.
+export function staffPill(name: string, ownDoctorName: string | undefined, dark: boolean): { color: string; textClassName: string } | null {
+  const own = ownDoctorName ? doctorColor(ownDoctorName) : null;
+  if (own) return { color: own.pill, textClassName: "text-black" };
+  return supportPill(name, dark);
 }

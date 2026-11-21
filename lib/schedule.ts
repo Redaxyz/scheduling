@@ -72,6 +72,10 @@ export type DaySchedule = {
   // Out of office: staff absent for the WHOLE day (both halves), listed on
   // Home so a day's full-day absences are visible at a glance.
   ooo: { id: string; name: string }[];
+  // Staff id -> the name of the doctor they usually scribe for
+  // (Staff.dedicatedProviderId). Home colors each scribe by THIS doctor, so
+  // a scribe keeps the same color whoever they're scribing for that day.
+  ownDoctorByStaffId: Record<string, string>;
 };
 
 export type FreeStaffMember = {
@@ -341,7 +345,9 @@ export async function getDaySchedule(date: string): Promise<DaySchedule> {
   const staffTiming = (staffId: string, half: Half) => {
     const row = staffAbsences.find((a) => a.staffId === staffId && a.half === "CUSTOM");
     if (!row) return null;
-    return half === "AM" ? arriveNote(row.arriveAt, row.lateMinutes) : leaveNote(row.leaveAt);
+    const leave = row.leaveAt && leaveHalf(row.leaveAt) === half ? leaveNote(row.leaveAt) : null;
+    const arrive = half === "AM" ? arriveNote(row.arriveAt, row.lateMinutes) : null;
+    return [arrive, leave].filter(Boolean).join(" · ") || null;
   };
   const lateProviderMinutes = (providerId: string, half: Half) =>
     half === "AM" ? (providerAbsences.find((a) => a.providerId === providerId && a.half === "CUSTOM")?.lateMinutes ?? null) : null;
