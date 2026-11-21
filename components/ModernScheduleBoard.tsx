@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { DaySchedule, FreeStaffMember, PositionRef, ProviderCell } from "@/lib/schedule";
 import type { SwapRequestView } from "@/lib/swap";
-import { effectiveScheduleDate, formatDayShort, formatLong, nextBusinessDay, previousBusinessDay } from "@/lib/date";
+import { effectiveScheduleDate, formatDayShort, formatLong } from "@/lib/date";
+import { nextOfficeDay, previousOfficeDay } from "@/lib/holidays";
 import { HALVES, HALF_LABELS, OFFICES, OFFICE_LABELS, type Half, type Office, type Role } from "@/lib/types";
 import { useWhoAmI } from "@/lib/whoami";
 import AutoRefresh from "@/components/AutoRefresh";
@@ -22,6 +23,7 @@ type Props = {
   day: DaySchedule;
   freeStaff: Record<Half, FreeStaffMember[]>;
   note: DayNoteData;
+  workingHolidays: string[];
 };
 
 // The modern Home page: literally half the screen per office instead of a
@@ -32,7 +34,7 @@ type Props = {
 // The standing Frederick placement (see rosterRows below).
 const FREDERICK = { weekday: 3, doctor: "Dr. McCormick", scribe: "Anna" }; // Thursday
 
-export default function ModernScheduleBoard({ date, day, freeStaff, note }: Props) {
+export default function ModernScheduleBoard({ date, day, freeStaff, note, workingHolidays }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const { current } = useWhoAmI();
@@ -82,6 +84,9 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
   // on the left when they sit side by side — so the title and note above
   // always sit on white.
   const isToday = date === effectiveScheduleDate();
+  const working = new Set(workingHolidays);
+  const prevDate = previousOfficeDay(date, working);
+  const nextDate = nextOfficeDay(date, working);
   const titleColor = "text-slate-900";
 
   return (
@@ -100,8 +105,8 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
         value={date}
         basePath="/schedule/"
         snap="day"
-        prevHref={`/schedule/${previousBusinessDay(date)}`}
-        nextHref={`/schedule/${nextBusinessDay(date)}`}
+        prevHref={`/schedule/${prevDate}`}
+        nextHref={`/schedule/${nextDate}`}
         prevLabel="Previous day"
         nextLabel="Next day"
       />
@@ -142,7 +147,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note }: Prop
             replaces it. */}
         <div className="text-slate-900 phone:hidden dockrow:hidden lg:justify-self-end lg:text-white">
 
-          <ScheduleDateNav date={date} />
+          <ScheduleDateNav date={date} prevDate={prevDate} nextDate={nextDate} />
         </div>
       </div>
 

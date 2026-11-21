@@ -15,10 +15,12 @@ export default async function SchedulePage({ params }: { params: Promise<{ date:
     return <p className="text-red-600">Invalid date: {date}</p>;
   }
 
-  const [day, freeStaff, note] = await Promise.all([
+  const [day, freeStaff, note, holidayOverrides] = await Promise.all([
     getDaySchedule(date),
     getFreeStaff(date),
     prisma.dayNote.findUnique({ where: { date } }),
+    // Holidays toggled open — the day arrows skip every other holiday.
+    prisma.holidayOverride.findMany({ select: { date: true } }),
   ]);
 
   // The title/date-nav row lives inside ModernScheduleBoard itself now —
@@ -36,6 +38,7 @@ export default async function SchedulePage({ params }: { params: Promise<{ date:
       day={day}
       freeStaff={freeStaff}
       note={{ text: note?.text ?? "", updatedByName: note?.updatedByName ?? null }}
+      workingHolidays={holidayOverrides.map((h) => h.date)}
     />
   );
 }
