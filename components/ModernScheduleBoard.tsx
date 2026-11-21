@@ -24,6 +24,7 @@ type Props = {
   freeStaff: Record<Half, FreeStaffMember[]>;
   note: DayNoteData;
   workingHolidays: string[];
+  closed: boolean;
 };
 
 // The modern Home page: literally half the screen per office instead of a
@@ -34,7 +35,7 @@ type Props = {
 // The standing Frederick placement (see rosterRows below).
 const FREDERICK = { weekday: 3, doctor: "Dr. McCormick", scribe: "Anna" }; // Thursday
 
-export default function ModernScheduleBoard({ date, day, freeStaff, note, workingHolidays }: Props) {
+export default function ModernScheduleBoard({ date, day, freeStaff, note, workingHolidays, closed }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const { current } = useWhoAmI();
@@ -78,7 +79,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note, workin
       label: "Frederick · afternoon",
       names: inFrederick ? [`${frederickScribe ? `${frederickScribe}, s` : "S"}cribe for ${FREDERICK.doctor}`] : [],
     },
-  ].filter((row) => row.names.length > 0);
+  ].filter((row) => !closed && row.names.length > 0);
 
   // Bethesda always comes first — on top when the offices stack (phone),
   // on the left when they sit side by side — so the title and note above
@@ -163,6 +164,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note, workin
             isManager={isManager}
             swapRequests={swapRequests}
             onChanged={refresh}
+            closed={closed}
             footer={
               office === "GERMANTOWN" &&
               rosterRows.length > 0 && (
@@ -215,6 +217,7 @@ function OfficeHalf({
   swapRequests,
   onChanged,
   footer,
+  closed,
 }: {
   date: string;
   office: Office;
@@ -225,6 +228,7 @@ function OfficeHalf({
   swapRequests: SwapRequestView[];
   onChanged: () => void;
   footer?: ReactNode;
+  closed: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
   const dark = office === "GERMANTOWN";
@@ -293,7 +297,7 @@ function OfficeHalf({
                 </div>
 
                 <div data-cell={`${prefix}-providers`}>
-                  {slot.providers.length === 0 ? (
+                  {closed || slot.providers.length === 0 ? (
                     <p className={`text-2xl font-black uppercase tracking-tight ${dark ? "text-white/25" : "text-slate-300"}`}>No office</p>
                   ) : (
                     // Side by side when they fit, one per line when they don't.
@@ -334,7 +338,7 @@ function OfficeHalf({
                   )}
                 </div>
 
-                {slot.providers.length > 0 && (
+                {!closed && slot.providers.length > 0 && (
                   <>
                     <div data-cell={`${prefix}-rooming`}>
                       <RoleSection

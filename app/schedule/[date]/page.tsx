@@ -1,6 +1,7 @@
 import { getDaySchedule, getFreeStaff } from "@/lib/schedule";
 import { prisma } from "@/lib/prisma";
 import ModernScheduleBoard from "@/components/ModernScheduleBoard";
+import { isFederalHoliday } from "@/lib/holidays";
 
 // Reads live assignment/absence data on every load — without this, Next can
 // treat the page as static and keep serving a snapshot from before someone's
@@ -39,6 +40,8 @@ export default async function SchedulePage({ params }: { params: Promise<{ date:
       freeStaff={freeStaff}
       note={{ text: note?.text ?? "", updatedByName: note?.updatedByName ?? null }}
       workingHolidays={holidayOverrides.map((h) => h.date)}
+      // A holiday the clinic is closed reads "No office" everywhere.
+      closed={isFederalHoliday(date) && !holidayOverrides.some((h) => h.date === date)}
     />
   );
 }
