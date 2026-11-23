@@ -12,7 +12,7 @@ import ErrorReporter from "@/components/ErrorReporter";
 import { DOCK_COOKIE } from "@/lib/sideDock";
 import { HolidayProvider } from "@/components/HolidayProvider";
 import { HolidayGarland } from "@/components/HolidayDecor";
-import { HOLIDAY_COOKIE, holidayFor, isHolidayKey, type HolidayKey } from "@/lib/holidayTheme";
+import { HOLIDAY_COOKIE, holidayCssVars, holidayFor, isHolidayKey, type HolidayKey } from "@/lib/holidayTheme";
 import { easternToday } from "@/lib/date";
 
 const geistSans = Geist({
@@ -67,6 +67,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       data-cover={duo ? "" : undefined}
       data-dock={duo ? "side" : undefined}
       data-holiday={holiday ?? undefined}
+      // A holiday theme's colors (lib/holidayTheme.ts), over the defaults in globals.css.
+      style={holiday ? (holidayCssVars(holiday) as React.CSSProperties) : undefined}
     >
       <body className="flex min-h-dvh flex-col">
         <DockMode />

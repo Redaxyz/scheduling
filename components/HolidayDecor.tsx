@@ -2,21 +2,21 @@
 
 import { useEffect, useState, type ReactElement } from "react";
 import { useHoliday } from "@/components/HolidayProvider";
-import type { HolidayKey } from "@/lib/holidayTheme";
+import { holidayTheme } from "@/lib/holidayTheme";
 import type { Office } from "@/lib/types";
 
-// Festive touches for the holiday themes (lib/holidayTheme.ts), purely
+// Festive touches for the holiday themes (lib/holidayTheme.ts, which picks
+// each holiday's garland and icons), purely
 // decorative: they never take taps or space from the page.
 //
-// HolidayGarland: a strand across the top of every screen (autumn leaves at
-// Thanksgiving, twinkling lights at Christmas).
+// HolidayGarland: a strand across the top of every screen: autumn leaves,
+// twinkling lights, or a string of emoji (eggs, hearts, lanterns...).
 // HolidayIcon: a small icon beside each office's heading, cycling through a
 // few that fit the holiday.
 
 const UNITS = 64; // enough strand for the widest screen; the rest is clipped
 
 const LEAF_COLORS = ["#c2410c", "#d97706", "#b91c1c", "#ca8a04"];
-const BULB_COLORS = ["#ef4444", "#22c55e", "#facc15", "#3b82f6", "#f97316"];
 
 function LeafUnit({ i }: { i: number }) {
   const color = LEAF_COLORS[i % LEAF_COLORS.length];
@@ -34,8 +34,8 @@ function LeafUnit({ i }: { i: number }) {
   );
 }
 
-function BulbUnit({ i }: { i: number }) {
-  const color = BULB_COLORS[i % BULB_COLORS.length];
+function BulbUnit({ i, colors }: { i: number; colors: string[] }) {
+  const color = colors[i % colors.length];
   return (
     <svg width="30" height="18" viewBox="0 0 30 18" className="shrink-0" aria-hidden>
       <path d="M0 3 Q15 9 30 3" fill="none" stroke="#1f2937" strokeWidth="1.2" />
@@ -53,19 +53,39 @@ function BulbUnit({ i }: { i: number }) {
   );
 }
 
+// A small emoji hanging from the twine (Easter eggs, hearts, lanterns...).
+function EmojiUnit({ i, items }: { i: number; items: string[] }) {
+  return (
+    <span className="relative block h-[22px] w-[34px] shrink-0">
+      <svg width="34" height="22" viewBox="0 0 34 22" className="absolute inset-0" aria-hidden>
+        <path d="M0 3 Q17 9 34 3" fill="none" stroke="#7c6a58" strokeWidth="1.2" />
+      </svg>
+      <span className="absolute left-1/2 top-[4px] -translate-x-1/2 text-[13px] leading-none" style={{ transform: `translateX(-50%) rotate(${i % 2 ? 8 : -8}deg)` }}>
+        {items[i % items.length]}
+      </span>
+    </span>
+  );
+}
+
 export function HolidayGarland() {
   const holiday = useHoliday();
   if (!holiday) return null;
-  const Unit = holiday === "christmas" ? BulbUnit : LeafUnit;
+  const garland = holidayTheme(holiday).garland;
   return (
     <div
       aria-hidden
       className="pointer-events-none fixed inset-x-0 z-30 flex overflow-hidden"
       style={{ top: "env(safe-area-inset-top, 0px)" }}
     >
-      {Array.from({ length: UNITS }, (_, i) => (
-        <Unit key={i} i={i} />
-      ))}
+      {Array.from({ length: UNITS }, (_, i) =>
+        garland.kind === "lights" ? (
+          <BulbUnit key={i} i={i} colors={garland.colors} />
+        ) : garland.kind === "emoji" ? (
+          <EmojiUnit key={i} i={i} items={garland.items} />
+        ) : (
+          <LeafUnit key={i} i={i} />
+        ),
+      )}
     </div>
   );
 }
@@ -133,19 +153,12 @@ function Snowflake({ className }: { className?: string }) {
   );
 }
 
-type Glyph = ((props: { className?: string }) => ReactElement) | string;
-
-// What cycles beside each office's heading: a drawn icon first, then a few
-// fitting emoji.
-const ICONS: Record<HolidayKey, Record<Office, Glyph[]>> = {
-  thanksgiving: {
-    BETHESDA: [Turkey, "🥧", "🌽", "🍁"],
-    GERMANTOWN: [Pumpkin, "🍂", "🌰", "🍎"],
-  },
-  christmas: {
-    BETHESDA: [Tree, "🎁", "🍬", "⭐"],
-    GERMANTOWN: [Snowflake, "⛄", "🔔", "🦌"],
-  },
+// The drawn icons a theme can name as "svg:..." (lib/holidayTheme.ts).
+const DRAWN: Record<string, (props: { className?: string }) => ReactElement> = {
+  "svg:turkey": Turkey,
+  "svg:pumpkin": Pumpkin,
+  "svg:tree": Tree,
+  "svg:snowflake": Snowflake,
 };
 
 const CYCLE_MS = 4000;
@@ -174,19 +187,22 @@ export function HolidayIcon({ office, className = "h-8 w-8" }: { office: Office;
   }, [holiday, office]);
 
   if (!holiday) return null;
-  const glyphs = ICONS[holiday][office];
+  const glyphs = holidayTheme(holiday).icons[office];
   const active = step % glyphs.length;
   return (
     <span aria-hidden className={`relative inline-block shrink-0 ${className}`}>
-      {glyphs.map((Glyph, i) => (
-        <span
-          key={i}
-          className="absolute inset-0 flex items-center justify-center transition-opacity duration-700"
-          style={{ opacity: i === active ? 1 : 0 }}
-        >
-          {typeof Glyph === "string" ? <span className="text-[1.6rem] leading-none sm:text-[1.8rem]">{Glyph}</span> : <Glyph className="h-full w-full" />}
-        </span>
-      ))}
+      {glyphs.map((glyph, i) => {
+        const Drawn = DRAWN[glyph];
+        return (
+          <span
+            key={i}
+            className="absolute inset-0 flex items-center justify-center transition-opacity duration-700"
+            style={{ opacity: i === active ? 1 : 0 }}
+          >
+            {Drawn ? <Drawn className="h-full w-full" /> : <span className="text-[1.6rem] leading-none sm:text-[1.8rem]">{glyph}</span>}
+          </span>
+        );
+      })}
     </span>
   );
 }

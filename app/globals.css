@@ -42,29 +42,10 @@
 }
 
 /* Holiday themes (see lib/holidayTheme.ts): for a week either side of the
-   holiday the offices take its two colors, and accents (the dock's
-   highlight, the Home chip) go black and white. The person's own accent
-   color turns black at the same time (components/ThemeAccent.tsx). */
-/* The page itself (every tab) takes a soft tint of the holiday instead of
-   the usual cream, light enough that the offices' colors still stand out. */
-html[data-holiday="thanksgiving"] {
-  --page-bg: #fcebcf; /* light wheat */
-  --off-bg: #f2d9b0;
-  --bt-bg: #f2c14e; /* golden yellow */
-  --bt-ink: #111111;
-  --gt-bg: #d9532b; /* red-orange */
-  --gt-panel: #d9532b;
-  --gt-ink: #ffffff;
-}
-html[data-holiday="christmas"] {
-  --page-bg: #e8f0e6; /* pale pine */
-  --off-bg: #d3e0d0;
-  --bt-bg: #b8312f; /* red */
-  --bt-ink: #ffffff;
-  --gt-bg: #1d6b3a; /* green */
-  --gt-panel: #1d6b3a;
-  --gt-ink: #ffffff;
-}
+   holiday the page sets the variables above to the holiday's colors (on
+   <html>, from app/layout.tsx), and accents (the dock's highlight, the Home
+   chip) go black and white. The person's own accent color turns black at
+   the same time (components/ThemeAccent.tsx). */
 /* Christmas lights twinkle (components/HolidayDecor.tsx), unless the
    person has asked their phone for less motion. */
 @keyframes holiday-twinkle {
