@@ -94,9 +94,18 @@ const DIWALI: Record<number, string> = {
 // Textures for an office's color. Kept faint so the text on top still reads.
 const svgUrl = (svg: string) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 
-// Diagonal (or level) stripes of a translucent color over the office's own.
-const stripes = (color: string, angle = 45, width = 14) =>
-  `repeating-linear-gradient(${angle}deg, ${color} 0 ${width}px, transparent ${width}px ${width * 2}px)`;
+// Stripes of a translucent color over the office's own, as a small seamless
+// tile (a gradient would restart at the edge of every block and leave seams).
+// Diagonal: equal bands at 45 degrees across a square tile. Level: bands
+// stacked down the page (the flag's stripes).
+function stripes(color: string, direction: "diagonal" | "level" = "diagonal", size = 40): string {
+  const half = size / 2;
+  const shape =
+    direction === "diagonal"
+      ? `<path d="M0 ${half} L${half} 0 H${size} L0 ${size} Z M${half} ${size} L${size} ${half} V${size} Z" fill="${color}"/>`
+      : `<rect width="${size}" height="${half}" fill="${color}"/>`;
+  return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">${shape}</svg>`);
+}
 
 // A loose scatter of emoji, each faint and turned a little.
 function scatter(emoji: string[], opacity = 0.2, tile = 84): string {
@@ -108,19 +117,6 @@ function scatter(emoji: string[], opacity = 0.2, tile = 84): string {
     .join("");
   return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${tile}" height="${tile + 10}">${items}</svg>`);
 }
-
-// Pine needles: little fans of dark and light strokes, like a tree's branches.
-const pineNeedles = svgUrl(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><g stroke-linecap="round" stroke-width="1.6" fill="none">${[
-    [12, 14], [36, 10], [24, 32], [6, 40], [42, 38],
-  ]
-    .map(([x, y], i) =>
-      [-40, -20, 0, 20, 40]
-        .map((a) => `<line x1="${x}" y1="${y}" x2="${x}" y2="${y - 9}" transform="rotate(${a + (i % 2 ? 180 : 0)} ${x} ${y})" stroke="${a % 40 === 0 ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.12)"}"/>`)
-        .join(""),
-    )
-    .join("")}</g></svg>`,
-);
 
 // Matzah: rows of little pricked dots between faint toasted lines.
 const matzah = svgUrl(
@@ -136,7 +132,7 @@ export const HOLIDAY_THEMES = {
     days: day(12, 25),
     pageBg: "#e8f0e6", offBg: "#d3e0d0",
     BETHESDA: { bg: "#b8312f", dark: true, pattern: stripes("rgba(255,255,255,0.24)") }, // red
-    GERMANTOWN: { bg: "#1d6b3a", dark: true, pattern: pineNeedles }, // green
+    GERMANTOWN: { bg: "#1d6b3a", dark: true }, // green
     garland: { kind: "lights", colors: ["#ef4444", "#22c55e", "#facc15", "#3b82f6", "#f97316"] },
     icons: { BETHESDA: ["svg:tree", "🎁", "🍬", "⭐"], GERMANTOWN: ["svg:snowflake", "⛄", "🔔", "🦌"] },
   },
@@ -225,7 +221,7 @@ export const HOLIDAY_THEMES = {
     major: true,
     days: day(7, 4),
     pageBg: "#eef2fa", offBg: "#d9e1f2",
-    BETHESDA: { bg: "#b91c1c", dark: true, pattern: stripes("rgba(255,255,255,0.2)", 0, 12) }, // red
+    BETHESDA: { bg: "#b91c1c", dark: true, pattern: stripes("rgba(255,255,255,0.2)", "level", 24) }, // red
     GERMANTOWN: { bg: "#1e3a8a", dark: true, pattern: scatter(["⭐"], 0.32) }, // blue
     garland: { kind: "lights", colors: ["#dc2626", "#f8fafc", "#2563eb"] },
     icons: { BETHESDA: ["🎆", "🇺🇸", "🌭"], GERMANTOWN: ["🎇", "⭐", "🍔"] },
@@ -335,7 +331,7 @@ export function officeIsDark(holiday: HolidayKey | null, office: Office): boolea
 // The CSS variables a theme sets on the page (see app/globals.css for what
 // each one colors). Black text on light colors, white on dark ones.
 export function holidayCssVars(key: HolidayKey): Record<string, string> {
-  const t = HOLIDAY_THEMES[key];
+  const t: HolidayTheme = HOLIDAY_THEMES[key];
   const ink = (c: OfficeColor) => (c.dark ? "#ffffff" : "#111111");
   return {
     "--page-bg": t.pageBg,
