@@ -12,6 +12,7 @@ import { useWhoAmI } from "@/lib/whoami";
 import AutoRefresh from "@/components/AutoRefresh";
 import ScheduleDateNav from "@/components/ScheduleDateNav";
 import MobileDateBar from "@/components/MobileDateBar";
+import { HolidayIcon } from "@/components/HolidayDecor";
 import { useHoliday } from "@/components/HolidayProvider";
 import { officeIsDark } from "@/lib/holidayTheme";
 import { doctorColor, MY_PILL, staffPill } from "@/lib/homeColors";
@@ -282,7 +283,11 @@ function OfficeHalf({
       style={{ background: officeBg, ["--bleed" as string]: officeBg }}
     >
       <div className={`mb-8 flex items-baseline justify-between border-b pb-4 ${dark ? "border-white/10" : "border-slate-200"}`}>
-        <h2 className="text-2xl font-black uppercase tracking-tight sm:text-3xl">{OFFICE_LABELS[office]}</h2>
+        <h2 className="flex items-center gap-2 text-2xl font-black uppercase tracking-tight sm:text-3xl">
+          {OFFICE_LABELS[office]}
+          {/* A turkey or a tree in a holiday theme (nothing otherwise). */}
+          {office === "BETHESDA" && <HolidayIcon className="h-8 w-8 shrink-0 sm:h-9 sm:w-9" />}
+        </h2>
         <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${dark ? "text-white/30" : "text-slate-400"}`}>
           {office === "BETHESDA" ? "BT" : "GT"}
         </span>

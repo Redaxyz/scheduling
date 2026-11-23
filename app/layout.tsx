@@ -11,6 +11,7 @@ import DockMode from "@/components/DockMode";
 import ErrorReporter from "@/components/ErrorReporter";
 import { DOCK_COOKIE } from "@/lib/sideDock";
 import { HolidayProvider } from "@/components/HolidayProvider";
+import { HolidayGarland } from "@/components/HolidayDecor";
 import { HOLIDAY_COOKIE, holidayFor, isHolidayKey, type HolidayKey } from "@/lib/holidayTheme";
 import { easternToday } from "@/lib/date";
 
@@ -71,6 +72,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <DockMode />
         <ErrorReporter />
         <HolidayProvider holiday={holiday}>
+        <HolidayGarland />
         <WhoAmIProvider>
           <ThemeAccent />
           <AppGate />
