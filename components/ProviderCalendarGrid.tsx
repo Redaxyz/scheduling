@@ -8,7 +8,7 @@ import { federalHolidayName, HOLIDAY_COLOR, WORKING_HOLIDAY_COLOR } from "@/lib/
 import { spaceBelow } from "@/lib/viewportSpace";
 import { HALVES, HALF_LABELS, OFFICE_LABELS, type Half, type Office } from "@/lib/types";
 import { useWhoAmI } from "@/lib/whoami";
-import { SURGERY_COLOR, OFF_COLOR, OFFICE_COLOR } from "@/lib/colors";
+import { SURGERY_COLOR, OFF_COLOR, OFFICE_COLOR, OFFICE_INK } from "@/lib/colors";
 
 // PRESENT isn't one fixed color anymore — it's whichever office the weekly
 // template has them at that half (white for Bethesda, near-black for
@@ -37,7 +37,7 @@ function cellColor(cell: ProviderHalfCell, closedHoliday: boolean): string {
 // dark text; red absent and near-black Germantown take white.
 function cellTextClass(cell: ProviderHalfCell, closedHoliday: boolean): string {
   if (closedHoliday || cell.status === "SURGERY") return "text-slate-800";
-  return cell.status === "PRESENT" && cell.office === "BETHESDA" ? "text-slate-700" : "text-white/90";
+  return cell.status === "PRESENT" && cell.office ? "" : "text-white/90";
 }
 
 // H closed holiday, X absent, S surgery, otherwise the office's B / G.
@@ -312,7 +312,8 @@ export default function ProviderCalendarGrid({
                       >
                         <span
                           className={`flex w-full items-center justify-center font-extrabold ${cellTextClass(cell, closedHoliday)} ${dense ? "text-[9px]" : "text-xs"}`}
-                          style={{ height: dynamicRowHeight }}
+                          // An office cell's text follows its color (and any holiday theme).
+                          style={{ height: dynamicRowHeight, color: cellTextClass(cell, closedHoliday) === "" && cell.office ? OFFICE_INK[cell.office] : undefined }}
                         >
                           {cellLetter(cell, closedHoliday)}
                         </span>

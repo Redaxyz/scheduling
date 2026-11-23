@@ -32,7 +32,7 @@ const OPTIONS: {
     // White on white needs its own dark text + a visible edge, unlike the
     // other three options, which are all saturated enough to read white text
     // and stand out from the page on their own.
-    activeTextColor: "#334155",
+    activeTextColor: "var(--bt-ink)",
     activeBorder: "1.5px solid #94a3b8",
   },
   {
@@ -42,7 +42,7 @@ const OPTIONS: {
     office: "GERMANTOWN",
     surgery: false,
     activeColor: OFFICE_COLOR.GERMANTOWN,
-    activeTextColor: "#fff",
+    activeTextColor: "var(--gt-ink)",
   },
   { key: "SURGERY", label: "Surgery", title: "In surgery", office: null, surgery: true, activeColor: SURGERY_COLOR, activeTextColor: "#0c4a6e" },
 ];

@@ -19,6 +19,15 @@
      the calendars' sticky name column): a soft cream rather than pure white.
      Tailwind's `bg-page` is this. */
   --page-bg: #fbf8f1;
+  /* Each office's color and the text that goes on it, wherever an office is
+     shown as a block of color (Home's halves, the Me tab, the provider
+     calendar). Bethesda is the cream page, Germantown near-black, except in
+     a holiday theme (below). */
+  --bt-bg: var(--page-bg);
+  --bt-ink: #334155;
+  --gt-bg: #0b0f14;
+  --gt-panel: #0f172a;
+  --gt-ink: #ffffff;
   /* The screen's safe-area insets (only non-zero because the viewport is
      viewport-fit=cover, see app/layout.tsx). Read through these variables
      rather than env() directly so there's one place to reason about them. */
@@ -28,6 +37,32 @@
   /* Room <main> leaves at the bottom for the dock. On a phone BottomNav
      replaces this with the measured height of the dock + date bar. */
   --main-pb: 7rem;
+}
+
+/* Holiday themes (see lib/holidayTheme.ts): for a week either side of the
+   holiday the offices take its two colors, and accents (the dock's
+   highlight, the Home chip) go black and white. The person's own accent
+   color turns black at the same time (components/ThemeAccent.tsx). */
+html[data-holiday="thanksgiving"] {
+  --bt-bg: #f2c14e; /* golden yellow */
+  --bt-ink: #111111;
+  --gt-bg: #d9532b; /* red-orange */
+  --gt-panel: #d9532b;
+  --gt-ink: #ffffff;
+}
+html[data-holiday="christmas"] {
+  --bt-bg: #b8312f; /* red */
+  --bt-ink: #ffffff;
+  --gt-bg: #1d6b3a; /* green */
+  --gt-panel: #1d6b3a;
+  --gt-ink: #ffffff;
+}
+html[data-holiday] .active-slab {
+  background: rgba(17, 17, 17, 0.1) !important;
+}
+html[data-holiday] #bottom-nav-raised {
+  background: linear-gradient(135deg, var(--bt-bg), var(--gt-bg)) !important;
+  box-shadow: 0 4px 10px -4px rgba(0, 0, 0, 0.35);
 }
 
 body {
@@ -135,21 +170,31 @@ html[data-cover]::before {
 }
 /* A dark block that runs to the strip, plus the bottom padding below it
    (the last thing on a phone's Home is Germantown). */
-html[data-cover] .strip-dark {
+html[data-cover] .strip-dark,
+html[data-cover] .strip-light {
   box-shadow:
-    var(--sa-right) 0 0 0 #0b0f14,
-    var(--sa-right) var(--main-pb) 0 0 #0b0f14;
+    var(--sa-right) 0 0 0 var(--bleed, var(--gt-bg)),
+    var(--sa-right) var(--main-pb) 0 0 var(--bleed, var(--gt-bg));
+}
+/* Home's date/title area on a phone sits over Bethesda, so beside it the
+   strip shows Bethesda's color (matters when a holiday theme makes
+   Bethesda something other than the cream page). */
+@media (max-width: 500px), (max-width: 1023px) and (max-height: 500px) {
+  html[data-cover] .strip-bt-phone {
+    box-shadow: var(--sa-right) 0 0 0 var(--bt-bg);
+  }
 }
 /* A dark block whose right edge is the strip, and nothing more (the Me
    tab's Germantown afternoons). */
-html[data-cover] .strip-dark-beside {
-  box-shadow: var(--sa-right) 0 0 0 #0f172a;
+html[data-cover] .strip-dark-beside,
+html[data-cover] .strip-light-beside {
+  box-shadow: var(--sa-right) 0 0 0 var(--bleed, var(--gt-panel));
 }
 /* Offices side by side (the unfolded Duo): Germantown's full-height
    background is the whole right edge. */
 @media (pointer: coarse) and (min-width: 600px) and (max-width: 1023px) and (min-height: 501px) and (max-height: 960px) {
   html[data-cover] .strip-dark-home {
-    box-shadow: var(--sa-right) 0 0 0 #0b0f14;
+    box-shadow: var(--sa-right) 0 0 0 var(--gt-bg);
   }
   /* ...and Bethesda takes exactly the left half of the whole screen, strip
      included, so the two offices meet in the middle; Germantown gets the

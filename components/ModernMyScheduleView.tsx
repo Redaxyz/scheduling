@@ -4,6 +4,8 @@ import { useWhoAmI } from "@/lib/whoami";
 import type { MyScheduleCell, MyScheduleRow } from "@/lib/schedule";
 import { HALVES, HALF_LABELS, OFFICE_LABELS, WEEKDAY_LABELS, type Role } from "@/lib/types";
 import { OFFICE_COLOR } from "@/lib/colors";
+import { useHoliday } from "@/components/HolidayProvider";
+import { officeIsDark } from "@/lib/holidayTheme";
 import { formatShort, todayStr, weekdayIndex } from "@/lib/date";
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -18,17 +20,19 @@ const ROLE_LABEL: Record<Role, string> = {
 // padding gutter, no empty space. A half with nothing at all still gets a
 // filled (just neutral) panel instead of a blank hole in the layout.
 function HalfPanel({ half, cell }: { half: (typeof HALVES)[number]; cell: MyScheduleCell }) {
-  const dark = cell.office === "GERMANTOWN";
-  const light = cell.office === "BETHESDA";
+  // Which offices are dark depends on the holiday theme (lib/holidayTheme.ts).
+  const holiday = useHoliday();
+  const dark = cell.office ? officeIsDark(holiday, cell.office) : false;
+  const light = Boolean(cell.office) && !dark;
   const blank = !cell.office;
 
   return (
     <div
       className={`flex min-h-0 flex-1 flex-col justify-center gap-1 px-4 py-3 sm:px-8 ${dark ? "text-white" : light ? "text-slate-900" : "text-slate-400"} ${
         // On the iPhone Duo the afternoon column meets the status bar strip.
-        dark && half === "PM" ? "strip-dark-beside" : ""
+        half === "PM" && cell.office ? (dark ? "strip-dark-beside" : "strip-light-beside") : ""
       }`}
-      style={{ background: cell.office ? OFFICE_COLOR[cell.office] : "#eef1f3" }}
+      style={{ background: cell.office ? OFFICE_COLOR[cell.office] : "#eef1f3", ["--bleed" as string]: cell.office ? OFFICE_COLOR[cell.office] : undefined }}
     >
       {cell.isProvider && cell.office ? (
         <>

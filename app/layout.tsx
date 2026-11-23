@@ -10,6 +10,9 @@ import { NotificationPrompt } from "@/components/NotificationSetup";
 import DockMode from "@/components/DockMode";
 import ErrorReporter from "@/components/ErrorReporter";
 import { DOCK_COOKIE } from "@/lib/sideDock";
+import { HolidayProvider } from "@/components/HolidayProvider";
+import { HOLIDAY_COOKIE, holidayFor, isHolidayKey, type HolidayKey } from "@/lib/holidayTheme";
+import { easternToday } from "@/lib/date";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -44,13 +47,30 @@ export async function generateViewport(): Promise<Viewport> {
   };
 }
 
+// The holiday theme in effect (see lib/holidayTheme.ts): this browser's
+// ?holiday=... pick if it made one, otherwise whatever today's date says.
+async function currentHoliday(): Promise<HolidayKey | null> {
+  const pick = (await cookies()).get(HOLIDAY_COOKIE)?.value;
+  if (pick === "none") return null;
+  if (isHolidayKey(pick)) return pick;
+  return holidayFor(easternToday());
+}
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const duo = await isDuo();
+  const holiday = await currentHoliday();
   return (
-    <html lang="en" className={`${geistSans.variable} antialiased`} data-cover={duo ? "" : undefined} data-dock={duo ? "side" : undefined}>
+    <html
+      lang="en"
+      className={`${geistSans.variable} antialiased`}
+      data-cover={duo ? "" : undefined}
+      data-dock={duo ? "side" : undefined}
+      data-holiday={holiday ?? undefined}
+    >
       <body className="flex min-h-dvh flex-col">
         <DockMode />
         <ErrorReporter />
+        <HolidayProvider holiday={holiday}>
         <WhoAmIProvider>
           <ThemeAccent />
           <AppGate />
@@ -60,6 +80,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-[var(--main-pb)] pt-4">{children}</main>
           <BottomNav />
         </WhoAmIProvider>
+        </HolidayProvider>
       </body>
     </html>
   );

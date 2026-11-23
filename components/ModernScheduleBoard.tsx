@@ -12,6 +12,8 @@ import { useWhoAmI } from "@/lib/whoami";
 import AutoRefresh from "@/components/AutoRefresh";
 import ScheduleDateNav from "@/components/ScheduleDateNav";
 import MobileDateBar from "@/components/MobileDateBar";
+import { useHoliday } from "@/components/HolidayProvider";
+import { officeIsDark } from "@/lib/holidayTheme";
 import { doctorColor, MY_PILL, staffPill } from "@/lib/homeColors";
 import DayNote, { type DayNoteData } from "@/components/DayNote";
 import { DropZone, Pill, SwapControl, TakeRoleButton, lateTag, moveStaff, postJSON, type DropTarget } from "@/components/scheduleShared";
@@ -88,7 +90,11 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note, workin
   const working = new Set(workingHolidays);
   const prevDate = previousOfficeDay(date, working);
   const nextDate = nextOfficeDay(date, working);
-  const titleColor = "text-slate-900";
+  // Holiday themes can turn either office dark (see lib/holidayTheme.ts).
+  const holiday = useHoliday();
+  const btDark = officeIsDark(holiday, "BETHESDA");
+  const gtDark = officeIsDark(holiday, "GERMANTOWN");
+  const titleColor = btDark ? "text-white" : "text-slate-900";
 
   return (
     // -mt-4/-mb-[--main-pb] cancel <main>'s own padding (see app/layout.tsx) so
@@ -121,7 +127,8 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note, workin
         {OFFICES.map((office) => (
           <div
             key={office}
-            className={`flex-1 ${office === "GERMANTOWN" ? "strip-dark-home bg-[#0b0f14]" : "seam-left bg-page"}`}
+            className={`flex-1 ${office === "GERMANTOWN" ? "strip-dark-home" : "seam-left"}`}
+            style={{ background: office === "GERMANTOWN" ? "var(--gt-bg)" : "var(--bt-bg)" }}
           />
         ))}
       </div>
@@ -132,13 +139,13 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note, workin
           on the left and — on a tablet, the one place the header still has
           date controls — those sit over Germantown/black on the right. On a
           phone the offices stack and it all sits over Bethesda. */}
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-4 sm:px-10 lg:grid lg:grid-cols-2 lg:gap-x-20 unfolded:grid unfolded:grid-cols-2 unfolded:gap-x-20">
+      <div className="strip-bt-phone relative z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-4 sm:px-10 lg:grid lg:grid-cols-2 lg:gap-x-20 unfolded:grid unfolded:grid-cols-2 unfolded:gap-x-20">
         <div className="min-w-0">
           {/* One line, always — .home-date-title shrinks the font to fit
               the white part of the screen rather than wrapping. */}
           <h1 className={`home-date-title font-extrabold tracking-tight ${titleColor}`}>{formatLong(date)}</h1>
           {!isToday && (
-            <Link href={`/schedule/${effectiveScheduleDate()}`} className="accent-text mr-3 text-sm font-bold hover:underline">
+            <Link href={`/schedule/${effectiveScheduleDate()}`} className={`mr-3 text-sm font-bold hover:underline ${btDark ? "text-white/80" : "accent-text"}`}>
               Jump to today
             </Link>
           )}
@@ -170,11 +177,11 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note, workin
               rosterRows.length > 0 && (
                 // On a phone the offices stack, so the seam-straddling rows
                 // below can't work; they sit at the end of Germantown instead.
-                <div className="mt-10 space-y-4 border-t border-white/10 pt-6 lg:hidden unfolded:hidden">
+                <div className={`mt-10 space-y-4 border-t pt-6 lg:hidden unfolded:hidden ${gtDark ? "border-white/10" : "border-slate-900/10"}`}>
                   {rosterRows.map((row) => (
                     <div key={row.label}>
-                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">{row.label}</div>
-                      <p className="mt-1 text-sm font-bold text-white">{row.names.join(", ")}</p>
+                      <div className={`text-[10px] font-bold uppercase tracking-[0.2em] ${gtDark ? "text-white/60" : "text-slate-900/60"}`}>{row.label}</div>
+                      <p className={`mt-1 text-sm font-bold ${gtDark ? "text-white" : "text-slate-900"}`}>{row.names.join(", ")}</p>
                     </div>
                   ))}
                 </div>
@@ -194,10 +201,10 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note, workin
           {rosterRows.map((row) => (
             <div key={row.label} className="flex">
               <div className="seam-left flex w-1/2 justify-end pr-3 sm:pr-4">
-                <span className="text-[11px] font-bold uppercase tracking-widest text-slate-900/70">{row.label}</span>
+                <span className={`text-[11px] font-bold uppercase tracking-widest ${btDark ? "text-white/70" : "text-slate-900/70"}`}>{row.label}</span>
               </div>
               <div className="flex w-1/2 justify-start pl-3 sm:pl-4">
-                <span className="text-[11px] font-bold uppercase tracking-widest text-white/80">{row.names.join(", ")}</span>
+                <span className={`text-[11px] font-bold uppercase tracking-widest ${gtDark ? "text-white/80" : "text-slate-900/80"}`}>{row.names.join(", ")}</span>
               </div>
             </div>
           ))}
@@ -231,7 +238,8 @@ function OfficeHalf({
   closed: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
-  const dark = office === "GERMANTOWN";
+  const dark = officeIsDark(useHoliday(), office);
+  const officeBg = office === "GERMANTOWN" ? "var(--gt-bg)" : "var(--bt-bg)";
 
   async function run(action: () => Promise<unknown>) {
     setError(null);
@@ -269,7 +277,9 @@ function OfficeHalf({
 
   return (
     <div
-      className={`flex-1 px-6 pb-8 pt-3 sm:px-10 sm:pb-12 sm:pt-4 unfolded:pb-[5px] ${dark ? "strip-dark bg-[#0b0f14] text-white" : "seam-left bg-page text-slate-900"}`}
+      className={`flex-1 px-6 pb-8 pt-3 sm:px-10 sm:pb-12 sm:pt-4 unfolded:pb-[5px] ${office === "BETHESDA" ? "seam-left" : ""} ${dark ? "strip-dark text-white" : "strip-light text-slate-900"}`}
+      // --bleed: the color it carries into the iPhone Duo's side strip.
+      style={{ background: officeBg, ["--bleed" as string]: officeBg }}
     >
       <div className={`mb-8 flex items-baseline justify-between border-b pb-4 ${dark ? "border-white/10" : "border-slate-200"}`}>
         <h2 className="text-2xl font-black uppercase tracking-tight sm:text-3xl">{OFFICE_LABELS[office]}</h2>
@@ -432,10 +442,15 @@ function ProviderRow({
 
   const hoverClass = "ring-2 ring-[var(--theme-accent)]";
   const doctor = doctorColor(cell.provider.name);
+  const holiday = useHoliday();
 
   return (
     <DropZone active={isManager} onDrop={onDropStaff} hoverClassName={hoverClass} className={`flex grow flex-wrap items-center gap-2 py-1 ${dark ? "border-b border-white/10" : "border-b border-slate-100"}`}>
-      <span className="truncate text-sm font-extrabold" style={doctor ? { color: dark ? doctor.onDark : doctor.onLight } : undefined}>
+      {/* In a holiday theme the name is plain black/white (colored names
+          wouldn't read on the holiday colors); a dot in the doctor's color
+          keeps them matched to their scribe. */}
+      {holiday && doctor && <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/20" style={{ background: doctor.pill }} />}
+      <span className="truncate text-sm font-extrabold" style={doctor && !holiday ? { color: dark ? doctor.onDark : doctor.onLight } : undefined}>
         {cell.provider.name}
         {cell.provider.lateMinutes && (
           <span className={`ml-1 font-bold ${dark ? "text-amber-400" : "text-amber-600"}`}>{lateTag(cell.provider.lateMinutes)}</span>
@@ -470,7 +485,7 @@ function ProviderRow({
         </span>
       ) : (
         <span className="flex flex-wrap items-center gap-2">
-          <span className={`text-xs font-bold ${dark ? "text-red-400" : "text-red-600"}`}>OPEN</span>
+          <span className={`text-xs font-bold ${holiday ? (dark ? "text-white" : "text-black") : dark ? "text-red-400" : "text-red-600"}`}>OPEN</span>
           <TakeRoleButton
             dark={dark}
             options={scribeEligible}
