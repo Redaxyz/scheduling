@@ -1,2 +1,5 @@
 - #1 (updated 2026-11-10T15:25:48Z): setup test alert, not a real bug
 - #2 (updated 2026-11-10T16:24:55Z): ChunkLoadError after a deploy or flaky network (stale cached chunk), not a code bug
+- #3 (updated 2026-11-23T12:50:50Z): Neon database unreachable (transient infra/connectivity outage), not a code bug
+- #4 (updated 2026-11-23T12:50:50Z): Same Neon database outage as #3 (can't reach DB server), not a code bug
+- #5 (updated 2026-11-23T12:51:00Z): iOS Safari React removeChild null on stateNode.parentNode; no app frames in stack, typically caused by browser translate/extensions mutating the DOM; cannot reproduce
