@@ -285,8 +285,8 @@ function OfficeHalf({
       <div className={`mb-8 flex items-baseline justify-between border-b pb-4 ${dark ? "border-white/10" : "border-slate-200"}`}>
         <h2 className="flex items-center gap-2 text-2xl font-black uppercase tracking-tight sm:text-3xl">
           {OFFICE_LABELS[office]}
-          {/* A turkey or a tree in a holiday theme (nothing otherwise). */}
-          {office === "BETHESDA" && <HolidayIcon className="h-8 w-8 shrink-0 sm:h-9 sm:w-9" />}
+          {/* Holiday icons beside each office's name (nothing otherwise). */}
+          <HolidayIcon office={office} className="h-8 w-8 sm:h-9 sm:w-9" />
         </h2>
         <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${dark ? "text-white/30" : "text-slate-400"}`}>
           {office === "BETHESDA" ? "BT" : "GT"}

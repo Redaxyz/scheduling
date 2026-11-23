@@ -1,13 +1,17 @@
 "use client";
 
+import { useEffect, useState, type ReactElement } from "react";
 import { useHoliday } from "@/components/HolidayProvider";
+import type { HolidayKey } from "@/lib/holidayTheme";
+import type { Office } from "@/lib/types";
 
 // Festive touches for the holiday themes (lib/holidayTheme.ts), purely
 // decorative: they never take taps or space from the page.
 //
 // HolidayGarland: a strand across the top of every screen (autumn leaves at
 // Thanksgiving, twinkling lights at Christmas).
-// HolidayIcon: a small turkey or tree, placed beside a heading.
+// HolidayIcon: a small icon beside each office's heading, cycling through a
+// few that fit the holiday.
 
 const UNITS = 64; // enough strand for the widest screen; the rest is clipped
 
@@ -102,9 +106,87 @@ function Tree({ className }: { className?: string }) {
   );
 }
 
-export function HolidayIcon({ className = "h-8 w-8" }: { className?: string }) {
+function Pumpkin({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 40 36" className={className} aria-hidden>
+      <path d="M20 9 q-1 -5 3 -7" fill="none" stroke="#4d7c0f" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M22 5 q6 -3 9 1 q-5 2 -9 -1 Z" fill="#65a30d" />
+      <ellipse cx="11" cy="22" rx="8" ry="11" fill="#ea580c" />
+      <ellipse cx="29" cy="22" rx="8" ry="11" fill="#ea580c" />
+      <ellipse cx="20" cy="22" rx="8.5" ry="12" fill="#f97316" />
+      <path d="M20 10.5 v23 M14 12 q-3 10 0 21 M26 12 q3 10 0 21" fill="none" stroke="#c2410c" strokeWidth="1" opacity="0.6" />
+    </svg>
+  );
+}
+
+function Snowflake({ className }: { className?: string }) {
+  const arm = "M20 20 V3 M20 8 l-4 -4 M20 8 l4 -4 M20 13 l-3 -3 M20 13 l3 -3";
+  return (
+    <svg viewBox="0 0 40 40" className={className} aria-hidden>
+      <g stroke="#ffffff" strokeWidth="2" strokeLinecap="round" fill="none">
+        {[0, 60, 120, 180, 240, 300].map((a) => (
+          <path key={a} d={arm} transform={`rotate(${a} 20 20)`} />
+        ))}
+      </g>
+      <circle cx="20" cy="20" r="2.4" fill="#e0f2fe" />
+    </svg>
+  );
+}
+
+type Glyph = ((props: { className?: string }) => ReactElement) | string;
+
+// What cycles beside each office's heading: a drawn icon first, then a few
+// fitting emoji.
+const ICONS: Record<HolidayKey, Record<Office, Glyph[]>> = {
+  thanksgiving: {
+    BETHESDA: [Turkey, "🥧", "🌽", "🍁"],
+    GERMANTOWN: [Pumpkin, "🍂", "🌰", "🍎"],
+  },
+  christmas: {
+    BETHESDA: [Tree, "🎁", "🍬", "⭐"],
+    GERMANTOWN: [Snowflake, "⛄", "🔔", "🦌"],
+  },
+};
+
+const CYCLE_MS = 4000;
+
+// A small holiday icon beside an office's heading, fading through that
+// office's set every few seconds (Germantown half a beat after Bethesda).
+// Holds on the first one for anyone whose phone asks for less motion.
+export function HolidayIcon({ office, className = "h-8 w-8" }: { office: Office; className?: string }) {
   const holiday = useHoliday();
-  if (holiday === "thanksgiving") return <Turkey className={className} />;
-  if (holiday === "christmas") return <Tree className={className} />;
-  return null;
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    if (!holiday || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let interval = 0;
+    const start = window.setTimeout(
+      () => {
+        setStep((n) => n + 1);
+        interval = window.setInterval(() => setStep((n) => n + 1), CYCLE_MS);
+      },
+      office === "GERMANTOWN" ? CYCLE_MS * 1.5 : CYCLE_MS,
+    );
+    return () => {
+      window.clearTimeout(start);
+      window.clearInterval(interval);
+    };
+  }, [holiday, office]);
+
+  if (!holiday) return null;
+  const glyphs = ICONS[holiday][office];
+  const active = step % glyphs.length;
+  return (
+    <span aria-hidden className={`relative inline-block shrink-0 ${className}`}>
+      {glyphs.map((Glyph, i) => (
+        <span
+          key={i}
+          className="absolute inset-0 flex items-center justify-center transition-opacity duration-700"
+          style={{ opacity: i === active ? 1 : 0 }}
+        >
+          {typeof Glyph === "string" ? <span className="text-[1.6rem] leading-none sm:text-[1.8rem]">{Glyph}</span> : <Glyph className="h-full w-full" />}
+        </span>
+      ))}
+    </span>
+  );
 }
