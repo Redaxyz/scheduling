@@ -13,7 +13,7 @@ import AutoRefresh from "@/components/AutoRefresh";
 import ScheduleDateNav from "@/components/ScheduleDateNav";
 import MobileDateBar from "@/components/MobileDateBar";
 import { HolidayIcon } from "@/components/HolidayDecor";
-import { useHoliday } from "@/components/HolidayProvider";
+import { useDemoHolidayFor, useHoliday } from "@/components/HolidayProvider";
 import { officeIsDark } from "@/lib/holidayTheme";
 import { doctorColor, MY_PILL, staffPill } from "@/lib/homeColors";
 import DayNote, { type DayNoteData } from "@/components/DayNote";
@@ -92,6 +92,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note, workin
   const prevDate = previousOfficeDay(date, working);
   const nextDate = nextOfficeDay(date, working);
   // Holiday themes can turn either office dark (see lib/holidayTheme.ts).
+  useDemoHolidayFor(date);
   const holiday = useHoliday();
   const btDark = officeIsDark(holiday, "BETHESDA");
   const gtDark = officeIsDark(holiday, "GERMANTOWN");

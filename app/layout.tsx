@@ -73,7 +73,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="flex min-h-dvh flex-col">
         <DockMode />
         <ErrorReporter />
-        <HolidayProvider holiday={holiday}>
+        {/* demo: preview builds let Home show each day's own theme (see HolidayProvider). */}
+        <HolidayProvider holiday={holiday} demo={process.env.VERCEL_ENV === "preview"}>
         <HolidayGarland />
         <WhoAmIProvider>
           <ThemeAccent />
