@@ -1,12 +1,15 @@
-// Holiday color themes: from a week before a holiday to a week after it, the
-// two offices trade their usual cream and black for the holiday's colors,
-// the page takes a soft tint, accents go plain black and white, and a
-// garland and a few icons come out (components/HolidayDecor.tsx). Decided by
-// today's date in Eastern time on the server, once per page.
+// Holiday color themes: around each holiday the two offices trade their
+// usual cream and black for the holiday's colors, the page takes a soft
+// tint, accents go plain black and white, and a garland and a few icons come
+// out (components/HolidayDecor.tsx). Decided by today's date in Eastern time
+// on the server, once per page.
 //
-// When two holidays' weeks overlap, the nearer holiday wins (a day inside a
-// holiday counts as nearest of all); exact ties go to whichever is listed
-// first below.
+// How long: a big holiday's theme starts a week before and lasts 3 days
+// after; a smaller one's, 3 days before and 1 after. Two holidays within a
+// week of each other hand over at the halfway point between them, with no
+// plain days in between. Where both claim a day, the nearer holiday wins;
+// on the holiday itself, a shorter holiday beats a longer one around it
+// (Christmas Day inside Hanukkah), then the order listed below.
 import { addDays } from "./date";
 import type { Office } from "./types";
 
@@ -23,6 +26,7 @@ type OfficeColor = { bg: string; dark: boolean }; // dark: white text on it
 
 type HolidayTheme = {
   name: string;
+  major: boolean; // a big holiday: a longer run (see the top of this file)
   // The first and last day of the holiday itself in a given year (one day
   // for most), or null if it doesn't fall in that year.
   days: (year: number) => [string, string] | null;
@@ -88,6 +92,7 @@ const DIWALI: Record<number, string> = {
 export const HOLIDAY_THEMES = {
   christmas: {
     name: "Christmas",
+    major: true,
     days: day(12, 25),
     pageBg: "#e8f0e6", offBg: "#d3e0d0",
     BETHESDA: { bg: "#b8312f", dark: true }, // red
@@ -97,6 +102,7 @@ export const HOLIDAY_THEMES = {
   },
   hanukkah: {
     name: "Hanukkah", // eight days from 25 Kislev
+    major: true,
     days: (y) => span(inCalendar(y, "hebrew", "Kislev", "25"), 8),
     pageBg: "#e2e9f7", offBg: "#cdd8ee",
     BETHESDA: { bg: "#ffffff", dark: false }, // white
@@ -106,6 +112,7 @@ export const HOLIDAY_THEMES = {
   },
   newyear: {
     name: "New Year's",
+    major: true,
     days: day(1, 1),
     pageBg: "#f4efe2", offBg: "#e4dcc8",
     BETHESDA: { bg: "#d4a72c", dark: false }, // gold
@@ -115,6 +122,7 @@ export const HOLIDAY_THEMES = {
   },
   lunarnewyear: {
     name: "Lunar New Year", // 1st day of the 1st month
+    major: false,
     days: (y) => span(inCalendar(y, "chinese", "1", "1"), 1),
     pageBg: "#fbe8d8", offBg: "#f1d3bb",
     BETHESDA: { bg: "#c62828", dark: true }, // red
@@ -124,6 +132,7 @@ export const HOLIDAY_THEMES = {
   },
   valentines: {
     name: "Valentine's Day",
+    major: false,
     days: day(2, 14),
     pageBg: "#fde7ef", offBg: "#f7cfdd",
     BETHESDA: { bg: "#f9a8c9", dark: false }, // pink
@@ -133,6 +142,7 @@ export const HOLIDAY_THEMES = {
   },
   stpatricks: {
     name: "St. Patrick's Day",
+    major: false,
     days: day(3, 17),
     pageBg: "#e6f4e6", offBg: "#cfe6cf",
     BETHESDA: { bg: "#8fdca6", dark: false }, // light green
@@ -142,6 +152,7 @@ export const HOLIDAY_THEMES = {
   },
   eid: {
     name: "Eid al-Fitr", // 1 Shawwal
+    major: false,
     days: (y) => span(inCalendar(y, "islamic-umalqura", "10", "1"), 3),
     pageBg: "#eef2e4", offBg: "#dbe2cc",
     BETHESDA: { bg: "#d9b44a", dark: false }, // gold
@@ -151,6 +162,7 @@ export const HOLIDAY_THEMES = {
   },
   passover: {
     name: "Passover", // eight days from 15 Nisan
+    major: false,
     days: (y) => span(inCalendar(y, "hebrew", "Nisan", "15"), 8),
     pageBg: "#f3ece0", offBg: "#e5d9c4",
     BETHESDA: { bg: "#e9d7b0", dark: false }, // matzah
@@ -160,6 +172,7 @@ export const HOLIDAY_THEMES = {
   },
   easter: {
     name: "Easter",
+    major: true,
     days: easter,
     pageBg: "#f3ecfb", offBg: "#e4d8f4",
     BETHESDA: { bg: "#fde68a", dark: false }, // pastel yellow
@@ -169,6 +182,7 @@ export const HOLIDAY_THEMES = {
   },
   july4: {
     name: "Independence Day",
+    major: true,
     days: day(7, 4),
     pageBg: "#eef2fa", offBg: "#d9e1f2",
     BETHESDA: { bg: "#b91c1c", dark: true }, // red
@@ -178,6 +192,7 @@ export const HOLIDAY_THEMES = {
   },
   halloween: {
     name: "Halloween",
+    major: false,
     days: day(10, 31),
     pageBg: "#fbe7d3", offBg: "#f1d1b2",
     BETHESDA: { bg: "#f97316", dark: false }, // orange
@@ -187,6 +202,7 @@ export const HOLIDAY_THEMES = {
   },
   diwali: {
     name: "Diwali",
+    major: false,
     days: (y) => span(DIWALI[y] ?? null, 1),
     pageBg: "#fbeeda", offBg: "#f1dcb9",
     BETHESDA: { bg: "#f59e0b", dark: false }, // marigold
@@ -196,6 +212,7 @@ export const HOLIDAY_THEMES = {
   },
   thanksgiving: {
     name: "Thanksgiving",
+    major: true,
     days: thanksgiving,
     pageBg: "#fcebcf", offBg: "#f2d9b0",
     BETHESDA: { bg: "#f2c14e", dark: false }, // golden yellow
@@ -211,26 +228,58 @@ export function holidayTheme(key: HolidayKey): HolidayTheme {
   return HOLIDAY_THEMES[key];
 }
 
-// How far either side of the holiday its theme runs.
-const DAYS_AROUND = 7;
+// How long a theme runs around its holiday, in days.
+const RUN = { major: { before: 7, after: 3 }, minor: { before: 3, after: 1 } };
+// Holidays this close (days between them) hand over at the halfway point.
+const CLOSE = 7;
 
 const dayNumber = (date: string) => Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10))) / 86400000;
+
+type Occurrence = { key: HolidayKey; start: number; end: number };
+
+// Every holiday falling in the given years, in date order.
+function occurrences(years: number[]): Occurrence[] {
+  const out: Occurrence[] = [];
+  for (const key of Object.keys(HOLIDAY_THEMES) as HolidayKey[]) {
+    for (const y of years) {
+      const range = HOLIDAY_THEMES[key].days(y);
+      if (range) out.push({ key, start: dayNumber(range[0]), end: dayNumber(range[1]) });
+    }
+  }
+  return out.sort((a, b) => a.start - b.start);
+}
 
 // The holiday theme for a given day (YYYY-MM-DD), or null on an ordinary day.
 export function holidayFor(date: string): HolidayKey | null {
   const year = Number(date.slice(0, 4));
   const today = dayNumber(date);
-  let best: { key: HolidayKey; distance: number } | null = null;
-  for (const key of Object.keys(HOLIDAY_THEMES) as HolidayKey[]) {
-    for (const y of [year - 1, year, year + 1]) {
-      const range = HOLIDAY_THEMES[key].days(y);
-      if (!range) continue;
-      const [start, end] = range.map(dayNumber);
-      const distance = today < start ? start - today : today > end ? today - end : 0;
-      if (distance <= DAYS_AROUND && (!best || distance < best.distance)) best = { key, distance };
-    }
+  const all = occurrences([year - 1, year, year + 1]);
+  const order = Object.keys(HOLIDAY_THEMES);
+
+  // On a holiday itself: the shortest one that day, then list order.
+  const on = all.filter((o) => o.start <= today && today <= o.end);
+  if (on.length > 0) {
+    on.sort((a, b) => a.end - a.start - (b.end - b.start) || order.indexOf(a.key) - order.indexOf(b.key));
+    return on[0].key;
   }
-  return best?.key ?? null;
+
+  // Between holidays: the last one before today and the next one after.
+  const before = all.filter((o) => o.end < today).sort((a, b) => b.end - a.end)[0];
+  const after = all.filter((o) => o.start > today).sort((a, b) => a.start - b.start)[0];
+  const sinceBefore = before ? today - before.end : Infinity;
+  const untilAfter = after ? after.start - today : Infinity;
+
+  // Close together: whichever is nearer, so they meet halfway (a tie goes to
+  // the coming one).
+  if (before && after && after.start - before.end <= CLOSE) return sinceBefore < untilAfter ? before.key : after.key;
+
+  const run = (key: HolidayKey) => (HOLIDAY_THEMES[key].major ? RUN.major : RUN.minor);
+  const inBefore = before && sinceBefore <= run(before.key).after;
+  const inAfter = after && untilAfter <= run(after.key).before;
+  if (inBefore && inAfter) return sinceBefore < untilAfter ? before.key : after.key;
+  if (inBefore) return before.key;
+  if (inAfter) return after.key;
+  return null;
 }
 
 export function isHolidayKey(value: string | undefined | null): value is HolidayKey {
@@ -257,4 +306,14 @@ export function holidayCssVars(key: HolidayKey): Record<string, string> {
     "--gt-panel": t.GERMANTOWN.bg,
     "--gt-ink": ink(t.GERMANTOWN),
   };
+}
+
+// How a closed holiday's cells look on the Schedule tab: the colors of the
+// holiday theme around that day (both offices', blended), or null for a
+// holiday with no theme of its own (they stay the usual purple).
+export function holidayCellLook(date: string): { background: string; accent: string } | null {
+  const key = holidayFor(date);
+  if (!key) return null;
+  const t = HOLIDAY_THEMES[key];
+  return { background: `linear-gradient(135deg, ${t.BETHESDA.bg}, ${t.GERMANTOWN.bg})`, accent: t.GERMANTOWN.bg };
 }

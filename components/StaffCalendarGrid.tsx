@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { StaffCalendarRow, StaffDayStatus } from "@/lib/calendar";
 import { effectiveMonday, effectiveScheduleDate, mondayOf, nearestBusinessDayOnOrAfter, todayStr, weekdayIndex } from "@/lib/date";
 import { federalHolidayName, HOLIDAY_COLOR, WORKING_HOLIDAY_COLOR } from "@/lib/holidays";
+import { holidayCellLook } from "@/lib/holidayTheme";
 import { spaceBelow } from "@/lib/viewportSpace";
 import { useWhoAmI } from "@/lib/whoami";
 import { arriveNote, clockHalf, leaveNote } from "@/lib/timing";
@@ -399,7 +400,7 @@ export default function StaffCalendarGrid({
                     const wd = weekdayIndex(date)!;
                     const holiday = federalHolidayName(date);
                     const isWorkingHoliday = Boolean(holiday) && workingHolidays.has(date);
-                    const holidayColor = isWorkingHoliday ? WORKING_HOLIDAY_COLOR : HOLIDAY_COLOR;
+                    const holidayColor = isWorkingHoliday ? WORKING_HOLIDAY_COLOR : (holidayCellLook(date)?.accent ?? HOLIDAY_COLOR);
                     const isToday = date === today;
                     const inCurrentWeek = mondayOf(date) === currentWeekMonday;
                     return (
@@ -454,7 +455,8 @@ export default function StaffCalendarGrid({
                         // so absences, late arrivals etc. show up and can be set.
                         const holidayName = federalHolidayName(date);
                         const holiday = holidayName && !workingHolidays.has(date) ? holidayName : null;
-                        const holidayColor = holiday ? HOLIDAY_COLOR : null;
+                        // The holiday's own colors where it has a theme (lib/holidayTheme.ts).
+                        const holidayColor = holiday ? (holidayCellLook(date)?.background ?? HOLIDAY_COLOR) : null;
                         const inCurrentWeek = mondayOf(date) === currentWeekMonday;
                         // Which half each note belongs to is decided by the clock
                         // time itself: a morning arrival or an afternoon departure
@@ -510,7 +512,13 @@ export default function StaffCalendarGrid({
                             {holiday ? (
                               // A closed holiday is the same for everyone all day: one
                               // plain block, no M/A split.
-                              <div className="h-full w-full rounded-[4px]" style={{ minHeight: boxHeight, background: holidayColor ?? undefined }} title={label} />
+                              <div
+                                className="flex h-full w-full items-center justify-center rounded-[4px]"
+                                style={{ minHeight: boxHeight, background: holidayColor ?? undefined }}
+                                title={label}
+                              >
+                                <span className={holidayCellLook(date) ? `${textClass} text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]` : textClass}>H</span>
+                              </div>
                             ) : merged && !editable ? (
                               <div
                                 className="flex h-full w-full items-center justify-center rounded-[4px]"

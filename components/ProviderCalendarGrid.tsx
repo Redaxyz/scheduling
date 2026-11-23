@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ProviderCalendarRow, ProviderHalfCell } from "@/lib/calendar";
 import { effectiveMonday, effectiveScheduleDate, mondayOf, weekdayIndex } from "@/lib/date";
 import { federalHolidayName, HOLIDAY_COLOR, WORKING_HOLIDAY_COLOR } from "@/lib/holidays";
+import { holidayCellLook } from "@/lib/holidayTheme";
 import { spaceBelow } from "@/lib/viewportSpace";
 import { HALVES, HALF_LABELS, OFFICE_LABELS, type Half, type Office } from "@/lib/types";
 import { useWhoAmI } from "@/lib/whoami";
@@ -234,7 +235,7 @@ export default function ProviderCalendarGrid({
               const wd = weekdayIndex(date)!;
               const holiday = federalHolidayName(date);
               const isWorkingHoliday = Boolean(holiday) && workingHolidays.has(date);
-              const holidayColor = isWorkingHoliday ? WORKING_HOLIDAY_COLOR : HOLIDAY_COLOR;
+              const holidayColor = isWorkingHoliday ? WORKING_HOLIDAY_COLOR : (holidayCellLook(date)?.accent ?? HOLIDAY_COLOR);
               const isToday = date === today;
               const inCurrentWeek = mondayOf(date) === currentWeekMonday;
               return (
@@ -308,12 +309,21 @@ export default function ProviderCalendarGrid({
                         aria-label={`${label} (tap to toggle)`}
                         title={`${label} (tap to toggle)`}
                         className="relative block w-full rounded-lg border border-slate-900/10 transition active:scale-95 disabled:opacity-40"
-                        style={{ background: cellColor(cell, closedHoliday), boxShadow: cell.fromTemplate ? "inset 0 0 0 2px rgba(255,255,255,0.6)" : undefined }}
+                        style={{
+                          // A closed holiday in its own colors where it has a theme (lib/holidayTheme.ts).
+                          background: (closedHoliday && holidayCellLook(date)?.background) || cellColor(cell, closedHoliday),
+                          boxShadow: cell.fromTemplate ? "inset 0 0 0 2px rgba(255,255,255,0.6)" : undefined,
+                        }}
                       >
                         <span
                           className={`flex w-full items-center justify-center font-extrabold ${cellTextClass(cell, closedHoliday)} ${dense ? "text-[9px]" : "text-xs"}`}
                           // An office cell's text follows its color (and any holiday theme).
-                          style={{ height: dynamicRowHeight, color: cellTextClass(cell, closedHoliday) === "" && cell.office ? OFFICE_INK[cell.office] : undefined }}
+                          style={{
+                            height: dynamicRowHeight,
+                            ...(closedHoliday && holidayCellLook(date)
+                              ? { color: "#ffffff", textShadow: "0 1px 2px rgba(0,0,0,0.45)" }
+                              : { color: cellTextClass(cell, closedHoliday) === "" && cell.office ? OFFICE_INK[cell.office] : undefined }),
+                          }}
                         >
                           {cellLetter(cell, closedHoliday)}
                         </span>
