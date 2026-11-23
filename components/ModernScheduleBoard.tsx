@@ -79,6 +79,20 @@ function BackgroundHalf({ office }: { office: Office }) {
   );
 }
 
+// Every person's pill gets a thin edge in the opposite tone of the side
+// it's on: white on a dark side, near-black on a light one.
+function pillOutline(dark: boolean) {
+  return dark ? "outline outline-[1.5px] -outline-offset-[1.5px] outline-white" : "outline outline-[1.5px] -outline-offset-[1.5px] outline-black/80";
+}
+
+// The small section labels (Morning, Afternoon, Rooming, X-ray): softly
+// greyed normally, but on a holiday's colors and textures as solid and bold as
+// the office names, so they stay readable.
+function labelTone(holiday: string | null, dark: boolean, usual: string) {
+  if (!holiday) return usual;
+  return `font-extrabold ${dark ? "text-white" : "text-black"}`;
+}
+
 // The standing Frederick placement (see rosterRows below).
 const FREDERICK = { weekday: 3, doctor: "Dr. McCormick", scribe: "Anna" }; // Thursday
 
@@ -280,7 +294,8 @@ function OfficeHalf({
   closed: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
-  const dark = officeIsDark(useHoliday(), office);
+  const holiday = useHoliday();
+  const dark = officeIsDark(holiday, office);
   const officeBg = office === "GERMANTOWN" ? "var(--gt-bg)" : "var(--bt-bg)";
   const textureOffset = useTextureOffset();
 
@@ -326,12 +341,12 @@ function OfficeHalf({
       style={{ ...officeBackground(office), backgroundPosition: textureOffset.position, ["--bleed" as string]: officeBg }}
     >
       <div className={`mb-8 flex items-baseline justify-between border-b pb-4 ${dark ? "border-white/10" : "border-slate-200"}`}>
-        <h2 className="flex items-center gap-2 text-2xl font-black uppercase tracking-tight sm:text-3xl">
+        <h2 className="holiday-font flex items-center gap-2 text-2xl font-black uppercase tracking-tight sm:text-3xl">
           {OFFICE_LABELS[office]}
           {/* Holiday icons beside each office's name (nothing otherwise). */}
           <HolidayIcon office={office} className="h-8 w-8 sm:h-9 sm:w-9" />
         </h2>
-        <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${dark ? "text-white/30" : "text-slate-400"}`}>
+        <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${labelTone(holiday, dark, dark ? "text-white/30" : "text-slate-400")}`}>
           {office === "BETHESDA" ? "BT" : "GT"}
         </span>
       </div>
@@ -350,7 +365,7 @@ function OfficeHalf({
 
             return (
               <Fragment key={half}>
-                <div data-cell={`${prefix}-label`} className={`text-[10px] font-bold uppercase tracking-[0.2em] ${dark ? "text-white/40" : "text-slate-400"}`}>
+                <div data-cell={`${prefix}-label`} className={`text-[10px] font-bold uppercase tracking-[0.2em] ${labelTone(holiday, dark, dark ? "text-white/40" : "text-slate-400")}`}>
                   {HALF_LABELS[half]}
                 </div>
 
@@ -508,6 +523,7 @@ function ProviderRow({
       {cell.scribe ? (
         <span className="flex flex-wrap items-center gap-1.5">
           <Pill
+            outlineClassName={pillOutline(dark)}
             name={cell.scribe.name}
             color={(cell.scribe.staffId === currentId ? MY_PILL : staffPill(cell.scribe.name, dark))?.color ?? cell.scribe.color}
             textClassName={(cell.scribe.staffId === currentId ? MY_PILL : staffPill(cell.scribe.name, dark))?.textClassName}
@@ -615,7 +631,7 @@ function RoleSection({
   // spacing above it instead of a margin baked into the section itself.
   return (
     <div>
-      <div className={`mb-2 text-[10px] font-bold uppercase tracking-[0.2em] ${dark ? "text-white/30" : "text-slate-400"}`}>{title}</div>
+      <div className={`mb-2 text-[10px] font-bold uppercase tracking-[0.2em] ${labelTone(useHoliday(), dark, dark ? "text-white/30" : "text-slate-400")}`}>{title}</div>
       <DropZone active={isManager} onDrop={onDropStaff} hoverClassName={hoverClass} className="min-h-8 rounded-lg p-1 -m-1">
         <div className="flex flex-wrap items-center gap-1.5">
           {cells.map((c) => {
@@ -627,6 +643,7 @@ function RoleSection({
             return (
               <span key={c.id} className="flex items-center gap-1">
                 <Pill
+                  outlineClassName={pillOutline(dark)}
                   name={c.providerName ? `${c.name} — ${c.providerName}` : c.name}
                   color={(c.staffId === currentId ? MY_PILL : staffPill(c.name, dark))?.color ?? c.color}
                   textClassName={(c.staffId === currentId ? MY_PILL : staffPill(c.name, dark))?.textClassName}

@@ -108,6 +108,7 @@ export function Pill({
   leading,
   size = "sm",
   textClassName = "text-slate-700",
+  outlineClassName = "",
 }: {
   name: string;
   color: string;
@@ -124,6 +125,9 @@ export function Pill({
   leading?: ReactNode;
   size?: "sm" | "md";
   textClassName?: string;
+  // A thin edge in the opposite tone of whatever it sits on, so the pill
+  // stays readable over colored or textured backgrounds (Home).
+  outlineClassName?: string;
 }) {
   function onDragStart(e: DragEvent) {
     if (!position) return;
@@ -138,7 +142,7 @@ export function Pill({
       draggable={draggable}
       onDragStart={onDragStart}
       title={draggable ? `Drag ${name} to move them` : name}
-      className={`inline-flex max-w-full items-center gap-1 truncate rounded-full font-bold ${textClassName} ${sizeClass} ${
+      className={`inline-flex max-w-full items-center gap-1 truncate rounded-full font-bold ${textClassName} ${outlineClassName} ${sizeClass} ${
         leading ? "pl-1" : "pl-2.5"
       } ${onRemove ? "pr-0.5" : "pr-2.5"} ${draggable ? "cursor-grab active:cursor-grabbing" : ""} ${
         substitute ? "ring-2 ring-amber-500 ring-offset-1" : ""

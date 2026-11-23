@@ -37,6 +37,8 @@ type HolidayTheme = {
   BETHESDA: OfficeColor;
   GERMANTOWN: OfficeColor;
   garland: Garland;
+  // A display font for the office names (a CSS variable from app/layout.tsx).
+  font?: string;
   // Shown beside each office's heading on Home, cycling. "svg:..." names one
   // of the drawn icons in components/HolidayDecor.tsx; anything else is emoji.
   icons: Record<Office, string[]>;
@@ -118,6 +120,24 @@ function scatter(emoji: string[], opacity = 0.2, tile = 84): string {
   return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${tile}" height="${tile + 10}">${items}</svg>`);
 }
 
+// Falling snow: soft white snowflakes of a few sizes and a scatter of flakes.
+const snowfall = (() => {
+  const flake = (x: number, y: number, r: number, turn: number, opacity: number) =>
+    `<g transform="translate(${x} ${y}) rotate(${turn})" stroke="white" stroke-width="${r > 6 ? 1.4 : 1.1}" stroke-linecap="round" opacity="${opacity}">${[0, 60, 120]
+      .map((a) => `<line x1="0" y1="${-r}" x2="0" y2="${r}" transform="rotate(${a})"/>`)
+      .join("")}${[0, 60, 120, 180, 240, 300]
+      .map((a) => `<path d="M0 ${-r * 0.62} l${-r * 0.28} ${-r * 0.28} M0 ${-r * 0.62} l${r * 0.28} ${-r * 0.28}" transform="rotate(${a})" fill="none"/>`)
+      .join("")}</g>`;
+  const dots = [
+    [8, 10, 1.3], [40, 30, 1], [70, 8, 1.6], [88, 44, 1.1], [20, 58, 1.5], [54, 74, 1], [80, 88, 1.4], [6, 90, 1], [46, 50, 0.9], [64, 34, 1.2],
+  ]
+    .map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="white" opacity="0.3"/>`)
+    .join("");
+  return svgUrl(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96">${dots}${flake(24, 26, 8, 10, 0.28)}${flake(74, 62, 6, 25, 0.22)}${flake(34, 80, 4.5, 40, 0.26)}${flake(84, 16, 4, 5, 0.2)}</svg>`,
+  );
+})();
+
 // Matzah: rows of little pricked dots between faint toasted lines.
 const matzah = svgUrl(
   `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36"><path d="M0 18 H36" stroke="rgba(120,72,24,0.18)" stroke-width="3"/>${[6, 18, 30]
@@ -132,7 +152,8 @@ export const HOLIDAY_THEMES = {
     days: day(12, 25),
     pageBg: "#e8f0e6", offBg: "#d3e0d0",
     BETHESDA: { bg: "#b8312f", dark: true, pattern: stripes("rgba(255,255,255,0.24)") }, // red
-    GERMANTOWN: { bg: "#1d6b3a", dark: true }, // green
+    GERMANTOWN: { bg: "#1d6b3a", dark: true, pattern: snowfall }, // green, with falling snow
+    font: "var(--font-christmas)",
     garland: { kind: "lights", colors: ["#ef4444", "#22c55e", "#facc15", "#3b82f6", "#f97316"] },
     icons: { BETHESDA: ["svg:tree", "🎁", "🍬", "⭐"], GERMANTOWN: ["svg:snowflake", "⛄", "🔔", "🦌"] },
   },
@@ -233,6 +254,7 @@ export const HOLIDAY_THEMES = {
     pageBg: "#fbe7d3", offBg: "#f1d1b2",
     BETHESDA: { bg: "#f97316", dark: false, pattern: scatter(["🎃", "🕸️"], 0.2) }, // orange
     GERMANTOWN: { bg: "#1f1033", dark: true, pattern: scatter(["🦇", "⭐"], 0.25) }, // midnight purple
+    font: "var(--font-halloween)",
     garland: { kind: "emoji", items: ["🦇", "🎃"] },
     icons: { BETHESDA: ["🎃", "🍬", "🕸️"], GERMANTOWN: ["👻", "🦇", "🌙"] },
   },
@@ -253,6 +275,7 @@ export const HOLIDAY_THEMES = {
     pageBg: "#fcebcf", offBg: "#f2d9b0",
     BETHESDA: { bg: "#f2c14e", dark: false, pattern: scatter(["🍁", "🍂"], 0.24) }, // golden yellow
     GERMANTOWN: { bg: "#d9532b", dark: true, pattern: scatter(["🍁", "🍂"], 0.22) }, // red-orange
+    font: "var(--font-harvest)",
     garland: { kind: "leaves" },
     icons: { BETHESDA: ["svg:turkey", "🥧", "🌽", "🍁"], GERMANTOWN: ["svg:pumpkin", "🍂", "🌰", "🍎"] },
   },
@@ -343,6 +366,7 @@ export function holidayCssVars(key: HolidayKey): Record<string, string> {
     "--gt-ink": ink(t.GERMANTOWN),
     "--bt-pattern": t.BETHESDA.pattern ?? "none",
     "--gt-pattern": t.GERMANTOWN.pattern ?? "none",
+    ...(t.font ? { "--holiday-font": t.font } : {}),
   };
 }
 

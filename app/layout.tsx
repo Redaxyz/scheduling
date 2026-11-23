@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Creepster, Geist, Mountains_of_Christmas, Rye } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { WhoAmIProvider } from "@/lib/whoami";
@@ -19,6 +19,13 @@ const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
+
+// Display fonts some holiday themes use for the office names (lib/holidayTheme.ts).
+// Declared here so they're available, but a browser only downloads one when a
+// theme actually uses it.
+const christmasFont = Mountains_of_Christmas({ variable: "--font-christmas", weight: ["700"], subsets: ["latin"], display: "swap" });
+const halloweenFont = Creepster({ variable: "--font-halloween", weight: ["400"], subsets: ["latin"], display: "swap" });
+const harvestFont = Rye({ variable: "--font-harvest", weight: ["400"], subsets: ["latin"], display: "swap" });
 
 // On the iPhone Duo (see lib/sideDock.ts) the page is let under the status
 // bar, so the dock can use the empty strip it otherwise leaves on the right.
@@ -63,7 +70,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} antialiased`}
+      className={`${geistSans.variable} ${christmasFont.variable} ${halloweenFont.variable} ${harvestFont.variable} antialiased`}
       data-cover={duo ? "" : undefined}
       data-dock={duo ? "side" : undefined}
       data-holiday={holiday ?? undefined}

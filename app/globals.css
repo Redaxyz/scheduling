@@ -58,6 +58,11 @@
 @media (prefers-reduced-motion: reduce) {
   .holiday-bulb { animation: none; }
 }
+/* A holiday's display font, where its theme has one (office names on Home).
+   Without one the variable is unset and the text keeps the usual font. */
+.holiday-font {
+  font-family: var(--holiday-font);
+}
 html[data-holiday] .active-slab {
   background: rgba(17, 17, 17, 0.1) !important;
 }
