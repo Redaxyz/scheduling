@@ -22,7 +22,9 @@ export type Garland =
   | { kind: "lights"; colors: string[] }
   | { kind: "emoji"; items: string[] };
 
-type OfficeColor = { bg: string; dark: boolean }; // dark: white text on it
+// dark: white text on it. pattern: a texture laid over the color (CSS
+// background-image) on Home and the Me tab; see the pattern helpers below.
+type OfficeColor = { bg: string; dark: boolean; pattern?: string };
 
 type HolidayTheme = {
   name: string;
@@ -89,14 +91,52 @@ const DIWALI: Record<number, string> = {
   2031: "2031-11-14", 2032: "2032-11-02", 2033: "2033-10-22", 2034: "2034-11-10", 2035: "2035-10-30",
 };
 
+// Textures for an office's color. Kept faint so the text on top still reads.
+const svgUrl = (svg: string) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+
+// Diagonal (or level) stripes of a translucent color over the office's own.
+const stripes = (color: string, angle = 45, width = 14) =>
+  `repeating-linear-gradient(${angle}deg, ${color} 0 ${width}px, transparent ${width}px ${width * 2}px)`;
+
+// A loose scatter of emoji, each faint and turned a little.
+function scatter(emoji: string[], opacity = 0.2, tile = 84): string {
+  const spots = [
+    [14, 20, -18], [52, 14, 22], [32, 50, 8], [70, 58, -30], [10, 74, 30], [58, 86, -10],
+  ];
+  const items = spots
+    .map(([x, y, r], i) => `<text x="${x}" y="${y}" font-size="16" text-anchor="middle" transform="rotate(${r} ${x} ${y})" opacity="${opacity}">${emoji[i % emoji.length]}</text>`)
+    .join("");
+  return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${tile}" height="${tile + 10}">${items}</svg>`);
+}
+
+// Pine needles: little fans of dark and light strokes, like a tree's branches.
+const pineNeedles = svgUrl(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><g stroke-linecap="round" stroke-width="1.6" fill="none">${[
+    [12, 14], [36, 10], [24, 32], [6, 40], [42, 38],
+  ]
+    .map(([x, y], i) =>
+      [-40, -20, 0, 20, 40]
+        .map((a) => `<line x1="${x}" y1="${y}" x2="${x}" y2="${y - 9}" transform="rotate(${a + (i % 2 ? 180 : 0)} ${x} ${y})" stroke="${a % 40 === 0 ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.12)"}"/>`)
+        .join(""),
+    )
+    .join("")}</g></svg>`,
+);
+
+// Matzah: rows of little pricked dots between faint toasted lines.
+const matzah = svgUrl(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36"><path d="M0 18 H36" stroke="rgba(120,72,24,0.18)" stroke-width="3"/>${[6, 18, 30]
+    .map((x) => `<circle cx="${x}" cy="8" r="1.2" fill="rgba(120,72,24,0.35)"/><circle cx="${x}" cy="28" r="1.2" fill="rgba(120,72,24,0.35)"/>`)
+    .join("")}</svg>`,
+);
+
 export const HOLIDAY_THEMES = {
   christmas: {
     name: "Christmas",
     major: true,
     days: day(12, 25),
     pageBg: "#e8f0e6", offBg: "#d3e0d0",
-    BETHESDA: { bg: "#b8312f", dark: true }, // red
-    GERMANTOWN: { bg: "#1d6b3a", dark: true }, // green
+    BETHESDA: { bg: "#b8312f", dark: true, pattern: stripes("rgba(255,255,255,0.24)") }, // red
+    GERMANTOWN: { bg: "#1d6b3a", dark: true, pattern: pineNeedles }, // green
     garland: { kind: "lights", colors: ["#ef4444", "#22c55e", "#facc15", "#3b82f6", "#f97316"] },
     icons: { BETHESDA: ["svg:tree", "🎁", "🍬", "⭐"], GERMANTOWN: ["svg:snowflake", "⛄", "🔔", "🦌"] },
   },
@@ -105,8 +145,8 @@ export const HOLIDAY_THEMES = {
     major: true,
     days: (y) => span(inCalendar(y, "hebrew", "Kislev", "25"), 8),
     pageBg: "#e2e9f7", offBg: "#cdd8ee",
-    BETHESDA: { bg: "#ffffff", dark: false }, // white
-    GERMANTOWN: { bg: "#1d4ed8", dark: true }, // blue
+    BETHESDA: { bg: "#ffffff", dark: false, pattern: scatter(["✡️"], 0.14) }, // white
+    GERMANTOWN: { bg: "#1d4ed8", dark: true, pattern: scatter(["✨", "⭐"], 0.3) }, // blue
     garland: { kind: "lights", colors: ["#2563eb", "#e2e8f0", "#60a5fa", "#f8fafc", "#facc15"] },
     icons: { BETHESDA: ["🕎", "🕯️", "✡️"], GERMANTOWN: ["🍩", "🪙", "⭐"] },
   },
@@ -115,8 +155,8 @@ export const HOLIDAY_THEMES = {
     major: true,
     days: day(1, 1),
     pageBg: "#f4efe2", offBg: "#e4dcc8",
-    BETHESDA: { bg: "#d4a72c", dark: false }, // gold
-    GERMANTOWN: { bg: "#111111", dark: true }, // black
+    BETHESDA: { bg: "#d4a72c", dark: false, pattern: scatter(["✨", "🎉"], 0.22) }, // gold
+    GERMANTOWN: { bg: "#111111", dark: true, pattern: scatter(["✨", "🎊"], 0.28) }, // black
     garland: { kind: "lights", colors: ["#facc15", "#f8fafc", "#fbbf24", "#e5e7eb"] },
     icons: { BETHESDA: ["🎉", "🥂", "🎊"], GERMANTOWN: ["🎆", "✨", "🕛"] },
   },
@@ -125,8 +165,8 @@ export const HOLIDAY_THEMES = {
     major: false,
     days: (y) => span(inCalendar(y, "chinese", "1", "1"), 1),
     pageBg: "#fbe8d8", offBg: "#f1d3bb",
-    BETHESDA: { bg: "#c62828", dark: true }, // red
-    GERMANTOWN: { bg: "#e0a800", dark: false }, // gold
+    BETHESDA: { bg: "#c62828", dark: true, pattern: scatter(["🏮", "🧧"], 0.2) }, // red
+    GERMANTOWN: { bg: "#e0a800", dark: false, pattern: scatter(["🧧", "🍊"], 0.2) }, // gold
     garland: { kind: "emoji", items: ["🏮"] },
     icons: { BETHESDA: ["🧧", "🏮", "🐉"], GERMANTOWN: ["🍊", "🥟", "🎆"] },
   },
@@ -135,8 +175,8 @@ export const HOLIDAY_THEMES = {
     major: false,
     days: day(2, 14),
     pageBg: "#fde7ef", offBg: "#f7cfdd",
-    BETHESDA: { bg: "#f9a8c9", dark: false }, // pink
-    GERMANTOWN: { bg: "#be123c", dark: true }, // red
+    BETHESDA: { bg: "#f9a8c9", dark: false, pattern: scatter(["💕", "❤️"], 0.25) }, // pink
+    GERMANTOWN: { bg: "#be123c", dark: true, pattern: scatter(["❤️", "💗"], 0.2) }, // red
     garland: { kind: "emoji", items: ["❤️", "💕"] },
     icons: { BETHESDA: ["💝", "🌹", "💌"], GERMANTOWN: ["❤️", "🍫", "💐"] },
   },
@@ -145,8 +185,8 @@ export const HOLIDAY_THEMES = {
     major: false,
     days: day(3, 17),
     pageBg: "#e6f4e6", offBg: "#cfe6cf",
-    BETHESDA: { bg: "#8fdca6", dark: false }, // light green
-    GERMANTOWN: { bg: "#15803d", dark: true }, // green
+    BETHESDA: { bg: "#8fdca6", dark: false, pattern: scatter(["☘️", "🍀"], 0.22) }, // light green
+    GERMANTOWN: { bg: "#15803d", dark: true, pattern: scatter(["☘️"], 0.2) }, // green
     garland: { kind: "emoji", items: ["☘️", "🍀"] },
     icons: { BETHESDA: ["☘️", "🌈", "🪙"], GERMANTOWN: ["🍀", "🎩", "🌈"] },
   },
@@ -155,8 +195,8 @@ export const HOLIDAY_THEMES = {
     major: false,
     days: (y) => span(inCalendar(y, "islamic-umalqura", "10", "1"), 3),
     pageBg: "#eef2e4", offBg: "#dbe2cc",
-    BETHESDA: { bg: "#d9b44a", dark: false }, // gold
-    GERMANTOWN: { bg: "#0f5e4a", dark: true }, // deep green
+    BETHESDA: { bg: "#d9b44a", dark: false, pattern: scatter(["🌙", "⭐"], 0.2) }, // gold
+    GERMANTOWN: { bg: "#0f5e4a", dark: true, pattern: scatter(["⭐", "🌙"], 0.24) }, // deep green
     garland: { kind: "emoji", items: ["🌙", "⭐"] },
     icons: { BETHESDA: ["🌙", "🏮", "✨"], GERMANTOWN: ["⭐", "🕌", "🍬"] },
   },
@@ -165,8 +205,8 @@ export const HOLIDAY_THEMES = {
     major: false,
     days: (y) => span(inCalendar(y, "hebrew", "Nisan", "15"), 8),
     pageBg: "#f3ece0", offBg: "#e5d9c4",
-    BETHESDA: { bg: "#e9d7b0", dark: false }, // matzah
-    GERMANTOWN: { bg: "#7f1d1d", dark: true }, // wine
+    BETHESDA: { bg: "#e9d7b0", dark: false, pattern: matzah }, // matzah
+    GERMANTOWN: { bg: "#7f1d1d", dark: true, pattern: scatter(["🍷"], 0.16) }, // wine
     garland: { kind: "emoji", items: ["🍷", "🫓"] },
     icons: { BETHESDA: ["🫓", "🌿", "✡️"], GERMANTOWN: ["🍷", "🥚", "🌸"] },
   },
@@ -175,8 +215,8 @@ export const HOLIDAY_THEMES = {
     major: true,
     days: easter,
     pageBg: "#f3ecfb", offBg: "#e4d8f4",
-    BETHESDA: { bg: "#fde68a", dark: false }, // pastel yellow
-    GERMANTOWN: { bg: "#7c3aed", dark: true }, // purple
+    BETHESDA: { bg: "#fde68a", dark: false, pattern: scatter(["🥚", "🌷"], 0.25) }, // pastel yellow
+    GERMANTOWN: { bg: "#7c3aed", dark: true, pattern: scatter(["🐣", "🌸"], 0.22) }, // purple
     garland: { kind: "emoji", items: ["🥚", "🐣", "🌷"] },
     icons: { BETHESDA: ["🐣", "🥚", "🌷"], GERMANTOWN: ["🐰", "🌸", "🧺"] },
   },
@@ -185,8 +225,8 @@ export const HOLIDAY_THEMES = {
     major: true,
     days: day(7, 4),
     pageBg: "#eef2fa", offBg: "#d9e1f2",
-    BETHESDA: { bg: "#b91c1c", dark: true }, // red
-    GERMANTOWN: { bg: "#1e3a8a", dark: true }, // blue
+    BETHESDA: { bg: "#b91c1c", dark: true, pattern: stripes("rgba(255,255,255,0.2)", 0, 12) }, // red
+    GERMANTOWN: { bg: "#1e3a8a", dark: true, pattern: scatter(["⭐"], 0.32) }, // blue
     garland: { kind: "lights", colors: ["#dc2626", "#f8fafc", "#2563eb"] },
     icons: { BETHESDA: ["🎆", "🇺🇸", "🌭"], GERMANTOWN: ["🎇", "⭐", "🍔"] },
   },
@@ -195,8 +235,8 @@ export const HOLIDAY_THEMES = {
     major: false,
     days: day(10, 31),
     pageBg: "#fbe7d3", offBg: "#f1d1b2",
-    BETHESDA: { bg: "#f97316", dark: false }, // orange
-    GERMANTOWN: { bg: "#1f1033", dark: true }, // midnight purple
+    BETHESDA: { bg: "#f97316", dark: false, pattern: scatter(["🎃", "🕸️"], 0.2) }, // orange
+    GERMANTOWN: { bg: "#1f1033", dark: true, pattern: scatter(["🦇", "⭐"], 0.25) }, // midnight purple
     garland: { kind: "emoji", items: ["🦇", "🎃"] },
     icons: { BETHESDA: ["🎃", "🍬", "🕸️"], GERMANTOWN: ["👻", "🦇", "🌙"] },
   },
@@ -205,8 +245,8 @@ export const HOLIDAY_THEMES = {
     major: false,
     days: (y) => span(DIWALI[y] ?? null, 1),
     pageBg: "#fbeeda", offBg: "#f1dcb9",
-    BETHESDA: { bg: "#f59e0b", dark: false }, // marigold
-    GERMANTOWN: { bg: "#7e22ce", dark: true }, // deep purple
+    BETHESDA: { bg: "#f59e0b", dark: false, pattern: scatter(["🪔", "🌼"], 0.2) }, // marigold
+    GERMANTOWN: { bg: "#7e22ce", dark: true, pattern: scatter(["✨", "🪔"], 0.26) }, // deep purple
     garland: { kind: "lights", colors: ["#f59e0b", "#facc15", "#fb923c", "#fde68a"] },
     icons: { BETHESDA: ["🪔", "✨", "🌼"], GERMANTOWN: ["🎇", "🪔", "🍬"] },
   },
@@ -215,8 +255,8 @@ export const HOLIDAY_THEMES = {
     major: true,
     days: thanksgiving,
     pageBg: "#fcebcf", offBg: "#f2d9b0",
-    BETHESDA: { bg: "#f2c14e", dark: false }, // golden yellow
-    GERMANTOWN: { bg: "#d9532b", dark: true }, // red-orange
+    BETHESDA: { bg: "#f2c14e", dark: false, pattern: scatter(["🍁", "🍂"], 0.24) }, // golden yellow
+    GERMANTOWN: { bg: "#d9532b", dark: true, pattern: scatter(["🍁", "🍂"], 0.22) }, // red-orange
     garland: { kind: "leaves" },
     icons: { BETHESDA: ["svg:turkey", "🥧", "🌽", "🍁"], GERMANTOWN: ["svg:pumpkin", "🍂", "🌰", "🍎"] },
   },
@@ -305,6 +345,8 @@ export function holidayCssVars(key: HolidayKey): Record<string, string> {
     "--gt-bg": t.GERMANTOWN.bg,
     "--gt-panel": t.GERMANTOWN.bg,
     "--gt-ink": ink(t.GERMANTOWN),
+    "--bt-pattern": t.BETHESDA.pattern ?? "none",
+    "--gt-pattern": t.GERMANTOWN.pattern ?? "none",
   };
 }
 

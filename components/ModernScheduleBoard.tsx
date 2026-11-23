@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { DaySchedule, FreeStaffMember, PositionRef, ProviderCell } from "@/lib/schedule";
@@ -35,6 +35,50 @@ type Props = {
 // Same data, same interactions (drag-to-reassign, remove, swap-request) as
 // the classic ScheduleBoard, just laid out as a continuous, low-chrome
 // column of names and dividers instead of a card per provider/role.
+// An office's color, plus its holiday texture if a theme has one
+// (lib/holidayTheme.ts; both are CSS variables).
+function officeBackground(office: Office) {
+  const b = office === "GERMANTOWN" ? "gt" : "bt";
+  return { backgroundColor: `var(--${b}-bg)`, backgroundImage: `var(--${b}-pattern, none)` };
+}
+
+// A holiday texture is painted both on the full-page background behind
+// Home and on each office's own block; this lines the block's texture up with
+// the page's, so the stripes/leaves run on unbroken across the edge between
+// them.
+function useTextureOffset() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<string | undefined>(undefined);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const page = el?.closest("[data-home-page]");
+    if (!el || !page) return;
+    const measure = () => {
+      const a = el.getBoundingClientRect();
+      const b = page.getBoundingClientRect();
+      setPosition(`${Math.round(b.left - a.left)}px ${Math.round(b.top - a.top)}px`);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(page);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return { ref, position };
+}
+
+// One office's share of the full-page background behind Home.
+function BackgroundHalf({ office }: { office: Office }) {
+  const texture = useTextureOffset();
+  return (
+    <div
+      ref={texture.ref}
+      className={`flex-1 ${office === "GERMANTOWN" ? "strip-dark-home" : "seam-left"}`}
+      style={{ ...officeBackground(office), backgroundPosition: texture.position }}
+    />
+  );
+}
+
 // The standing Frederick placement (see rosterRows below).
 const FREDERICK = { weekday: 3, doctor: "Dr. McCormick", scribe: "Anna" }; // Thursday
 
@@ -107,7 +151,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note, workin
     // Its own pb-[--main-pb] then keeps the last of the content (the
     // "Not assigned yet" / "Out of office" lines) clear of the dock, while
     // the background still runs behind it to the bottom edge.
-    <div className="relative left-1/2 -mb-[var(--main-pb)] -mt-4 min-h-dvh w-bleed -translate-x-1/2 pb-[var(--main-pb)] unfolded:side-dock:pb-0">
+    <div data-home-page className="relative left-1/2 -mb-[var(--main-pb)] -mt-4 min-h-dvh w-bleed -translate-x-1/2 pb-[var(--main-pb)] unfolded:side-dock:pb-0">
       <AutoRefresh intervalMs={20000} stale={{ kind: "day", period: date }} />
       <MobileDateBar
         label={formatDayShort(date)}
@@ -127,11 +171,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note, workin
           top instead of being stretched or pinned to the very bottom. */}
       <div className="absolute inset-0 z-0 flex flex-col lg:flex-row unfolded:flex-row">
         {OFFICES.map((office) => (
-          <div
-            key={office}
-            className={`flex-1 ${office === "GERMANTOWN" ? "strip-dark-home" : "seam-left"}`}
-            style={{ background: office === "GERMANTOWN" ? "var(--gt-bg)" : "var(--bt-bg)" }}
-          />
+          <BackgroundHalf key={office} office={office} />
         ))}
       </div>
 
@@ -242,6 +282,7 @@ function OfficeHalf({
   const [error, setError] = useState<string | null>(null);
   const dark = officeIsDark(useHoliday(), office);
   const officeBg = office === "GERMANTOWN" ? "var(--gt-bg)" : "var(--bt-bg)";
+  const textureOffset = useTextureOffset();
 
   async function run(action: () => Promise<unknown>) {
     setError(null);
@@ -281,7 +322,8 @@ function OfficeHalf({
     <div
       className={`flex-1 px-6 pb-8 pt-3 sm:px-10 sm:pb-12 sm:pt-4 unfolded:pb-[5px] ${office === "BETHESDA" ? "seam-left" : ""} ${dark ? "strip-dark text-white" : "strip-light text-slate-900"}`}
       // --bleed: the color it carries into the iPhone Duo's side strip.
-      style={{ background: officeBg, ["--bleed" as string]: officeBg }}
+      ref={textureOffset.ref}
+      style={{ ...officeBackground(office), backgroundPosition: textureOffset.position, ["--bleed" as string]: officeBg }}
     >
       <div className={`mb-8 flex items-baseline justify-between border-b pb-4 ${dark ? "border-white/10" : "border-slate-200"}`}>
         <h2 className="flex items-center gap-2 text-2xl font-black uppercase tracking-tight sm:text-3xl">

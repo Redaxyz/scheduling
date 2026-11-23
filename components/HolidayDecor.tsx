@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactElement } from "react";
 import { useHoliday } from "@/components/HolidayProvider";
-import { holidayTheme } from "@/lib/holidayTheme";
+import { holidayTheme, type Garland } from "@/lib/holidayTheme";
 import type { Office } from "@/lib/types";
 
 // Festive touches for the holiday themes (lib/holidayTheme.ts, which picks
@@ -54,39 +54,60 @@ function BulbUnit({ i, colors }: { i: number; colors: string[] }) {
 }
 
 // A small emoji hanging from the twine (Easter eggs, hearts, lanterns...).
-function EmojiUnit({ i, items }: { i: number; items: string[] }) {
+// `upright` undoes the strand's own turn (see Strand), so emoji read the
+// right way up on every edge.
+function EmojiUnit({ i, items, upright }: { i: number; items: string[]; upright: string }) {
   return (
     <span className="relative block h-[22px] w-[34px] shrink-0">
       <svg width="34" height="22" viewBox="0 0 34 22" className="absolute inset-0" aria-hidden>
         <path d="M0 3 Q17 9 34 3" fill="none" stroke="#7c6a58" strokeWidth="1.2" />
       </svg>
-      <span className="absolute left-1/2 top-[4px] -translate-x-1/2 text-[13px] leading-none" style={{ transform: `translateX(-50%) rotate(${i % 2 ? 8 : -8}deg)` }}>
+      <span className="absolute left-1/2 top-[11px] text-[13px] leading-none" style={{ transform: `translate(-50%, -50%) ${upright} rotate(${i % 2 ? 8 : -8}deg)` }}>
         {items[i % items.length]}
       </span>
     </span>
   );
 }
 
+// One strand, laid along an edge of the screen with its twine against the
+// edge and the leaves/bulbs hanging inward. Each strand is drawn as if it ran
+// along the top, then turned into place.
+const EDGES = {
+  top: { style: { top: "env(safe-area-inset-top, 0px)", left: 0, width: "100vw" }, upright: "" },
+  bottom: { style: { top: 0, left: 0, width: "100vw", transform: "translateY(100dvh) scaleY(-1)" }, upright: "scaleY(-1)" },
+  left: { style: { top: 0, left: 0, width: "100dvh", transform: "rotate(90deg) scaleY(-1)" }, upright: "scaleY(-1) rotate(-90deg)" },
+  right: { style: { top: 0, left: 0, width: "100dvh", transform: "translateX(100vw) rotate(90deg)" }, upright: "rotate(-90deg)" },
+} as const;
+
+function Strand({ garland, edge }: { garland: Garland; edge: keyof typeof EDGES }) {
+  const { style, upright } = EDGES[edge];
+  return (
+    <div aria-hidden className="pointer-events-none fixed z-30 flex overflow-hidden" style={{ ...style, transformOrigin: "top left" }}>
+      {Array.from({ length: UNITS }, (_, i) =>
+        garland.kind === "lights" ? (
+          <BulbUnit key={i} i={i + (edge === "top" ? 0 : edge.length)} colors={garland.colors} />
+        ) : garland.kind === "emoji" ? (
+          <EmojiUnit key={i} i={i} items={garland.items} upright={upright} />
+        ) : (
+          <LeafUnit key={i} i={i + edge.length} />
+        ),
+      )}
+    </div>
+  );
+}
+
+// The garland frames the whole screen: along the top, the bottom (tucked
+// behind the dock on a phone) and both sides.
 export function HolidayGarland() {
   const holiday = useHoliday();
   if (!holiday) return null;
   const garland = holidayTheme(holiday).garland;
   return (
-    <div
-      aria-hidden
-      className="pointer-events-none fixed inset-x-0 z-30 flex overflow-hidden"
-      style={{ top: "env(safe-area-inset-top, 0px)" }}
-    >
-      {Array.from({ length: UNITS }, (_, i) =>
-        garland.kind === "lights" ? (
-          <BulbUnit key={i} i={i} colors={garland.colors} />
-        ) : garland.kind === "emoji" ? (
-          <EmojiUnit key={i} i={i} items={garland.items} />
-        ) : (
-          <LeafUnit key={i} i={i} />
-        ),
-      )}
-    </div>
+    <>
+      {(Object.keys(EDGES) as (keyof typeof EDGES)[]).map((edge) => (
+        <Strand key={edge} garland={garland} edge={edge} />
+      ))}
+    </>
   );
 }
 
