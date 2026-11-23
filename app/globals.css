@@ -28,6 +28,8 @@
   --gt-bg: #0b0f14;
   --gt-panel: #0f172a;
   --gt-ink: #ffffff;
+  /* A half with no office (the Me tab's blank days). */
+  --off-bg: #eef1f3;
   /* The screen's safe-area insets (only non-zero because the viewport is
      viewport-fit=cover, see app/layout.tsx). Read through these variables
      rather than env() directly so there's one place to reason about them. */
@@ -43,7 +45,11 @@
    holiday the offices take its two colors, and accents (the dock's
    highlight, the Home chip) go black and white. The person's own accent
    color turns black at the same time (components/ThemeAccent.tsx). */
+/* The page itself (every tab) takes a soft tint of the holiday instead of
+   the usual cream, light enough that the offices' colors still stand out. */
 html[data-holiday="thanksgiving"] {
+  --page-bg: #fcebcf; /* light wheat */
+  --off-bg: #f2d9b0;
   --bt-bg: #f2c14e; /* golden yellow */
   --bt-ink: #111111;
   --gt-bg: #d9532b; /* red-orange */
@@ -51,6 +57,8 @@ html[data-holiday="thanksgiving"] {
   --gt-ink: #ffffff;
 }
 html[data-holiday="christmas"] {
+  --page-bg: #e8f0e6; /* pale pine */
+  --off-bg: #d3e0d0;
   --bt-bg: #b8312f; /* red */
   --bt-ink: #ffffff;
   --gt-bg: #1d6b3a; /* green */

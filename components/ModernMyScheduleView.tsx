@@ -32,7 +32,7 @@ function HalfPanel({ half, cell }: { half: (typeof HALVES)[number]; cell: MySche
         // On the iPhone Duo the afternoon column meets the status bar strip.
         half === "PM" && cell.office ? (dark ? "strip-dark-beside" : "strip-light-beside") : ""
       }`}
-      style={{ background: cell.office ? OFFICE_COLOR[cell.office] : "#eef1f3", ["--bleed" as string]: cell.office ? OFFICE_COLOR[cell.office] : undefined }}
+      style={{ background: cell.office ? OFFICE_COLOR[cell.office] : "var(--off-bg)", ["--bleed" as string]: cell.office ? OFFICE_COLOR[cell.office] : undefined }}
     >
       {cell.isProvider && cell.office ? (
         <>
