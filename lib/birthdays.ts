@@ -7,6 +7,7 @@
 // (components/BirthdayCelebration.tsx).
 export const BIRTHDAYS: Record<string, string> = {
   Anna: "06-21",
+  Cindy: "06-05",
   Hope: "12-03",
   Isabel: "05-04",
   Joanna: "09-15",
