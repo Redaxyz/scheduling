@@ -10,7 +10,10 @@ import { BIRTHDAY_CAKE, birthdayAmong, isBirthday } from "@/lib/birthdays";
 import { spaceBelow } from "@/lib/viewportSpace";
 import { HALVES, HALF_LABELS, OFFICE_LABELS, type Half, type Office } from "@/lib/types";
 import { useWhoAmI } from "@/lib/whoami";
-import { SURGERY_COLOR, OFF_COLOR, OFFICE_COLOR, OFFICE_INK } from "@/lib/colors";
+import { SURGERY_COLOR, OFFICE_COLOR, OFFICE_INK } from "@/lib/colors";
+
+// A doctor who's out: a black cell with a white X.
+const ABSENT_COLOR = "#000000";
 
 // PRESENT isn't one fixed color anymore — it's whichever office the weekly
 // template has them at that half (white for Bethesda, near-black for
@@ -30,7 +33,7 @@ const OFFICE_LETTER: Record<Office, string> = { BETHESDA: "B", GERMANTOWN: "G" }
 // holiday, or a normal day, uses each cell's own template-based color.
 function cellColor(cell: ProviderHalfCell, closedHoliday: boolean): string {
   if (closedHoliday) return HOLIDAY_COLOR;
-  if (cell.status === "ABSENT") return OFF_COLOR;
+  if (cell.status === "ABSENT") return ABSENT_COLOR;
   if (cell.status === "SURGERY") return SURGERY_COLOR;
   return cell.office ? OFFICE_COLOR[cell.office] : OFF_DUTY_COLOR;
 }
@@ -65,7 +68,7 @@ export function ProviderLegend() {
         <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: OFFICE_COLOR.GERMANTOWN }} /> Germantown
       </span>
       <span className="flex items-center gap-1">
-        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: OFF_COLOR }} /> Absent
+        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: ABSENT_COLOR }} /> Absent
       </span>
       <span className="flex items-center gap-1">
         <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: SURGERY_COLOR }} /> Surgery
