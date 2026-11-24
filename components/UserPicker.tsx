@@ -2,6 +2,8 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useWhoAmI, type StaffOption } from "@/lib/whoami";
+import { easternToday } from "@/lib/date";
+import { BIRTHDAY_CAKE, CONFETTI, isBirthday } from "@/lib/birthdays";
 import { buildGridCurves, cellCenterPct, cellClipPath } from "@/lib/zigzagGrid";
 import { layoutSigninCells, signinLayout, tileColor, type SigninCell } from "@/lib/signinGrid";
 
@@ -67,7 +69,18 @@ export default function UserPicker() {
 
   // Who's in which tile: see lib/signinGrid.ts.
   const cells: Cell[] = useMemo(() => layoutSigninCells(staffList), [staffList]);
-  const cellColor = (cell: Cell) => tileColor(layout, cell.row, cell.col);
+  // Today's birthday people (lib/birthdays.ts) get a party tile: pink and blue
+  // with confetti, and a cake after their name.
+  const today = easternToday();
+  const birthday = (cell: Cell) => isBirthday(cell.staff.name, today);
+  const cellColor = (cell: Cell) => {
+    if (!birthday(cell)) return tileColor(layout, cell.row, cell.col);
+    // Every tile is the whole screen clipped down to its patch, so the pink
+    // to blue runs across just this tile's own span of the screen.
+    const { x, width } = cellCenterPct(grid, cell.row, cell.col);
+    return `${CONFETTI}, linear-gradient(90deg, #f9a8d4 ${x - width / 2}%, #93c5fd ${x + width / 2}%)`;
+  };
+  const labelFor = (cell: Cell) => (birthday(cell) ? `${cell.staff.name} ${BIRTHDAY_CAKE}` : cell.staff.name);
 
   // One font size for every name: the biggest at which each name fits in
   // 80% of its own tile's width (and half its height). Measured from hidden
@@ -148,7 +161,7 @@ export default function UserPicker() {
       <div ref={measureRef} aria-hidden className="pointer-events-none invisible fixed left-0 top-0">
         {cells.map((cell) => (
           <span key={cell.staff.id} className={`block w-max ${LABEL_TYPE}`} style={{ fontSize: MEASURE_PX, lineHeight: 1, whiteSpace: "nowrap" }}>
-            {cell.staff.name}
+            {labelFor(cell)}
           </span>
         ))}
       </div>
@@ -188,9 +201,11 @@ export default function UserPicker() {
                 top: `${center.y}%`,
                 transform: "translate(-50%, -50%)",
                 ...labelStyle,
+                // Dark text reads better on the pastel birthday tile.
+                ...(birthday(cell) ? { color: "#3b0764", filter: "none" } : {}),
               }}
             >
-              {cell.staff.name}
+              {labelFor(cell)}
             </span>
           </button>
           );
