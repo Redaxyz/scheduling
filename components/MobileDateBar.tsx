@@ -53,6 +53,8 @@ function stripLabel(value: string, snap: Snap): string[] {
 }
 
 const PANEL_GAP = 8;
+// A month's Mon–Fri rows never number more than five.
+const MAX_ROWS = 5;
 const PANEL_MAX_WIDTH = 320;
 
 // The app's own month calendar, opening upward from the date bar. The
@@ -136,6 +138,12 @@ function CalendarPanel({ value, snap, anchor, onPick, onClose }: { value: string
                 );
               })
             )}
+            {/* Always five rows tall (the most a month's weekdays need), so the
+                panel, which grows upward from the date bar, keeps its month
+                arrows in the same spot from one month to the next. */}
+            {Array.from({ length: Math.max(0, MAX_ROWS - monthRows(month).length) * 5 }, (_, i) => (
+              <span key={`pad-${i}`} aria-hidden className="h-10" />
+            ))}
           </div>
         </div>
       )}
