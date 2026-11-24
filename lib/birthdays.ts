@@ -11,6 +11,7 @@ export const BIRTHDAYS: Record<string, string> = {
   Hope: "12-03",
   Isabel: "05-04",
   Joanna: "09-15",
+  Mark: "09-12",
   Reda: "08-02",
 };
 
