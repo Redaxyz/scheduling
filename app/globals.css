@@ -76,57 +76,59 @@ html[data-birthday] body {
 .confetti-piece {
   animation: confetti-fall 3s cubic-bezier(0.25, 0.6, 0.5, 1) both;
 }
-html[data-holiday] .active-slab {
-  background: rgba(17, 17, 17, 0.1) !important;
-}
-html[data-holiday] #bottom-nav-raised {
-  background: linear-gradient(135deg, var(--bt-bg), var(--gt-bg)) !important;
-  box-shadow: 0 4px 10px -4px rgba(0, 0, 0, 0.35);
-}
-/* The dock and the date bar take the holiday too (everywhere but the
-   iPhone Duo's side strip, which stays see-through): Germantown's color and
-   texture with its ink, edged in Bethesda's color, and the Home chip in
-   Bethesda's color, so the bar carries both of the holiday's colors. */
-html[data-holiday]:not([data-dock="side"]) #bottom-nav .nav-surface {
-  background-color: var(--gt-bg);
-  background-image: var(--gt-pattern);
-  border-color: var(--bt-bg);
-  color: var(--gt-ink);
-  backdrop-filter: none;
+/* In a holiday theme the dock and the date bar are see-through on every
+   device (as they always are in the iPhone Duo's side strip), so the
+   holiday's colors and textures show behind them. Each button is black or
+   white, whichever reads against what's right behind it at that moment
+   (worked out as the page scrolls, components/DockMode.tsx). */
+html[data-holiday] #bottom-nav .nav-surface {
+  background: transparent;
   -webkit-backdrop-filter: none;
-  box-shadow: 0 10px 24px -12px rgba(0, 0, 0, 0.45);
+  backdrop-filter: none;
+  box-shadow: none;
+  border-color: transparent;
 }
-html[data-holiday]:not([data-dock="side"]) #bottom-nav .nav-surface :is(a, button, svg) {
-  color: var(--gt-ink) !important;
+/* Off the Duo, page content scrolls under the bar, so what shows through is
+   blurred: the holiday's colors, without text behind text. */
+html[data-holiday]:not([data-dock="side"]) #bottom-nav .nav-surface {
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
 }
-html[data-holiday]:not([data-dock="side"]) #bottom-nav .nav-surface a:not([aria-current]) > span > svg,
-html[data-holiday]:not([data-dock="side"]) #bottom-nav .nav-surface button .dock-name {
-  opacity: 0.85;
+html[data-holiday]:not([data-dock="side"]) #bottom-nav .nav-surface > * {
+  color: #111111 !important;
 }
-html[data-holiday]:not([data-dock="side"]) #bottom-nav .active-slab {
-  background: color-mix(in srgb, var(--gt-ink) 20%, transparent) !important;
+html[data-holiday]:not([data-dock="side"]) #bottom-nav .nav-surface > [data-tone="dark"] {
+  color: #ffffff !important;
+}
+html[data-holiday]:not([data-dock="side"]) #bottom-nav .nav-surface > * svg {
+  color: inherit !important;
+}
+html[data-holiday]:not([data-dock="side"]) #dock .dock-surface > :not([aria-current]) {
+  opacity: 0.8;
+}
+html[data-holiday] #bottom-nav .active-slab {
+  background: color-mix(in srgb, currentColor 18%, transparent) !important;
+  border-radius: 0.6rem;
 }
 html[data-holiday]:not([data-dock="side"]) #bottom-nav .nav-surface .skew-seg:hover {
-  background-color: color-mix(in srgb, var(--gt-ink) 14%, transparent) !important;
+  background-color: color-mix(in srgb, currentColor 12%, transparent) !important;
 }
 html[data-holiday]:not([data-dock="side"]) #bottom-nav .nav-surface .skew-seg:active {
-  background-color: color-mix(in srgb, var(--gt-ink) 24%, transparent) !important;
+  background-color: color-mix(in srgb, currentColor 22%, transparent) !important;
 }
-html[data-holiday]:not([data-dock="side"]) #bottom-nav .nav-surface span[aria-hidden].rounded-full {
-  background: color-mix(in srgb, var(--gt-ink) 40%, transparent) !important;
+html[data-holiday]:not([data-dock="side"]) #bottom-nav .nav-surface > span[aria-hidden].rounded-full {
+  background: currentColor !important;
+  opacity: 0.35;
 }
-html[data-holiday]:not([data-dock="side"]) #bottom-nav .nav-surface #bottom-nav-raised {
-  background: var(--bt-bg) !important;
-  background-image: var(--bt-pattern) !important;
-  box-shadow: 0 0 0 1.5px var(--gt-ink);
+/* The Home chip keeps its shape as an outline in the same black or white. */
+html[data-holiday]:not([data-dock="side"]) #bottom-nav-raised {
+  background: transparent !important;
+  box-shadow: inset 0 0 0 2px currentColor;
+  color: inherit !important;
 }
-html[data-holiday]:not([data-dock="side"]) #bottom-nav .nav-surface #bottom-nav-raised svg {
-  color: var(--bt-ink) !important;
-}
-/* The "switch person" dot (normally your accent, black in a holiday). */
+/* The "switch person" dot (normally your accent color). */
 html[data-holiday]:not([data-dock="side"]) #bottom-nav .nav-surface button span.h-3.rounded-full {
-  background: var(--bt-bg) !important;
-  box-shadow: 0 0 0 1.5px var(--gt-ink);
+  background: currentColor !important;
 }
 
 body {
@@ -232,35 +234,30 @@ html[data-cover]::before {
   height: env(safe-area-inset-top);
   background: var(--page-bg);
 }
-/* A dark block that runs to the strip, plus the bottom padding below it
-   (the last thing on a phone's Home is Germantown). */
-html[data-cover] .strip-dark,
-html[data-cover] .strip-light {
-  box-shadow:
-    var(--sa-right) 0 0 0 var(--bleed, var(--gt-bg)),
-    var(--sa-right) var(--main-pb) 0 0 var(--bleed, var(--gt-bg));
+/* Each office block on Home (.strip-dark/.strip-light) and each office
+   half on the Me tab (.strip-*-beside) carries its own background, holiday
+   texture and all, on into the strip: a layer behind it, the same
+   background from the same starting corner (so the texture runs on
+   unbroken), just wider by the strip. Behind everything, Home's full-height
+   background does the same (.home-bg-layer). */
+html[data-cover] :is(.strip-dark, .strip-light, .strip-dark-beside, .strip-light-beside) {
+  position: relative;
 }
-/* Home's date/title area on a phone sits over Bethesda, so beside it the
-   strip shows Bethesda's color (matters when a holiday theme makes
-   Bethesda something other than the cream page). */
-@media (max-width: 500px), (max-width: 1023px) and (max-height: 500px) {
-  html[data-cover] .strip-bt-phone {
-    box-shadow: var(--sa-right) 0 0 0 var(--bt-bg);
-  }
+html[data-cover] :is(.strip-dark, .strip-light, .strip-dark-beside, .strip-light-beside)::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 calc(-1 * var(--sa-right)) 0 0;
+  background: inherit;
+  pointer-events: none;
 }
-/* A dark block whose right edge is the strip, and nothing more (the Me
-   tab's Germantown afternoons). */
-html[data-cover] .strip-dark-beside,
-html[data-cover] .strip-light-beside {
-  box-shadow: var(--sa-right) 0 0 0 var(--bleed, var(--gt-panel));
+html[data-cover] .home-bg-layer {
+  right: calc(-1 * var(--sa-right));
 }
 /* Offices side by side (the unfolded Duo): Germantown's full-height
    background is the whole right edge. */
 @media (pointer: coarse) and (min-width: 600px) and (max-width: 1023px) and (min-height: 501px) and (max-height: 960px) {
-  html[data-cover] .strip-dark-home {
-    box-shadow: var(--sa-right) 0 0 0 var(--gt-bg);
-  }
-  /* ...and Bethesda takes exactly the left half of the whole screen, strip
+  /* Bethesda takes exactly the left half of the whole screen, strip
      included, so the two offices meet in the middle; Germantown gets the
      rest and carries on into the strip. */
   html[data-cover] .seam-left {

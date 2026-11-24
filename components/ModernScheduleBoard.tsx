@@ -185,7 +185,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note, workin
           full screen even though the actual content above (including the
           "not assigned" line) now sits at its own natural height near the
           top instead of being stretched or pinned to the very bottom. */}
-      <div className="absolute inset-0 z-0 flex flex-col lg:flex-row unfolded:flex-row">
+      <div className="home-bg-layer absolute inset-0 z-0 flex flex-col lg:flex-row unfolded:flex-row">
         {OFFICES.map((office) => (
           <BackgroundHalf key={office} office={office} />
         ))}
@@ -197,7 +197,7 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note, workin
           on the left and — on a tablet, the one place the header still has
           date controls — those sit over Germantown/black on the right. On a
           phone the offices stack and it all sits over Bethesda. */}
-      <div className="strip-bt-phone relative z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-4 sm:px-10 lg:grid lg:grid-cols-2 lg:gap-x-20 unfolded:grid unfolded:grid-cols-2 unfolded:gap-x-20">
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-4 sm:px-10 lg:grid lg:grid-cols-2 lg:gap-x-20 unfolded:grid unfolded:grid-cols-2 unfolded:gap-x-20">
         <div className="min-w-0">
           {/* One line, always — .home-date-title shrinks the font to fit
               the white part of the screen rather than wrapping. */}
@@ -303,7 +303,6 @@ function OfficeHalf({
   const [error, setError] = useState<string | null>(null);
   const holiday = useHoliday();
   const dark = officeIsDark(holiday, office);
-  const officeBg = office === "GERMANTOWN" ? "var(--gt-bg)" : "var(--bt-bg)";
   const textureOffset = useTextureOffset();
 
   async function run(action: () => Promise<unknown>) {
@@ -343,9 +342,8 @@ function OfficeHalf({
   return (
     <div
       className={`flex-1 px-6 pb-8 pt-3 sm:px-10 sm:pb-12 sm:pt-4 unfolded:pb-[5px] ${office === "BETHESDA" ? "seam-left" : ""} ${dark ? "strip-dark text-white" : "strip-light text-slate-900"}`}
-      // --bleed: the color it carries into the iPhone Duo's side strip.
       ref={textureOffset.ref}
-      style={{ ...officeBackground(office), backgroundPosition: textureOffset.position, ["--bleed" as string]: officeBg }}
+      style={{ ...officeBackground(office), backgroundPosition: textureOffset.position }}
     >
       <div className={`mb-8 flex items-baseline justify-between border-b pb-4 ${dark ? "border-white/10" : "border-slate-200"}`}>
         <h2 className="holiday-font flex items-center gap-2 text-2xl font-black uppercase tracking-tight sm:text-3xl">

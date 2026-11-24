@@ -44,7 +44,6 @@ function HalfPanel({ half, cell, birthday }: { half: (typeof HALVES)[number]; ce
           : cell.office
             ? `var(--${cell.office === "GERMANTOWN" ? "gt" : "bt"}-pattern, none)`
             : undefined,
-        ["--bleed" as string]: cell.office ? OFFICE_COLOR[cell.office] : undefined,
       }}
     >
       {cell.isProvider && cell.office ? (
