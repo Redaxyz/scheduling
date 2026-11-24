@@ -106,6 +106,7 @@ export function Pill({
   position,
   onRemove,
   leading,
+  trailing,
   size = "sm",
   textClassName = "text-slate-700",
   outlineClassName = "",
@@ -123,6 +124,8 @@ export function Pill({
   // Rendered before the name — the swap-request icon/status lives here now,
   // inside the pill, instead of as a separate element next to it.
   leading?: ReactNode;
+  // Rendered after the name (a birthday cake).
+  trailing?: ReactNode;
   size?: "sm" | "md";
   textClassName?: string;
   // A thin edge in the opposite tone of whatever it sits on, so the pill
@@ -151,6 +154,7 @@ export function Pill({
     >
       {leading}
       <span className="truncate">{name}</span>
+      {trailing}
       {timing ? (
         <span className="shrink-0 opacity-70">({timing})</span>
       ) : lateMinutes ? (

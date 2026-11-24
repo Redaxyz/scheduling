@@ -12,6 +12,7 @@ import ErrorReporter from "@/components/ErrorReporter";
 import { DOCK_COOKIE } from "@/lib/sideDock";
 import { HolidayProvider } from "@/components/HolidayProvider";
 import { HolidayGarland } from "@/components/HolidayDecor";
+import BirthdayCelebration from "@/components/BirthdayCelebration";
 import { HOLIDAY_COOKIE, holidayCssVars, holidayFor, isHolidayKey, type HolidayKey } from "@/lib/holidayTheme";
 import { easternToday } from "@/lib/date";
 
@@ -85,6 +86,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <HolidayGarland />
         <WhoAmIProvider>
           <ThemeAccent />
+          <BirthdayCelebration />
           <AppGate />
           <NotificationPrompt />
           {/* --main-pb is the measured height of the bottom chrome (see

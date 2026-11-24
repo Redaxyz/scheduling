@@ -7,6 +7,7 @@ import type { StaffCalendarRow, StaffDayStatus } from "@/lib/calendar";
 import { effectiveMonday, effectiveScheduleDate, mondayOf, nearestBusinessDayOnOrAfter, todayStr, weekdayIndex } from "@/lib/date";
 import { federalHolidayName, HOLIDAY_COLOR, WORKING_HOLIDAY_COLOR } from "@/lib/holidays";
 import { holidayCellLook } from "@/lib/holidayTheme";
+import { BIRTHDAY_CAKE, BIRTHDAY_FILL, birthdayAmong, isBirthday } from "@/lib/birthdays";
 import { spaceBelow } from "@/lib/viewportSpace";
 import { useWhoAmI } from "@/lib/whoami";
 import { arriveNote, clockHalf, leaveNote } from "@/lib/timing";
@@ -447,9 +448,12 @@ export default function StaffCalendarGrid({
                         }`}
                       >
                         {row.name}
+                        {/* A birthday in the dates on screen (lib/birthdays.ts). */}
+                        {birthdayAmong(row.name, dates) && <span aria-label="birthday this week"> {BIRTHDAY_CAKE}</span>}
                       </td>
                       {dates.map((date, dateIndex) => {
                         const cell = row.days[date];
+                        const birthday = isBirthday(row.name, date);
                         // Only a CLOSED holiday overrides the cells. One toggled open
                         // (green in the header) is a normal working day in the body,
                         // so absences, late arrivals etc. show up and can be set.
@@ -479,7 +483,8 @@ export default function StaffCalendarGrid({
                           if (half === "AM" ? cell.amOut : cell.pmOut) return STATUS_COLOR.ABSENT;
                           if (arriveHalf === half) return STATUS_COLOR.PARTIAL;
                           if (leaveHalf === half) return EARLY_COLOR;
-                          return STATUS_COLOR.PRESENT;
+                          // In on their birthday: pink and blue instead of green.
+                          return birthday ? BIRTHDAY_FILL : STATUS_COLOR.PRESENT;
                         };
                         const bare = (t: string | null) => (t ? t.replace(/^(in|out) /, "") : "");
                         const detail =
@@ -554,7 +559,7 @@ export default function StaffCalendarGrid({
                                       style={{ minHeight: boxHeight, background: fill }}
                                       title={label}
                                     >
-                                      <span className={textClass}>{bare(text) || HALF_LETTER[half]}</span>
+                                      <span className={textClass}>{bare(text) || (birthday && !out ? BIRTHDAY_CAKE : HALF_LETTER[half])}</span>
                                     </div>
                                   ) : (
                                   <button
@@ -567,7 +572,7 @@ export default function StaffCalendarGrid({
                                     className="flex min-w-0 flex-1 items-center justify-center rounded-[4px] transition active:scale-95 disabled:opacity-40"
                                     style={{ minHeight: boxHeight, background: fill }}
                                   >
-                                    <span className={textClass}>{bare(text) || HALF_LETTER[half]}</span>
+                                    <span className={textClass}>{bare(text) || (birthday && !out ? BIRTHDAY_CAKE : HALF_LETTER[half])}</span>
                                   </button>
                                   )
                                 )}

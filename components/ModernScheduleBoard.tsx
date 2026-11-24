@@ -13,6 +13,7 @@ import AutoRefresh from "@/components/AutoRefresh";
 import ScheduleDateNav from "@/components/ScheduleDateNav";
 import MobileDateBar from "@/components/MobileDateBar";
 import { HolidayIcon } from "@/components/HolidayDecor";
+import { BIRTHDAY_CAKE, BIRTHDAY_FILL, isBirthday } from "@/lib/birthdays";
 import { useDemoHolidayFor, useHoliday } from "@/components/HolidayProvider";
 import { officeIsDark } from "@/lib/holidayTheme";
 import { doctorColor, MY_PILL, staffPill } from "@/lib/homeColors";
@@ -39,7 +40,8 @@ type Props = {
 // (lib/holidayTheme.ts; both are CSS variables).
 function officeBackground(office: Office) {
   const b = office === "GERMANTOWN" ? "gt" : "bt";
-  return { backgroundColor: `var(--${b}-bg)`, backgroundImage: `var(--${b}-pattern, none)` };
+  // Your own birthday's confetti (components/BirthdayCelebration.tsx) goes over everything.
+  return { backgroundColor: `var(--${b}-bg)`, backgroundImage: `var(--bday-pattern, none), var(--${b}-pattern, none)` };
 }
 
 // A holiday texture is painted both on the full-page background behind
@@ -204,6 +206,11 @@ export default function ModernScheduleBoard({ date, day, freeStaff, note, workin
             <Link href={`/schedule/${effectiveScheduleDate()}`} className={`mr-3 text-sm font-bold hover:underline ${btDark ? "text-white/80" : "accent-text"}`}>
               Jump to today
             </Link>
+          )}
+          {current && isBirthday(current.name, date) && (
+            <div className="mt-1 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-extrabold text-slate-900 shadow-sm" style={{ background: BIRTHDAY_FILL }}>
+              🎉 Happy birthday, {current.name}! {BIRTHDAY_CAKE}
+            </div>
           )}
           <DayNote key={date} date={date} initial={note} textClass={titleColor} />
         </div>
@@ -515,6 +522,7 @@ function ProviderRow({
       {holiday && doctor && <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/20" style={{ background: doctor.pill }} />}
       <span className="truncate text-sm font-extrabold" style={doctor && !holiday ? { color: dark ? doctor.onDark : doctor.onLight } : undefined}>
         {cell.provider.name}
+        {isBirthday(cell.provider.name, date) && <span aria-label="birthday"> {BIRTHDAY_CAKE}</span>}
         {cell.provider.lateMinutes && (
           <span className={`ml-1 font-bold ${dark ? "text-amber-400" : "text-amber-600"}`}>{lateTag(cell.provider.lateMinutes)}</span>
         )}
@@ -524,6 +532,7 @@ function ProviderRow({
         <span className="flex flex-wrap items-center gap-1.5">
           <Pill
             outlineClassName={pillOutline(dark)}
+            trailing={isBirthday(cell.scribe.name, date) ? <span aria-label="birthday">{BIRTHDAY_CAKE}</span> : undefined}
             name={cell.scribe.name}
             color={(cell.scribe.staffId === currentId ? MY_PILL : staffPill(cell.scribe.name, dark))?.color ?? cell.scribe.color}
             textClassName={(cell.scribe.staffId === currentId ? MY_PILL : staffPill(cell.scribe.name, dark))?.textClassName}
@@ -644,6 +653,7 @@ function RoleSection({
               <span key={c.id} className="flex items-center gap-1">
                 <Pill
                   outlineClassName={pillOutline(dark)}
+                  trailing={isBirthday(c.name, date) ? <span aria-label="birthday">{BIRTHDAY_CAKE}</span> : undefined}
                   name={c.providerName ? `${c.name} — ${c.providerName}` : c.name}
                   color={(c.staffId === currentId ? MY_PILL : staffPill(c.name, dark))?.color ?? c.color}
                   textClassName={(c.staffId === currentId ? MY_PILL : staffPill(c.name, dark))?.textClassName}

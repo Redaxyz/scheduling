@@ -6,6 +6,7 @@ import type { ProviderCalendarRow, ProviderHalfCell } from "@/lib/calendar";
 import { effectiveMonday, effectiveScheduleDate, mondayOf, weekdayIndex } from "@/lib/date";
 import { federalHolidayName, HOLIDAY_COLOR, WORKING_HOLIDAY_COLOR } from "@/lib/holidays";
 import { holidayCellLook } from "@/lib/holidayTheme";
+import { BIRTHDAY_CAKE, birthdayAmong, isBirthday } from "@/lib/birthdays";
 import { spaceBelow } from "@/lib/viewportSpace";
 import { HALVES, HALF_LABELS, OFFICE_LABELS, type Half, type Office } from "@/lib/types";
 import { useWhoAmI } from "@/lib/whoami";
@@ -283,7 +284,11 @@ export default function ProviderCalendarGrid({
         <tbody>
           {rows.map((row) => (
             <tr key={row.providerId}>
-              <td className="accent-border-soft sticky left-0 z-10 truncate border-r-2 bg-page px-3 py-1.5 font-bold">{row.name}</td>
+              <td className="accent-border-soft sticky left-0 z-10 truncate border-r-2 bg-page px-3 py-1.5 font-bold">
+                {row.name}
+                {/* A birthday in the dates on screen (lib/birthdays.ts). */}
+                {birthdayAmong(row.name, dates) && <span aria-label="birthday this week"> {BIRTHDAY_CAKE}</span>}
+              </td>
               {dates.flatMap((date) =>
                 HALVES.map((half) => {
                   const cell = row.days[date][half];
@@ -326,6 +331,7 @@ export default function ProviderCalendarGrid({
                           }}
                         >
                           {cellLetter(cell, closedHoliday)}
+                          {isBirthday(row.name, date) && !closedHoliday && <span className="ml-0.5">{BIRTHDAY_CAKE}</span>}
                         </span>
                       </button>
                     </td>

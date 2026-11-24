@@ -6,6 +6,7 @@ import { HALVES, HALF_LABELS, OFFICE_LABELS, WEEKDAY_LABELS, type Role } from "@
 import { OFFICE_COLOR } from "@/lib/colors";
 import { useHoliday } from "@/components/HolidayProvider";
 import { officeIsDark } from "@/lib/holidayTheme";
+import { BIRTHDAY_CAKE, BIRTHDAY_FILL, isBirthday } from "@/lib/birthdays";
 import { formatShort, todayStr, weekdayIndex } from "@/lib/date";
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -19,10 +20,12 @@ const ROLE_LABEL: Record<Role, string> = {
 // panel, Germantown a literal near-black one, edge to edge — no card, no
 // padding gutter, no empty space. A half with nothing at all still gets a
 // filled (just neutral) panel instead of a blank hole in the layout.
-function HalfPanel({ half, cell }: { half: (typeof HALVES)[number]; cell: MyScheduleCell }) {
-  // Which offices are dark depends on the holiday theme (lib/holidayTheme.ts).
+function HalfPanel({ half, cell, birthday }: { half: (typeof HALVES)[number]; cell: MyScheduleCell; birthday: boolean }) {
+  // Which offices are dark depends on the holiday theme (lib/holidayTheme.ts);
+  // on your birthday your working halves are pink and blue (lib/birthdays.ts).
   const holiday = useHoliday();
-  const dark = cell.office ? officeIsDark(holiday, cell.office) : false;
+  const party = birthday && Boolean(cell.office);
+  const dark = cell.office && !party ? officeIsDark(holiday, cell.office) : false;
   const light = Boolean(cell.office) && !dark;
   const blank = !cell.office;
 
@@ -34,14 +37,22 @@ function HalfPanel({ half, cell }: { half: (typeof HALVES)[number]; cell: MySche
       }`}
       style={{
         backgroundColor: cell.office ? OFFICE_COLOR[cell.office] : "var(--off-bg)",
-        // A holiday theme's texture over the office color (lib/holidayTheme.ts).
-        backgroundImage: cell.office ? `var(--${cell.office === "GERMANTOWN" ? "gt" : "bt"}-pattern, none)` : undefined,
+        // A holiday theme's texture over the office color (lib/holidayTheme.ts),
+        // or the birthday colors with confetti.
+        backgroundImage: party
+          ? `var(--bday-pattern, none), ${BIRTHDAY_FILL}`
+          : cell.office
+            ? `var(--${cell.office === "GERMANTOWN" ? "gt" : "bt"}-pattern, none)`
+            : undefined,
         ["--bleed" as string]: cell.office ? OFFICE_COLOR[cell.office] : undefined,
       }}
     >
       {cell.isProvider && cell.office ? (
         <>
-          <div className="text-lg font-black uppercase tracking-tight sm:text-xl">{OFFICE_LABELS[cell.office]}</div>
+          <div className="text-lg font-black uppercase tracking-tight sm:text-xl">
+            {OFFICE_LABELS[cell.office]}
+            {party && <span aria-label="your birthday"> {BIRTHDAY_CAKE}</span>}
+          </div>
           <div className={`text-xs font-bold sm:text-sm ${dark ? "text-white/70" : "opacity-70"}`}>
             Seeing patients{cell.scribeName ? ` — ${cell.scribeName} scribing` : ""}
           </div>
@@ -51,7 +62,10 @@ function HalfPanel({ half, cell }: { half: (typeof HALVES)[number]; cell: MySche
         </>
       ) : cell.office && cell.role ? (
         <>
-          <div className="text-lg font-black uppercase tracking-tight sm:text-xl">{OFFICE_LABELS[cell.office]}</div>
+          <div className="text-lg font-black uppercase tracking-tight sm:text-xl">
+            {OFFICE_LABELS[cell.office]}
+            {party && <span aria-label="your birthday"> {BIRTHDAY_CAKE}</span>}
+          </div>
           <div className={`text-xs font-bold sm:text-sm ${dark ? "text-white/70" : "opacity-70"}`}>
             {cell.role === "SCRIBE" ? `Scribe for ${cell.providerName}` : ROLE_LABEL[cell.role]}
           </div>
@@ -118,7 +132,7 @@ export default function ModernMyScheduleView({ rows }: { rows: MyScheduleRow[] }
             </div>
             <div className="flex min-h-0 flex-1">
               {HALVES.map((half) => (
-                <HalfPanel key={half} half={half} cell={day.halves[half]} />
+                <HalfPanel key={half} half={half} cell={day.halves[half]} birthday={isBirthday(current.name, day.date)} />
               ))}
             </div>
           </div>

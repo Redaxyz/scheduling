@@ -2,18 +2,27 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { HOLIDAY_COOKIE, holidayCssVars, holidayFor, type HolidayKey } from "@/lib/holidayTheme";
+import { easternToday } from "@/lib/date";
 
 // Which holiday theme is on (see lib/holidayTheme.ts), worked out by the
 // server for the whole page and shared with every component that styles
 // itself by it.
-type HolidayState = { holiday: HolidayKey | null; demo: boolean; show: (key: HolidayKey | null) => void };
-const HolidayContext = createContext<HolidayState>({ holiday: null, demo: false, show: () => {} });
+type HolidayState = {
+  holiday: HolidayKey | null;
+  demo: boolean;
+  show: (key: HolidayKey | null) => void;
+  // Preview builds: the day Home is showing (birthdays follow it too).
+  viewing: string | null;
+  setViewing: (date: string) => void;
+};
+const HolidayContext = createContext<HolidayState>({ holiday: null, demo: false, show: () => {}, viewing: null, setViewing: () => {} });
 
 // Every variable a theme sets on <html> (the same list for every theme).
 const THEME_VARS = Object.keys(holidayCssVars("christmas"));
 
 export function HolidayProvider({ holiday: fromServer, demo, children }: { holiday: HolidayKey | null; demo: boolean; children: ReactNode }) {
   const [holiday, setHoliday] = useState(fromServer);
+  const [viewing, setViewing] = useState<string | null>(null);
 
   // Trying a theme early: open any page with ?holiday=christmas (or
   // thanksgiving, or none) to see it in this browser; ?holiday=auto goes back
@@ -42,7 +51,7 @@ export function HolidayProvider({ holiday: fromServer, demo, children }: { holid
     setHoliday(key);
   }
 
-  return <HolidayContext.Provider value={{ holiday, demo, show }}>{children}</HolidayContext.Provider>;
+  return <HolidayContext.Provider value={{ holiday, demo, show, viewing, setViewing }}>{children}</HolidayContext.Provider>;
 }
 
 export function useHoliday(): HolidayKey | null {
@@ -53,9 +62,18 @@ export function useHoliday(): HolidayKey | null {
 // it's showing instead of today's, so every holiday's look can be checked by
 // paging through the dates. It stays on when you switch tabs.
 export function useDemoHolidayFor(date: string) {
-  const { demo, show } = useContext(HolidayContext);
+  const { demo, show, setViewing } = useContext(HolidayContext);
   useEffect(() => {
-    if (demo) show(holidayFor(date));
+    if (!demo) return;
+    show(holidayFor(date));
+    setViewing(date);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [demo, date]);
+}
+
+// The day to celebrate birthdays on: today, or on a preview build the day
+// Home was last showing.
+export function useCelebrationDate(): string {
+  const { demo, viewing } = useContext(HolidayContext);
+  return (demo && viewing) || easternToday();
 }

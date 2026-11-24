@@ -63,6 +63,19 @@
 .holiday-font {
   font-family: var(--holiday-font);
 }
+/* Your own birthday (components/BirthdayCelebration.tsx): confetti behind
+   the whole app, over the page and the offices' colors alike. */
+html[data-birthday] body {
+  background-image: var(--bday-pattern);
+}
+@keyframes confetti-fall {
+  from { transform: translateY(-5vh) rotate(0deg); opacity: 1; }
+  85% { opacity: 1; }
+  to { transform: translateY(105vh) rotate(var(--spin, 540deg)); opacity: 0; }
+}
+.confetti-piece {
+  animation: confetti-fall 3s cubic-bezier(0.25, 0.6, 0.5, 1) both;
+}
 html[data-holiday] .active-slab {
   background: rgba(17, 17, 17, 0.1) !important;
 }
