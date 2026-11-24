@@ -6,6 +6,7 @@
 // themselves gets confetti across the app and a greeting on Home
 // (components/BirthdayCelebration.tsx).
 export const BIRTHDAYS: Record<string, string> = {
+  Joanna: "09-15",
   Reda: "08-02",
 };
 
