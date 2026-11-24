@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useWhoAmI, type StaffOption } from "@/lib/whoami";
-import { easternToday } from "@/lib/date";
+import { useCelebrationDate } from "@/components/HolidayProvider";
 import { BIRTHDAY_CAKE, CONFETTI, isBirthday } from "@/lib/birthdays";
 import { buildGridCurves, cellCenterPct, cellClipPath } from "@/lib/zigzagGrid";
 import { layoutSigninCells, signinLayout, tileColor, type SigninCell } from "@/lib/signinGrid";
@@ -71,7 +71,8 @@ export default function UserPicker() {
   const cells: Cell[] = useMemo(() => layoutSigninCells(staffList), [staffList]);
   // Today's birthday people (lib/birthdays.ts) get a party tile: pink and blue
   // with confetti, and a cake after their name.
-  const today = easternToday();
+  // Today, or on a preview build the day Home was last showing.
+  const today = useCelebrationDate();
   const birthday = (cell: Cell) => isBirthday(cell.staff.name, today);
   const cellColor = (cell: Cell) => {
     if (!birthday(cell)) return tileColor(layout, cell.row, cell.col);
