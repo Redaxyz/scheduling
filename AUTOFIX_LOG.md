@@ -3,3 +3,4 @@
 - #3 (updated 2026-11-23T12:50:50Z): Neon database unreachable (transient infra/connectivity outage), not a code bug
 - #4 (updated 2026-11-23T12:50:50Z): Same Neon database outage as #3 (can't reach DB server), not a code bug
 - #5 (updated 2026-11-23T12:51:00Z): iOS Safari React removeChild null on stateNode.parentNode; no app frames in stack, typically caused by browser translate/extensions mutating the DOM; cannot reproduce
+- #3 (updated 2026-11-27T10:01:28Z): Neon database unreachable again on /api/swap-requests (infra/connectivity, maybe scale-to-zero cold start; consider connect_timeout in DATABASE_URL), not a code bug
